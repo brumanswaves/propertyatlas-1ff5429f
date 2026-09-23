@@ -1,0 +1,3910 @@
+{
+  "source": "98684f4783a00d9838d6ff4a9da945fa04ba7298",
+  "synthetic": true,
+  "externalRequests": 0,
+  "results": [
+    {
+      "name": "unresolved-auth-defers-direct-selection",
+      "status": "passed",
+      "requests": [
+        {
+          "table": "saved_properties",
+          "query": {
+            "select": "id,user_id,parcel_id,user_data",
+            "user_id": "eq.synthetic-owner-A",
+            "parcel_id": "eq.csg:lpi:synthetic-1"
+          },
+          "returned": [
+            {
+              "owner": "synthetic-owner-A",
+              "parcel": "csg:lpi:synthetic-1"
+            }
+          ],
+          "bodyCount": 1,
+          "method": "GET",
+          "aborted": false
+        },
+        {
+          "table": "erf_site_projects",
+          "query": {
+            "select": "*",
+            "user_id": "eq.synthetic-owner-A",
+            "parcel_id": "eq.csg:lpi:synthetic-1"
+          },
+          "returned": [
+            {
+              "owner": "synthetic-owner-A",
+              "parcel": "csg:lpi:synthetic-1"
+            }
+          ],
+          "bodyCount": 0,
+          "method": "GET",
+          "aborted": false
+        },
+        {
+          "table": "erf_assets",
+          "query": {
+            "select": "*",
+            "user_id": "eq.synthetic-owner-A",
+            "parcel_id": "eq.csg:lpi:synthetic-1",
+            "status": "neq.deleted",
+            "order": "created_at.desc",
+            "asset_category": "in.(site_photo,existing_house_photo,topography,architectural_plan,inspiration_image,other,generated_design)"
+          },
+          "returned": [],
+          "bodyCount": 0,
+          "method": "GET",
+          "aborted": false
+        }
+      ],
+      "mutations": [],
+      "flushes": [],
+      "recordHashes": [
+        {
+          "parcel": "csg:lpi:synthetic-1",
+          "sha256": "60c8f661edab7e901551adc13dfe6a19f401e06688077c029126c76e310bad7c"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-2",
+          "sha256": "19d733fcc32d7ffb75d3bd8e186982c4379f33dbde6fd3905ebc8945572bf85c"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-3",
+          "sha256": "29040681148f11d4a58e7a787278505224fe0a9e4e5d9615c11ace94a7a0368a"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-4",
+          "sha256": "734c958296608e9d6d5dc7f8e8928c9096b4ca8d6f2b70dc055bc2f67ee5db8a"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-5",
+          "sha256": "99180fffc851bebf791177bb0af7484ebed07d286bd097b3d8210de81afda7b8"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-6",
+          "sha256": "a685f943116dc600128b588383cb41f219c92ad034951f9fbe86b8a08461a951"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-7",
+          "sha256": "d489a8d19cccae16939e9aee037d35649ef0a8e811edddadc19ff0da515d282a"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-8",
+          "sha256": "fa7f2615a106dfa225f9a16636204ea28e41c53f5ecdfb3af1f97ccc1ec84ea2"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-9",
+          "sha256": "e5621463c2c2b4291db5cd1b9cb0d3abd6153f24ace4f25a05e3a79622c7b5a6"
+        }
+      ]
+    },
+    {
+      "name": "no-selection-signin-report-only",
+      "status": "passed",
+      "requests": [],
+      "mutations": [],
+      "flushes": [],
+      "recordHashes": [
+        {
+          "parcel": "csg:lpi:synthetic-1",
+          "sha256": "3ab9103a89e54b45b9d24eca4b6cbd82b851de563042c0b2f0807b64c0b6a379"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-2",
+          "sha256": "71bf8a4a344f09441a583fbdcc8d4643735eb0ece49c087aa2fd92954e036bc5"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-3",
+          "sha256": "710d2fa97f5738cf389fd6bc030f80c16e0daf6b8bcaa843f79406db3a03147d"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-4",
+          "sha256": "ce47c4f09537beb5d5895bdc5bd44780ff368faaca68d03d9178a4bc5951c74d"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-5",
+          "sha256": "5b9e2fba76307d1cd625b57d86c6352c9174362da95c9447fddd43a6155e8570"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-6",
+          "sha256": "e66fd2c84c0ec3c02a7d7695b98f0c15a4324bfd5212db0c969c68f1fc0a95c9"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-7",
+          "sha256": "262b9d244a8ab4bc60723d38b7ef422a4210005526fafa09262803f61e679947"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-8",
+          "sha256": "6fde728178356ee855b7cb35d4b48d7064bbdb9929ed33e8723d9dc2927f3166"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-9",
+          "sha256": "4eaaa24b89b35c454b82bf2f057bf084ff6c887f7f81812b9659d9a9b2447073"
+        }
+      ]
+    },
+    {
+      "name": "unresolved-coordinate-is-not-selected-identity",
+      "status": "passed",
+      "requests": [],
+      "mutations": [],
+      "flushes": [],
+      "recordHashes": [
+        {
+          "parcel": "csg:lpi:synthetic-1",
+          "sha256": "cc202db9a47801e5f0c351e5760e6dc3bad4a88dcbdb0cf9d075237ec42a5e14"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-2",
+          "sha256": "b7d28744560895f37754fd87ebfcfbe377b82140fcb42df142eeccce1c3ea154"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-3",
+          "sha256": "cb618d85c035eabdcdf665d08a000b6dee5755ee5fe5e89fac4524a656bf9e4f"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-4",
+          "sha256": "a0228ae1dd2988580a630a02980ff8a05c63673ad042a7aecbb932084a588e0d"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-5",
+          "sha256": "12c2ad3ec4faeb2de07926b71fa151047b36b0e4ec8635bab03a1159a27f69c4"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-6",
+          "sha256": "5577f4182dbc1e359797cfcfb2c95bf5c4ea757e23819df17b1748a9c0ac2fd9"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-7",
+          "sha256": "ffaee6165512b2c649db32e8891b718a6f37933180cf8e6638e57699ce0965fc"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-8",
+          "sha256": "69de2647c734b0487504c9e61551518a09966f8294b63785c2791a00686c6624"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-9",
+          "sha256": "845e1113962428fb0846132dc7ea017011b29f149ac46fd9bedba44f6dc34c01"
+        }
+      ]
+    },
+    {
+      "name": "selected-only-nine-property-byte-preservation",
+      "status": "passed",
+      "requests": [
+        {
+          "table": "saved_properties",
+          "query": {
+            "select": "id,user_id,parcel_id,user_data",
+            "user_id": "eq.synthetic-owner-A",
+            "parcel_id": "eq.csg:lpi:synthetic-1"
+          },
+          "returned": [
+            {
+              "owner": "synthetic-owner-A",
+              "parcel": "csg:lpi:synthetic-1"
+            }
+          ],
+          "bodyCount": 1,
+          "method": "GET",
+          "aborted": false
+        },
+        {
+          "table": "erf_site_projects",
+          "query": {
+            "select": "*",
+            "user_id": "eq.synthetic-owner-A",
+            "parcel_id": "eq.csg:lpi:synthetic-1"
+          },
+          "returned": [
+            {
+              "owner": "synthetic-owner-A",
+              "parcel": "csg:lpi:synthetic-1"
+            }
+          ],
+          "bodyCount": 0,
+          "method": "GET",
+          "aborted": false
+        },
+        {
+          "table": "erf_assets",
+          "query": {
+            "select": "*",
+            "user_id": "eq.synthetic-owner-A",
+            "parcel_id": "eq.csg:lpi:synthetic-1",
+            "status": "neq.deleted",
+            "order": "created_at.desc",
+            "asset_category": "in.(site_photo,existing_house_photo,topography,architectural_plan,inspiration_image,other,generated_design)"
+          },
+          "returned": [],
+          "bodyCount": 0,
+          "method": "GET",
+          "aborted": false
+        }
+      ],
+      "mutations": [],
+      "flushes": [],
+      "recordHashes": [
+        {
+          "parcel": "csg:lpi:synthetic-1",
+          "sha256": "78bd991b0746109ecbc5ea1a3f0bf704d3535c15ac9e9dbbf6083e9a9d776152"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-2",
+          "sha256": "d3f417bfb3f3f02244c8db2fdca303e612980f7fa526c51797e431981529255f"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-3",
+          "sha256": "0c330edd2e133777d22c98c1376fcc3f383ad939f2bba82491c67065a5a96778"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-4",
+          "sha256": "87aa2762add1c853dbead1891b7569a32fc73701579fede02f5d33744ce1bc5c"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-5",
+          "sha256": "9546880b90fce6b6a2ff594de4a1fcdf2b39426ca1378fe243c954075b5a8f39"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-6",
+          "sha256": "c92df20a32e6bfc14469e84790650902596c8a4198cf713d82e1f49e7e301922"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-7",
+          "sha256": "f35a76f6ce14ba3ab025cc577d34f15b874686379251b0c7fe76b56fe72dbc89"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-8",
+          "sha256": "08a613a216ffdcfc38e29fd55bf105da249f43c2e7c6f783adff6c7d3e337c77"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-9",
+          "sha256": "0e9ca04b4deb05277fa39cbddb31ed40f0705ba5481eae56fa0fca1bde94eb0c"
+        }
+      ]
+    },
+    {
+      "name": "unselected-events-and-flush-not-acknowledged",
+      "status": "passed",
+      "requests": [
+        {
+          "table": "saved_properties",
+          "query": {
+            "select": "id,user_id,parcel_id,user_data",
+            "user_id": "eq.synthetic-owner-A",
+            "parcel_id": "eq.csg:lpi:synthetic-1"
+          },
+          "returned": [
+            {
+              "owner": "synthetic-owner-A",
+              "parcel": "csg:lpi:synthetic-1"
+            }
+          ],
+          "bodyCount": 1,
+          "method": "GET",
+          "aborted": false
+        },
+        {
+          "table": "erf_site_projects",
+          "query": {
+            "select": "*",
+            "user_id": "eq.synthetic-owner-A",
+            "parcel_id": "eq.csg:lpi:synthetic-1"
+          },
+          "returned": [
+            {
+              "owner": "synthetic-owner-A",
+              "parcel": "csg:lpi:synthetic-1"
+            }
+          ],
+          "bodyCount": 0,
+          "method": "GET",
+          "aborted": false
+        },
+        {
+          "table": "erf_assets",
+          "query": {
+            "select": "*",
+            "user_id": "eq.synthetic-owner-A",
+            "parcel_id": "eq.csg:lpi:synthetic-1",
+            "status": "neq.deleted",
+            "order": "created_at.desc",
+            "asset_category": "in.(site_photo,existing_house_photo,topography,architectural_plan,inspiration_image,other,generated_design)"
+          },
+          "returned": [],
+          "bodyCount": 0,
+          "method": "GET",
+          "aborted": false
+        }
+      ],
+      "mutations": [],
+      "flushes": [
+        {
+          "parcel": "csg:lpi:synthetic-2",
+          "status": "rejected",
+          "error": "The investigation save service is unavailable. Reload before continuing."
+        }
+      ],
+      "recordHashes": [
+        {
+          "parcel": "csg:lpi:synthetic-1",
+          "sha256": "69181a4373840dfb4f59c60ae0ec47aba2631f813f654b0021b7056783c94c80"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-2",
+          "sha256": "1aecc058974c255cb97333002246b383cbb746ff4f4e1b5f389b3ddce7736628"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-3",
+          "sha256": "01754b4cba90cb32191462b067638c9baf4fcdfd66a379a24a8b3d06ec3d4ffa"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-4",
+          "sha256": "6b38c57897fa8c05f3d883a6b83e9d99ddc8bb6a55c2850b50083458060137a8"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-5",
+          "sha256": "7e26bb2ab1a0e1098ca7021309286a80ca85def4499568db4358b4d41365f1fd"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-6",
+          "sha256": "59297560115f05a59aafb57043ec1c1f8b14c1654b6281848b42c1d0eafd1493"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-7",
+          "sha256": "5b8c27fb691fedf6b72316af5e3c824956222e2890f2c284d7c0a3941d52392c"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-8",
+          "sha256": "512fc89ede7edd60078bb85fb0fdbd2c6e7e6ffccb27fa9b0360e769e67b63e2"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-9",
+          "sha256": "de2ba8f7d09eaf96c923624cf359f79e90de657e846f3789892eee95d51d0de3"
+        }
+      ]
+    },
+    {
+      "name": "read-wrong-owner",
+      "status": "passed",
+      "requests": [
+        {
+          "table": "saved_properties",
+          "query": {
+            "select": "id,user_id,parcel_id,user_data",
+            "user_id": "eq.synthetic-owner-A",
+            "parcel_id": "eq.csg:lpi:synthetic-1"
+          },
+          "returned": [
+            {
+              "owner": "synthetic-owner-B",
+              "parcel": "csg:lpi:synthetic-1"
+            }
+          ],
+          "bodyCount": 1,
+          "method": "GET",
+          "aborted": false
+        }
+      ],
+      "mutations": [],
+      "flushes": [
+        {
+          "parcel": "csg:lpi:synthetic-1",
+          "status": "rejected",
+          "error": "The saved investigation identity is ambiguous or mismatched. Your draft is unchanged."
+        }
+      ],
+      "recordHashes": [
+        {
+          "parcel": "csg:lpi:synthetic-1",
+          "sha256": "d548ef08825f0e80337fd60f1e260f98b36c11e532ea585578ff2a06328926b3"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-2",
+          "sha256": "2d3076a84ee950eca705dc0f9b589ee633494c81212db4744f9a239166f450ac"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-3",
+          "sha256": "329ad1640cc0fe5775de253e04fdd6c7b48ec56a72f145fcfe48895741cbc95f"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-4",
+          "sha256": "790e3ce706c00ef54caedde2a3a0a67e5a5f42a0729b1804520ec7a5664a3a67"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-5",
+          "sha256": "64ac894b90a9bb8743e39e689c5ef5771050421406cc075b9a9659dfdc384ed1"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-6",
+          "sha256": "053e7246b1c835bee41f03f3bf2a5e50b6b4d91c6ce84c7d1d44aa168bd3fd0d"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-7",
+          "sha256": "6c05c8fdc1f5f30d45fde8e2312bf6b6ad7b9f701cc1675fc83717e6792bf8b4"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-8",
+          "sha256": "e46cd2e758ebf830482ce6d38d7fdb3369273a279d38aaea56922154ff3568e8"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-9",
+          "sha256": "4795214fad5fa83311de2f200f574022e9abf05e2ca2968710ea5f69f5034eef"
+        }
+      ]
+    },
+    {
+      "name": "read-wrong-parcel",
+      "status": "passed",
+      "requests": [
+        {
+          "table": "saved_properties",
+          "query": {
+            "select": "id,user_id,parcel_id,user_data",
+            "user_id": "eq.synthetic-owner-A",
+            "parcel_id": "eq.csg:lpi:synthetic-1"
+          },
+          "returned": [
+            {
+              "owner": "synthetic-owner-A",
+              "parcel": "csg:lpi:synthetic-9"
+            }
+          ],
+          "bodyCount": 1,
+          "method": "GET",
+          "aborted": false
+        }
+      ],
+      "mutations": [],
+      "flushes": [
+        {
+          "parcel": "csg:lpi:synthetic-1",
+          "status": "rejected",
+          "error": "The saved investigation identity is ambiguous or mismatched. Your draft is unchanged."
+        }
+      ],
+      "recordHashes": [
+        {
+          "parcel": "csg:lpi:synthetic-1",
+          "sha256": "ca7b1d2fe65e74eb56a3b71139d9de1813d0d74edfae11fce86a2c17e1900df3"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-2",
+          "sha256": "a60241b9a152bbd57f76bdbd3bf739151f069127ec5d37789ae82bb5a3de2d3d"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-3",
+          "sha256": "5cce42a3341cbdaf3ccd64451602399fa79693f112c0bf929cd5cf43af3a1cc8"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-4",
+          "sha256": "882224c7379999419412b9c871d6b9b0af9bf9b9529d50635d0aa192c6bcc2de"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-5",
+          "sha256": "f70442a3b6ee4fc0ac4ba379c8cae0fff006901f9cca81d27ef3b27ed48efcc9"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-6",
+          "sha256": "116f57f2e594e5038f8e33b5825a2fc318945249cdbbb61939cf45f7c51997ae"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-7",
+          "sha256": "84478d80a237ebf59a67d683f00066df5ad3e80519b256104ad2b3de9ee477e7"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-8",
+          "sha256": "43bd3ee61904c2eb288f6f91c6ed6e37eafc73f3d63b2c9dbd9fc9a364ec3708"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-9",
+          "sha256": "5b086fdf586ab8eaa547f7e01c2a6950ae5565cd4ade23069edc4fe3b3125fbb"
+        }
+      ]
+    },
+    {
+      "name": "read-duplicate",
+      "status": "passed",
+      "requests": [
+        {
+          "table": "saved_properties",
+          "query": {
+            "select": "id,user_id,parcel_id,user_data",
+            "user_id": "eq.synthetic-owner-A",
+            "parcel_id": "eq.csg:lpi:synthetic-1"
+          },
+          "returned": [
+            {
+              "owner": "synthetic-owner-A",
+              "parcel": "csg:lpi:synthetic-1"
+            },
+            {
+              "owner": "synthetic-owner-A",
+              "parcel": "csg:lpi:synthetic-1"
+            }
+          ],
+          "bodyCount": 2,
+          "method": "GET",
+          "aborted": false
+        }
+      ],
+      "mutations": [],
+      "flushes": [
+        {
+          "parcel": "csg:lpi:synthetic-1",
+          "status": "rejected",
+          "error": "The saved investigation identity is ambiguous or mismatched. Your draft is unchanged."
+        }
+      ],
+      "recordHashes": [
+        {
+          "parcel": "csg:lpi:synthetic-1",
+          "sha256": "e5a07bd3d406874063bd868d0e1cf14cecba1491a7d48b8061e7d1c4a008b78f"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-2",
+          "sha256": "99b722a8dc321117db7e56705ef7a0920f6cf55a8595278ea62a076de0631971"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-3",
+          "sha256": "e1841afbf4fbe8c95f73e966b057d9c76b84378f55244dbbc3bdc40cdc139ca5"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-4",
+          "sha256": "8472084245ca756bea2893cc6a9e2bb98cd1d8d6cc107c78db1a2c0667ed7efc"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-5",
+          "sha256": "00f02397a7acd8902ca8b13155401790dba319a1eabce083b26dd3c423ee1705"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-6",
+          "sha256": "3393eb9864fac94ce64e2a786ba6d330421ce9acb04f2b8d944dea3b80e775ec"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-7",
+          "sha256": "0b63d2483936709c2deaedcdc54276bb123f6e61e5bf2f64213a778a99c7650f"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-8",
+          "sha256": "77df4ce5d6e670fe720a1beecdb41e67c1ef73894ca9aed1f8a79b0e1eb3518d"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-9",
+          "sha256": "c8f977a6b0403972274dbdfc0c748de866be92f2b17db239c5684f8a04b24f12"
+        }
+      ]
+    },
+    {
+      "name": "read-wrong-projection",
+      "status": "passed",
+      "requests": [
+        {
+          "table": "saved_properties",
+          "query": {
+            "select": "id,user_id,parcel_id,user_data",
+            "user_id": "eq.synthetic-owner-A",
+            "parcel_id": "eq.csg:lpi:synthetic-1"
+          },
+          "returned": [
+            {
+              "owner": "synthetic-owner-A",
+              "parcel": "csg:lpi:synthetic-1"
+            }
+          ],
+          "bodyCount": 1,
+          "method": "GET",
+          "aborted": false
+        }
+      ],
+      "mutations": [],
+      "flushes": [
+        {
+          "parcel": "csg:lpi:synthetic-1",
+          "status": "rejected",
+          "error": "The saved investigation belongs to another property or is unreadable. Your draft is unchanged."
+        }
+      ],
+      "recordHashes": [
+        {
+          "parcel": "csg:lpi:synthetic-1",
+          "sha256": "be63081106e6bf0b378f897fafde18549481bcde771fc2a15fbc6ecd7f9ab4bc"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-2",
+          "sha256": "09c8ed9d5ca089956c6c077a4134022fc159558927f9a655691854bf679e9d3d"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-3",
+          "sha256": "cf13471202dfe9d987329a49b7eb1709d8d1e5fed5350103ccae08daf1785ae8"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-4",
+          "sha256": "0f55e7123684a8593a6a7a426a6460b002e820f89a0381a37662cd7bc6501073"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-5",
+          "sha256": "c73c67e4999008b9ab483c68aae0351539fbf5145074de198eaf858763f971de"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-6",
+          "sha256": "0509ce9a21f4baddaea2d4e1afe89d13418883d7e21a882243d68326231664be"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-7",
+          "sha256": "b35c6e619ec2ce7339182ca6ef73a03140c53ade67e07af2dae406fae0dfe1cf"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-8",
+          "sha256": "dbacf8781077e0484a5e8f4234113b165c5df8f572a7e91ab78ffc64c02b1c3c"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-9",
+          "sha256": "acc7a7139c0247452073089abc91f0a3a6cef87feb3ffdf5ea1127c7ddebab23"
+        }
+      ]
+    },
+    {
+      "name": "read-failure",
+      "status": "passed",
+      "requests": [
+        {
+          "table": "saved_properties",
+          "query": {
+            "select": "id,user_id,parcel_id,user_data",
+            "user_id": "eq.synthetic-owner-A",
+            "parcel_id": "eq.csg:lpi:synthetic-1"
+          },
+          "returned": [
+            {
+              "owner": "synthetic-owner-A",
+              "parcel": "csg:lpi:synthetic-1"
+            }
+          ],
+          "bodyCount": 1,
+          "method": "GET",
+          "aborted": false
+        }
+      ],
+      "mutations": [],
+      "flushes": [
+        {
+          "parcel": "csg:lpi:synthetic-1",
+          "status": "rejected",
+          "error": "The saved investigation could not be read. Your browser draft is retained."
+        }
+      ],
+      "recordHashes": [
+        {
+          "parcel": "csg:lpi:synthetic-1",
+          "sha256": "b440911c0360020649500fc9e6201e1d5f08907b4f13eea5671d6232fa97850b"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-2",
+          "sha256": "50c4bda5c1ca547fe94f408f92da7a4ee2cf2fe95b33a0d9d8499e53bc421069"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-3",
+          "sha256": "e74be5b528e4c0cf4793703f58ac9b8044454ae86ddcbf235cb936891263e8b8"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-4",
+          "sha256": "c9662ee1855b825f64bc1f64aa4633454e9798c8556cb79be0b4bf14cd6cf6ff"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-5",
+          "sha256": "caa95d781746794d30507e8a300b3aa1af7655364cebd797b521f0141cb9ef4a"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-6",
+          "sha256": "138bd1a89f934f9187d9df1eba3f0ca2316f041df004d6f62a936e5bd7cf4a08"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-7",
+          "sha256": "85ad90420f4f5b6caf4d8398d014a02d23cb63709874207f1125f53fd0df56db"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-8",
+          "sha256": "2c8798985b381c6274fa74b318bad67c1098695e8b6e8a6810a3009c63470559"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-9",
+          "sha256": "775d6ccc0ad99652060949a680a477390634d66795531063983d4e367da66923"
+        }
+      ]
+    },
+    {
+      "name": "read-missing",
+      "status": "passed",
+      "requests": [
+        {
+          "table": "saved_properties",
+          "query": {
+            "select": "id,user_id,parcel_id,user_data",
+            "user_id": "eq.synthetic-owner-A",
+            "parcel_id": "eq.csg:lpi:synthetic-1"
+          },
+          "returned": [],
+          "bodyCount": 0,
+          "method": "GET",
+          "aborted": false
+        },
+        {
+          "table": "saved_properties",
+          "query": {
+            "select": "id,user_id,parcel_id,user_data",
+            "user_id": "eq.synthetic-owner-A",
+            "parcel_id": "eq.csg:lpi:synthetic-1"
+          },
+          "returned": [
+            {
+              "owner": "synthetic-owner-A",
+              "parcel": "csg:lpi:synthetic-1"
+            }
+          ],
+          "bodyCount": 1,
+          "method": "GET",
+          "aborted": false
+        }
+      ],
+      "mutations": [],
+      "flushes": [
+        {
+          "parcel": "csg:lpi:synthetic-1",
+          "status": "rejected",
+          "error": "Reload the saved investigation before saving cloud changes."
+        }
+      ],
+      "recordHashes": [
+        {
+          "parcel": "csg:lpi:synthetic-1",
+          "sha256": "a79f1346eb8199dd06ab62f114100ea9e8df6c4cccf3583c4d7a355c1a4dd3fd"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-2",
+          "sha256": "4f12d00225c65056fa4f26cee8c2fbd4f0ecb52dc9208c498075736d48e9a868"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-3",
+          "sha256": "d8fd725d720cb6508b6af2656776c55e9da7390f4271f8bbc52b2784980bb4c3"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-4",
+          "sha256": "36387c2a3e0c205ccd01368f1b6ad9a9670e442ce994089e1097b54594a1d4d9"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-5",
+          "sha256": "150d2f555c5f3f1824b3045836c1f21f2aea354d1e1c186a537328b1719b2c91"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-6",
+          "sha256": "fcf036644505877a7028cb2bc4c218f36c37cad1890c467cd0a09220d9b3ca24"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-7",
+          "sha256": "1ec35e1a7820e47bd06c2a3e472c7cc85b19df69db2c9d90bc2b8d94e1cb931b"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-8",
+          "sha256": "0d2a36d8c7363ded7f638302b3c44141d35ace59dfbde9e0f1eddcccb8018b45"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-9",
+          "sha256": "5e32e0deaec196191dea5c5ed1330ce97520b262158ee7a0e4fdb3785dfda08a"
+        }
+      ]
+    },
+    {
+      "name": "delayed-hydration-parcel",
+      "status": "passed",
+      "requests": [
+        {
+          "table": "saved_properties",
+          "query": {
+            "select": "id,user_id,parcel_id,user_data",
+            "user_id": "eq.synthetic-owner-A",
+            "parcel_id": "eq.csg:lpi:synthetic-1"
+          },
+          "returned": [
+            {
+              "owner": "synthetic-owner-A",
+              "parcel": "csg:lpi:synthetic-1"
+            }
+          ],
+          "bodyCount": 1,
+          "method": "GET",
+          "aborted": true
+        },
+        {
+          "table": "saved_properties",
+          "query": {
+            "select": "id,user_id,parcel_id,user_data",
+            "user_id": "eq.synthetic-owner-A",
+            "parcel_id": "eq.csg:lpi:synthetic-2"
+          },
+          "returned": [
+            {
+              "owner": "synthetic-owner-A",
+              "parcel": "csg:lpi:synthetic-2"
+            }
+          ],
+          "bodyCount": 1,
+          "method": "GET",
+          "aborted": false
+        },
+        {
+          "table": "erf_site_projects",
+          "query": {
+            "select": "*",
+            "user_id": "eq.synthetic-owner-A",
+            "parcel_id": "eq.csg:lpi:synthetic-2"
+          },
+          "returned": [
+            {
+              "owner": "synthetic-owner-A",
+              "parcel": "csg:lpi:synthetic-2"
+            }
+          ],
+          "bodyCount": 0,
+          "method": "GET",
+          "aborted": false
+        },
+        {
+          "table": "erf_assets",
+          "query": {
+            "select": "*",
+            "user_id": "eq.synthetic-owner-A",
+            "parcel_id": "eq.csg:lpi:synthetic-2",
+            "status": "neq.deleted",
+            "order": "created_at.desc",
+            "asset_category": "in.(site_photo,existing_house_photo,topography,architectural_plan,inspiration_image,other,generated_design)"
+          },
+          "returned": [],
+          "bodyCount": 0,
+          "method": "GET",
+          "aborted": false
+        }
+      ],
+      "mutations": [],
+      "flushes": [],
+      "recordHashes": [
+        {
+          "parcel": "csg:lpi:synthetic-1",
+          "sha256": "25ec45fb8936c6be2e639e7bb6d7dfb7ba3110943bd8f8f7bf2a9667f82ee6e6"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-2",
+          "sha256": "9600e039ae306309afa16b6411f2773ca61ffb8934ecd48cc027d5d00afc8692"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-3",
+          "sha256": "758b8872e88e658a4f98631d616543bb71c4d45a5a2a8c1a75373338d9943e04"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-4",
+          "sha256": "8f648e04304a5e75229d38c67855f43c6a7b25a793f729d3aaf933faa8903d71"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-5",
+          "sha256": "bcb7b20ed04bc77e9841fb5f8a248721f867eaf1fee61b3a4fc4cc5a1a0ea1b8"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-6",
+          "sha256": "f0158bc5424fbeefad9e637a290cbdf53bd695e350f8433c474bcef3db8352d9"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-7",
+          "sha256": "6b59ed93d7eb4114721dcdf2ed177306ce98d649f49dae5fde9a2daa0693bca8"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-8",
+          "sha256": "f7f08f1370e0e0027df2c4d1302e01da7ca5c96fab6d8ef7e10cb0ed2aa14ecd"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-9",
+          "sha256": "9f529602940cc0a780bd96508b26e42f65c224a7fb8369e839559e66bb1a7a40"
+        }
+      ]
+    },
+    {
+      "name": "delayed-hydration-account",
+      "status": "passed",
+      "requests": [
+        {
+          "table": "saved_properties",
+          "query": {
+            "select": "id,user_id,parcel_id,user_data",
+            "user_id": "eq.synthetic-owner-A",
+            "parcel_id": "eq.csg:lpi:synthetic-1"
+          },
+          "returned": [
+            {
+              "owner": "synthetic-owner-A",
+              "parcel": "csg:lpi:synthetic-1"
+            }
+          ],
+          "bodyCount": 1,
+          "method": "GET",
+          "aborted": true
+        }
+      ],
+      "mutations": [],
+      "flushes": [],
+      "recordHashes": [
+        {
+          "parcel": "csg:lpi:synthetic-1",
+          "sha256": "e136b00846e8cee6dbc3d57be2b99d5b3284bda66a6da3d0305daaa49d38e87d"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-2",
+          "sha256": "eaf45b276c7ddd4befc235cdbd563a910ab7516789a5bddcd3421ea6a3c8b84a"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-3",
+          "sha256": "394dac760e5ef8470a177acd7f6d1d1aad41ad3ceebbbd5c3ef5f3b217e108a7"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-4",
+          "sha256": "b28d53aadafbffe88674ece5ab861c95d75c946be776726d98d74e6f2fbdce1e"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-5",
+          "sha256": "0b56e446ac6dbf46b1de0d166f0eb1288881c53db27f223f9ab28f359400f9e5"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-6",
+          "sha256": "45a7c87f6b1b605df54e424d14c46c2c99a41ee631ddba9d2cc6430b47f482a6"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-7",
+          "sha256": "5117661ca358b86cfac88a2fc55e572e115fc4c8f768897a59558b02c3e3a925"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-8",
+          "sha256": "55fc5f6df0f081fc64fea83516b19d559fa46251c4a704ceccb7e5f051cf24f6"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-9",
+          "sha256": "c82e2cb1032e12834e49883b5056afd69d5b1dc36f6bf0eb9766d95b8bb0bf2d"
+        }
+      ]
+    },
+    {
+      "name": "delayed-hydration-signout",
+      "status": "passed",
+      "requests": [
+        {
+          "table": "saved_properties",
+          "query": {
+            "select": "id,user_id,parcel_id,user_data",
+            "user_id": "eq.synthetic-owner-A",
+            "parcel_id": "eq.csg:lpi:synthetic-1"
+          },
+          "returned": [
+            {
+              "owner": "synthetic-owner-A",
+              "parcel": "csg:lpi:synthetic-1"
+            }
+          ],
+          "bodyCount": 1,
+          "method": "GET",
+          "aborted": true
+        }
+      ],
+      "mutations": [],
+      "flushes": [],
+      "recordHashes": [
+        {
+          "parcel": "csg:lpi:synthetic-1",
+          "sha256": "d624fb6d75cb7c1f0fe472631f790572e3c12a0eab67e6ad0226fe0135446601"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-2",
+          "sha256": "2a800cfa954935504047d6b2ae5313958dadf381cb2ed67ddc048cbffe64b24c"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-3",
+          "sha256": "6b232493b70644017a66e56cf7dbbc6c21c06cc66bb690733e453dd95c341890"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-4",
+          "sha256": "b48331f5c2dedce22979fc3835c309eecdaef03aea5c7a712c6ec22fe4b3944e"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-5",
+          "sha256": "00a44ce5537a5f4d681f37dace8bf313bd805e45a538ef7462693a0c54085b2a"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-6",
+          "sha256": "567ff85122ec38a815079204db2f37c204f6d317c542c8ce1df1581ea237f6e1"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-7",
+          "sha256": "4cb21cb588a7e8bfcf8485f83358639e3a9b1edb5fbf15e2eee6c950d98b8429"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-8",
+          "sha256": "f0a25951d40000761ee4fafcc1bb18763e6da75228ecf0e17f1a9de1ef5d3f1b"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-9",
+          "sha256": "0c35e131e54f909d3d714f942871a6fe05d1f8fca513e4d641ab053a5275786f"
+        }
+      ]
+    },
+    {
+      "name": "delayed-hydration-deselect",
+      "status": "passed",
+      "requests": [
+        {
+          "table": "saved_properties",
+          "query": {
+            "select": "id,user_id,parcel_id,user_data",
+            "user_id": "eq.synthetic-owner-A",
+            "parcel_id": "eq.csg:lpi:synthetic-1"
+          },
+          "returned": [
+            {
+              "owner": "synthetic-owner-A",
+              "parcel": "csg:lpi:synthetic-1"
+            }
+          ],
+          "bodyCount": 1,
+          "method": "GET",
+          "aborted": true
+        }
+      ],
+      "mutations": [],
+      "flushes": [],
+      "recordHashes": [
+        {
+          "parcel": "csg:lpi:synthetic-1",
+          "sha256": "e85d40a64b4056d7da8c8badfa79235b5d033c4e72f50b51156829e4958d182f"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-2",
+          "sha256": "b011aca527902cb91d3ff74604da412f7a08dd0098ada0a90bbbe4bdb2a30b15"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-3",
+          "sha256": "9fd842742ac2ddfe72234c305463e2e374e9716b9fca2f0c063eaa7c1d9c14b6"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-4",
+          "sha256": "20d59750d68b754b2d519bb4ce807d4a01b49d311919d7094460de74137e2477"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-5",
+          "sha256": "b43dbd5185d05995dae61cac6c99db6aac162ce6cac2873a897dd123d1a2f60d"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-6",
+          "sha256": "2516c7479ebb5198197e1539f73d366886c9de34afaeec586a3b049d5305af18"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-7",
+          "sha256": "c9c12bac151fb5fa3929fe8aee350f1739c72b8d2f17096cdd851b0d527f84dd"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-8",
+          "sha256": "177f24b74ba9a81608a3ffeea3f703485852debaeeedba95fb8d538aa87e1750"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-9",
+          "sha256": "81be3311da9fb3850fb86517a9d735492b3c54343d349f15573ce734a767ba19"
+        }
+      ]
+    },
+    {
+      "name": "delayed-hydration-report",
+      "status": "passed",
+      "requests": [
+        {
+          "table": "saved_properties",
+          "query": {
+            "select": "id,user_id,parcel_id,user_data",
+            "user_id": "eq.synthetic-owner-A",
+            "parcel_id": "eq.csg:lpi:synthetic-1"
+          },
+          "returned": [
+            {
+              "owner": "synthetic-owner-A",
+              "parcel": "csg:lpi:synthetic-1"
+            }
+          ],
+          "bodyCount": 1,
+          "method": "GET",
+          "aborted": true
+        }
+      ],
+      "mutations": [],
+      "flushes": [],
+      "recordHashes": [
+        {
+          "parcel": "csg:lpi:synthetic-1",
+          "sha256": "e259d4baebbf22fa43c7a3adc2b9b78e9e2f96e8b95840b9d7823aa3e581ba81"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-2",
+          "sha256": "6cf755fa85c64cfab1f81851c26f33319e126b8e74348eee78e14beb5b5fcf02"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-3",
+          "sha256": "1ed7f691650538f8e6204a8ef74cd5a44ea662024ccb16fda7c3fa9a4f73c3ab"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-4",
+          "sha256": "4c6fad670df0a5cf3cf6738861137deaa0d4b862c2b81e8106cf00243cf94133"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-5",
+          "sha256": "a743257c615eb9eeed59933f1244bd40a9503aaabe9d92761f3322a5c24d835f"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-6",
+          "sha256": "363d7ef11c67f45566b34a42116ec870ea50918740e0272322aa80947b8a7979"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-7",
+          "sha256": "a3eb3eb027cd6aeb609d64b6d33f1035052777bb21093c304e6dd8b4e162290f"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-8",
+          "sha256": "6696ed6223b1581b29d4e3b47cacad06776e3ffa368e2e43de7fc253254464f3"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-9",
+          "sha256": "e216fdce6346a55efdfd5a2a47409c364251498ee50d7d942e59af41ac5de66d"
+        }
+      ]
+    },
+    {
+      "name": "delayed-hydration-A-B-A-generation",
+      "status": "passed",
+      "requests": [
+        {
+          "table": "saved_properties",
+          "query": {
+            "select": "id,user_id,parcel_id,user_data",
+            "user_id": "eq.synthetic-owner-A",
+            "parcel_id": "eq.csg:lpi:synthetic-1"
+          },
+          "returned": [
+            {
+              "owner": "synthetic-owner-A",
+              "parcel": "csg:lpi:synthetic-1"
+            }
+          ],
+          "bodyCount": 1,
+          "method": "GET",
+          "aborted": true
+        },
+        {
+          "table": "saved_properties",
+          "query": {
+            "select": "id,user_id,parcel_id,user_data",
+            "user_id": "eq.synthetic-owner-A",
+            "parcel_id": "eq.csg:lpi:synthetic-2"
+          },
+          "returned": [
+            {
+              "owner": "synthetic-owner-A",
+              "parcel": "csg:lpi:synthetic-2"
+            }
+          ],
+          "bodyCount": 1,
+          "method": "GET",
+          "aborted": true
+        },
+        {
+          "table": "erf_site_projects",
+          "query": {
+            "select": "*",
+            "user_id": "eq.synthetic-owner-A",
+            "parcel_id": "eq.csg:lpi:synthetic-2"
+          },
+          "returned": [
+            {
+              "owner": "synthetic-owner-A",
+              "parcel": "csg:lpi:synthetic-2"
+            }
+          ],
+          "bodyCount": 0,
+          "method": "GET",
+          "aborted": true
+        },
+        {
+          "table": "erf_assets",
+          "query": {
+            "select": "*",
+            "user_id": "eq.synthetic-owner-A",
+            "parcel_id": "eq.csg:lpi:synthetic-2",
+            "status": "neq.deleted",
+            "order": "created_at.desc",
+            "asset_category": "in.(site_photo,existing_house_photo,topography,architectural_plan,inspiration_image,other,generated_design)"
+          },
+          "returned": [],
+          "bodyCount": 0,
+          "method": "GET",
+          "aborted": true
+        },
+        {
+          "table": "saved_properties",
+          "query": {
+            "select": "id,user_id,parcel_id,user_data",
+            "user_id": "eq.synthetic-owner-A",
+            "parcel_id": "eq.csg:lpi:synthetic-1"
+          },
+          "returned": [
+            {
+              "owner": "synthetic-owner-A",
+              "parcel": "csg:lpi:synthetic-1"
+            }
+          ],
+          "bodyCount": 1,
+          "method": "GET",
+          "aborted": false
+        },
+        {
+          "table": "erf_site_projects",
+          "query": {
+            "select": "*",
+            "user_id": "eq.synthetic-owner-A",
+            "parcel_id": "eq.csg:lpi:synthetic-1"
+          },
+          "returned": [
+            {
+              "owner": "synthetic-owner-A",
+              "parcel": "csg:lpi:synthetic-1"
+            }
+          ],
+          "bodyCount": 0,
+          "method": "GET",
+          "aborted": false
+        },
+        {
+          "table": "erf_assets",
+          "query": {
+            "select": "*",
+            "user_id": "eq.synthetic-owner-A",
+            "parcel_id": "eq.csg:lpi:synthetic-1",
+            "status": "neq.deleted",
+            "order": "created_at.desc",
+            "asset_category": "in.(site_photo,existing_house_photo,topography,architectural_plan,inspiration_image,other,generated_design)"
+          },
+          "returned": [],
+          "bodyCount": 0,
+          "method": "GET",
+          "aborted": false
+        }
+      ],
+      "mutations": [],
+      "flushes": [],
+      "recordHashes": [
+        {
+          "parcel": "csg:lpi:synthetic-1",
+          "sha256": "ea9ddaa9d11de6de276b751d9c8f617439c43ddc6c3f5a3cc5e5a9e522d6bb60"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-2",
+          "sha256": "16d428eabf5cf41079c87db591415b3e934fd3c85a98c4f0479fde42a0ae3fc7"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-3",
+          "sha256": "f0d2af3b8d0bee30c21bfba79bfcfe097cac83cd1bde29e3a8450353720b5194"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-4",
+          "sha256": "6789186464c61acabbfdf76a2a81caad650a92974d63eab11a63abd3a34a7bbc"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-5",
+          "sha256": "824440dc084fa22f087b13e6ecb80d7cf888f564a1c19dc088f260e9ae7fbb14"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-6",
+          "sha256": "bd2d551cc51c8da3882511a506a60d6cb0425c5346bcd844f14f9030b21ff3d8"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-7",
+          "sha256": "a86444a0ad723cbadaba8afb7edb185561ed3fb93e232ebddc3ea9fbc48a9c91"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-8",
+          "sha256": "338dfdc2a67151b4d4a4bde0bb388f9787c9d93655382ef3ea120c6f704a2df3"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-9",
+          "sha256": "6d3c4e0fc8ea56b7e6c0db026963ceafd42e0df96492affd9ad2aa79d5c36b1f"
+        }
+      ]
+    },
+    {
+      "name": "delayed-reconciliation-A-B-A-generation",
+      "status": "passed",
+      "requests": [
+        {
+          "table": "saved_properties",
+          "query": {
+            "select": "id,user_id,parcel_id,user_data",
+            "user_id": "eq.synthetic-owner-A",
+            "parcel_id": "eq.csg:lpi:synthetic-1"
+          },
+          "returned": [
+            {
+              "owner": "synthetic-owner-A",
+              "parcel": "csg:lpi:synthetic-1"
+            }
+          ],
+          "bodyCount": 1,
+          "method": "GET",
+          "aborted": true
+        },
+        {
+          "table": "erf_site_projects",
+          "query": {
+            "select": "*",
+            "user_id": "eq.synthetic-owner-A",
+            "parcel_id": "eq.csg:lpi:synthetic-1"
+          },
+          "returned": [
+            {
+              "owner": "synthetic-owner-A",
+              "parcel": "csg:lpi:synthetic-1"
+            }
+          ],
+          "bodyCount": 0,
+          "method": "GET",
+          "aborted": true
+        },
+        {
+          "table": "saved_properties",
+          "query": {
+            "select": "id,user_id,parcel_id,user_data",
+            "user_id": "eq.synthetic-owner-A",
+            "parcel_id": "eq.csg:lpi:synthetic-2"
+          },
+          "returned": [
+            {
+              "owner": "synthetic-owner-A",
+              "parcel": "csg:lpi:synthetic-2"
+            }
+          ],
+          "bodyCount": 1,
+          "method": "GET",
+          "aborted": true
+        },
+        {
+          "table": "erf_site_projects",
+          "query": {
+            "select": "*",
+            "user_id": "eq.synthetic-owner-A",
+            "parcel_id": "eq.csg:lpi:synthetic-2"
+          },
+          "returned": [
+            {
+              "owner": "synthetic-owner-A",
+              "parcel": "csg:lpi:synthetic-2"
+            }
+          ],
+          "bodyCount": 0,
+          "method": "GET",
+          "aborted": true
+        },
+        {
+          "table": "erf_assets",
+          "query": {
+            "select": "*",
+            "user_id": "eq.synthetic-owner-A",
+            "parcel_id": "eq.csg:lpi:synthetic-2",
+            "status": "neq.deleted",
+            "order": "created_at.desc",
+            "asset_category": "in.(site_photo,existing_house_photo,topography,architectural_plan,inspiration_image,other,generated_design)"
+          },
+          "returned": [],
+          "bodyCount": 0,
+          "method": "GET",
+          "aborted": true
+        },
+        {
+          "table": "saved_properties",
+          "query": {
+            "select": "id,user_id,parcel_id,user_data",
+            "user_id": "eq.synthetic-owner-A",
+            "parcel_id": "eq.csg:lpi:synthetic-1"
+          },
+          "returned": [
+            {
+              "owner": "synthetic-owner-A",
+              "parcel": "csg:lpi:synthetic-1"
+            }
+          ],
+          "bodyCount": 1,
+          "method": "GET",
+          "aborted": false
+        },
+        {
+          "table": "erf_site_projects",
+          "query": {
+            "select": "*",
+            "user_id": "eq.synthetic-owner-A",
+            "parcel_id": "eq.csg:lpi:synthetic-1"
+          },
+          "returned": [
+            {
+              "owner": "synthetic-owner-A",
+              "parcel": "csg:lpi:synthetic-1"
+            }
+          ],
+          "bodyCount": 0,
+          "method": "GET",
+          "aborted": false
+        },
+        {
+          "table": "erf_assets",
+          "query": {
+            "select": "*",
+            "user_id": "eq.synthetic-owner-A",
+            "parcel_id": "eq.csg:lpi:synthetic-1",
+            "status": "neq.deleted",
+            "order": "created_at.desc",
+            "asset_category": "in.(site_photo,existing_house_photo,topography,architectural_plan,inspiration_image,other,generated_design)"
+          },
+          "returned": [],
+          "bodyCount": 0,
+          "method": "GET",
+          "aborted": false
+        }
+      ],
+      "mutations": [],
+      "flushes": [],
+      "recordHashes": [
+        {
+          "parcel": "csg:lpi:synthetic-1",
+          "sha256": "a7b5865e7848feb8a53e20945945fc28bbe3aef2de3671596d971b428ffad7a9"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-2",
+          "sha256": "20bdc14a323708e838b4e236634f8ee375c34681dfc2f149b67884b42737df4b"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-3",
+          "sha256": "3ccc41874c61ca1ebadeee2efe7d8f7a771cc206db748a6a972ca3a46602ee49"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-4",
+          "sha256": "03849956b497500b3009ce396bcf29a45755ad9589e279506e10fecadff6aa3b"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-5",
+          "sha256": "c2c5c91fe616aad924acca33bfbe388befae7fc725a1f1689de04a5bdd6a555f"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-6",
+          "sha256": "84a8e5deabe90dce6c2ecc55d719daf74cc608a8f3ade5341db78bb5459fb920"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-7",
+          "sha256": "a43b48bed8b395032e476a3f00e276e56951f389e795b85c5889f379721b6ddb"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-8",
+          "sha256": "2a11e2f81e71ec92af94edd580873b99c97a74502f04da20d9c9ad8901664b95"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-9",
+          "sha256": "4159d8655aa849b2ed00b316c327edd4f3ed0877b5d86ed9800b5f8447111334"
+        }
+      ]
+    },
+    {
+      "name": "delayed-reconciliation-account",
+      "status": "passed",
+      "requests": [
+        {
+          "table": "saved_properties",
+          "query": {
+            "select": "id,user_id,parcel_id,user_data",
+            "user_id": "eq.synthetic-owner-A",
+            "parcel_id": "eq.csg:lpi:synthetic-1"
+          },
+          "returned": [
+            {
+              "owner": "synthetic-owner-A",
+              "parcel": "csg:lpi:synthetic-1"
+            }
+          ],
+          "bodyCount": 1,
+          "method": "GET",
+          "aborted": true
+        },
+        {
+          "table": "erf_site_projects",
+          "query": {
+            "select": "*",
+            "user_id": "eq.synthetic-owner-A",
+            "parcel_id": "eq.csg:lpi:synthetic-1"
+          },
+          "returned": [
+            {
+              "owner": "synthetic-owner-A",
+              "parcel": "csg:lpi:synthetic-1"
+            }
+          ],
+          "bodyCount": 0,
+          "method": "GET",
+          "aborted": true
+        }
+      ],
+      "mutations": [],
+      "flushes": [],
+      "recordHashes": [
+        {
+          "parcel": "csg:lpi:synthetic-1",
+          "sha256": "1a6d690de86e1b17e8519b9848f237a8414004b7419b2465c905a36bed1dbb9c"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-2",
+          "sha256": "6533b599e381a78d5f93cab8f4c8cfad7b85c93cf0b9fdcb78bf55132e9bf22c"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-3",
+          "sha256": "b346464b59bf486dade29f96bf2d958ef43393c7dfd88c4a71ff49b36e4911e8"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-4",
+          "sha256": "5d327d5484befb2b4404f7f8e226da4cbd1cd5fea21fb52f678dbbe09fe87c22"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-5",
+          "sha256": "5fb1510043cfd8eccd265c8976ca69906ea20471b7ea006c30db85ee2fb251ee"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-6",
+          "sha256": "eeb56b074efd4521a1fd54e28b05d7e1780d17c52efdde67f2d66698e658d716"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-7",
+          "sha256": "0adfd14604ac8a1bdce07fe959cfdcc34b0553083b9aacb488fb50d1b13f4004"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-8",
+          "sha256": "8ad241b3cdfcbd46a360a9be06af179cee848f6a135c47675fe44aa9f27a99a9"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-9",
+          "sha256": "0eca30c5991d32b77d4d490c4fb048e4d78f5a1c875a90a79f601a83856e5aaf"
+        }
+      ]
+    },
+    {
+      "name": "delayed-reconciliation-signout",
+      "status": "passed",
+      "requests": [
+        {
+          "table": "saved_properties",
+          "query": {
+            "select": "id,user_id,parcel_id,user_data",
+            "user_id": "eq.synthetic-owner-A",
+            "parcel_id": "eq.csg:lpi:synthetic-1"
+          },
+          "returned": [
+            {
+              "owner": "synthetic-owner-A",
+              "parcel": "csg:lpi:synthetic-1"
+            }
+          ],
+          "bodyCount": 1,
+          "method": "GET",
+          "aborted": true
+        },
+        {
+          "table": "erf_site_projects",
+          "query": {
+            "select": "*",
+            "user_id": "eq.synthetic-owner-A",
+            "parcel_id": "eq.csg:lpi:synthetic-1"
+          },
+          "returned": [
+            {
+              "owner": "synthetic-owner-A",
+              "parcel": "csg:lpi:synthetic-1"
+            }
+          ],
+          "bodyCount": 0,
+          "method": "GET",
+          "aborted": true
+        }
+      ],
+      "mutations": [],
+      "flushes": [],
+      "recordHashes": [
+        {
+          "parcel": "csg:lpi:synthetic-1",
+          "sha256": "cfa7333165dd45dc31c17c1eeadf1d293cfe1e73a417c41663a9bd049e57274e"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-2",
+          "sha256": "1a3962cc55995549437e894d39c142677e4fd5c446acb2750210be8f78a358af"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-3",
+          "sha256": "c5a523b2eca8d42d449c2ac159b2bc16adb8ce89b86db81c0a050116fe658c14"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-4",
+          "sha256": "b7024817440f0b9342fa0b95526673ed44f6e7164438d967f719cf6e8392f2a7"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-5",
+          "sha256": "af0e5629dd3a3d695d6e0dee029227b77456289e089bede6d8173c5373e5c727"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-6",
+          "sha256": "6154068952a00a3aae2c494156618b42954e61609759dd6d385869cc963e0b18"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-7",
+          "sha256": "605ec3811931ea4ea8a989696328ed8f074df20ba865fa2a44d6deb3e0979ab7"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-8",
+          "sha256": "c8b7006570fcbc96a329cf15aa28f5489e6e1fe817cd0f98df3fe7ac2acd3039"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-9",
+          "sha256": "aa75ca09026807c4a1b1b36879f0e792c879b7a4364b0e1849f8eb7a532e5175"
+        }
+      ]
+    },
+    {
+      "name": "delayed-reconciliation-deselect",
+      "status": "passed",
+      "requests": [
+        {
+          "table": "saved_properties",
+          "query": {
+            "select": "id,user_id,parcel_id,user_data",
+            "user_id": "eq.synthetic-owner-A",
+            "parcel_id": "eq.csg:lpi:synthetic-1"
+          },
+          "returned": [
+            {
+              "owner": "synthetic-owner-A",
+              "parcel": "csg:lpi:synthetic-1"
+            }
+          ],
+          "bodyCount": 1,
+          "method": "GET",
+          "aborted": true
+        },
+        {
+          "table": "erf_site_projects",
+          "query": {
+            "select": "*",
+            "user_id": "eq.synthetic-owner-A",
+            "parcel_id": "eq.csg:lpi:synthetic-1"
+          },
+          "returned": [
+            {
+              "owner": "synthetic-owner-A",
+              "parcel": "csg:lpi:synthetic-1"
+            }
+          ],
+          "bodyCount": 0,
+          "method": "GET",
+          "aborted": true
+        }
+      ],
+      "mutations": [],
+      "flushes": [],
+      "recordHashes": [
+        {
+          "parcel": "csg:lpi:synthetic-1",
+          "sha256": "011ac543c10850859073f34e22ac5763f06860bf8cc2b7fdbf2c7c306ec9d8af"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-2",
+          "sha256": "ee232041010bd587f03e73bdfe07483ae06b7c685f6342493fd6246e884f027a"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-3",
+          "sha256": "c24ed7977f87a28992c7118ab458181ddcd771548f154e1c3de3b8290dd4617e"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-4",
+          "sha256": "dfa06bcb6c257686054ccd60c94778c2b6878aa369527474bee8533c9e01c546"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-5",
+          "sha256": "1b87e0caffbd5312564d0baca9a231caef6bfde92874506f0f9a76aa309ca0eb"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-6",
+          "sha256": "24e15dbca69b1b2a11f65ab3c6ea1d14c0776c3688199880856bcecbb068b4d1"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-7",
+          "sha256": "1a803c62a1180b67724727d886b916d3c1090b65527fff42bcba55d3b0bf34b4"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-8",
+          "sha256": "c769a623c18d7dafec59b62a0ab9e2a6888b58aa9039c0fec6f727df2e8caa18"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-9",
+          "sha256": "816d74548317f7d21bd415604ef25c1dc3d9ba43d9d2bf8d1f2578b73b3d1be4"
+        }
+      ]
+    },
+    {
+      "name": "delayed-assets-A-B-A-cannot-restore-old-project",
+      "status": "passed",
+      "requests": [
+        {
+          "table": "saved_properties",
+          "query": {
+            "select": "id,user_id,parcel_id,user_data",
+            "user_id": "eq.synthetic-owner-A",
+            "parcel_id": "eq.csg:lpi:synthetic-1"
+          },
+          "returned": [
+            {
+              "owner": "synthetic-owner-A",
+              "parcel": "csg:lpi:synthetic-1"
+            }
+          ],
+          "bodyCount": 1,
+          "method": "GET",
+          "aborted": true
+        },
+        {
+          "table": "erf_site_projects",
+          "query": {
+            "select": "*",
+            "user_id": "eq.synthetic-owner-A",
+            "parcel_id": "eq.csg:lpi:synthetic-1"
+          },
+          "returned": [
+            {
+              "owner": "synthetic-owner-A",
+              "parcel": "csg:lpi:synthetic-1"
+            }
+          ],
+          "bodyCount": 0,
+          "method": "GET",
+          "aborted": true
+        },
+        {
+          "table": "erf_assets",
+          "query": {
+            "select": "*",
+            "user_id": "eq.synthetic-owner-A",
+            "parcel_id": "eq.csg:lpi:synthetic-1",
+            "status": "neq.deleted",
+            "order": "created_at.desc",
+            "asset_category": "in.(site_photo,existing_house_photo,topography,architectural_plan,inspiration_image,other,generated_design)"
+          },
+          "returned": [],
+          "bodyCount": 0,
+          "method": "GET",
+          "aborted": true
+        },
+        {
+          "table": "saved_properties",
+          "query": {
+            "select": "id,user_id,parcel_id,user_data",
+            "user_id": "eq.synthetic-owner-A",
+            "parcel_id": "eq.csg:lpi:synthetic-2"
+          },
+          "returned": [
+            {
+              "owner": "synthetic-owner-A",
+              "parcel": "csg:lpi:synthetic-2"
+            }
+          ],
+          "bodyCount": 1,
+          "method": "GET",
+          "aborted": true
+        },
+        {
+          "table": "erf_site_projects",
+          "query": {
+            "select": "*",
+            "user_id": "eq.synthetic-owner-A",
+            "parcel_id": "eq.csg:lpi:synthetic-2"
+          },
+          "returned": [
+            {
+              "owner": "synthetic-owner-A",
+              "parcel": "csg:lpi:synthetic-2"
+            }
+          ],
+          "bodyCount": 0,
+          "method": "GET",
+          "aborted": true
+        },
+        {
+          "table": "erf_assets",
+          "query": {
+            "select": "*",
+            "user_id": "eq.synthetic-owner-A",
+            "parcel_id": "eq.csg:lpi:synthetic-2",
+            "status": "neq.deleted",
+            "order": "created_at.desc",
+            "asset_category": "in.(site_photo,existing_house_photo,topography,architectural_plan,inspiration_image,other,generated_design)"
+          },
+          "returned": [],
+          "bodyCount": 0,
+          "method": "GET",
+          "aborted": true
+        },
+        {
+          "table": "saved_properties",
+          "query": {
+            "select": "id,user_id,parcel_id,user_data",
+            "user_id": "eq.synthetic-owner-A",
+            "parcel_id": "eq.csg:lpi:synthetic-1"
+          },
+          "returned": [
+            {
+              "owner": "synthetic-owner-A",
+              "parcel": "csg:lpi:synthetic-1"
+            }
+          ],
+          "bodyCount": 1,
+          "method": "GET",
+          "aborted": false
+        },
+        {
+          "table": "erf_site_projects",
+          "query": {
+            "select": "*",
+            "user_id": "eq.synthetic-owner-A",
+            "parcel_id": "eq.csg:lpi:synthetic-1"
+          },
+          "returned": [
+            {
+              "owner": "synthetic-owner-A",
+              "parcel": "csg:lpi:synthetic-1"
+            }
+          ],
+          "bodyCount": 0,
+          "method": "GET",
+          "aborted": false
+        },
+        {
+          "table": "erf_assets",
+          "query": {
+            "select": "*",
+            "user_id": "eq.synthetic-owner-A",
+            "parcel_id": "eq.csg:lpi:synthetic-1",
+            "status": "neq.deleted",
+            "order": "created_at.desc",
+            "asset_category": "in.(site_photo,existing_house_photo,topography,architectural_plan,inspiration_image,other,generated_design)"
+          },
+          "returned": [],
+          "bodyCount": 0,
+          "method": "GET",
+          "aborted": false
+        }
+      ],
+      "mutations": [],
+      "flushes": [],
+      "recordHashes": [
+        {
+          "parcel": "csg:lpi:synthetic-1",
+          "sha256": "b528b636b40be1a9983bd7d1217c594ebf9671a57358fa67ef1ebf920526daa3"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-2",
+          "sha256": "36a97b329376417a81fcb1d7e0acfc6133fd2053836743aac0b773cb89fabf15"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-3",
+          "sha256": "bb35199cad6ff59ef062dac4ded2d610ee24be77c66dc3ebd897f4fa451478ef"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-4",
+          "sha256": "3ef5b57f5e7779756e3faf3d44428797f4213da7ad4f7638f629b5f9d114f6c5"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-5",
+          "sha256": "8f9bc4f1a769182e211d0641539d1d023ab6483679fa9bfde89ec223d28dfea4"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-6",
+          "sha256": "c17b74b467235ef7683867b2b8ff03b189970417f808d1dbb73325f2fc18155d"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-7",
+          "sha256": "ff125e4df834c800a170f9d6b5044bedf57150e8375259b2f6b626f8d25b22d7"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-8",
+          "sha256": "1e1e2a1141e9902018ca860ddc06075c8206b0b379cf89846609d641e343d09a"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-9",
+          "sha256": "523aaa271f6915476a0a51069e82a95c03a3bd73fb2e0307828de1ede1da8f85"
+        }
+      ]
+    },
+    {
+      "name": "selected-recheck-cancelled-on-deselection",
+      "status": "passed",
+      "requests": [
+        {
+          "table": "saved_properties",
+          "query": {
+            "select": "id,user_id,parcel_id,user_data",
+            "user_id": "eq.synthetic-owner-A",
+            "parcel_id": "eq.csg:lpi:synthetic-1"
+          },
+          "returned": [
+            {
+              "owner": "synthetic-owner-A",
+              "parcel": "csg:lpi:synthetic-1"
+            }
+          ],
+          "bodyCount": 1,
+          "method": "GET",
+          "aborted": true
+        },
+        {
+          "table": "erf_site_projects",
+          "query": {
+            "select": "*",
+            "user_id": "eq.synthetic-owner-A",
+            "parcel_id": "eq.csg:lpi:synthetic-1"
+          },
+          "returned": [
+            {
+              "owner": "synthetic-owner-A",
+              "parcel": "csg:lpi:synthetic-1"
+            }
+          ],
+          "bodyCount": 0,
+          "method": "GET",
+          "aborted": true
+        },
+        {
+          "table": "erf_assets",
+          "query": {
+            "select": "*",
+            "user_id": "eq.synthetic-owner-A",
+            "parcel_id": "eq.csg:lpi:synthetic-1",
+            "status": "neq.deleted",
+            "order": "created_at.desc",
+            "asset_category": "in.(site_photo,existing_house_photo,topography,architectural_plan,inspiration_image,other,generated_design)"
+          },
+          "returned": [],
+          "bodyCount": 0,
+          "method": "GET",
+          "aborted": true
+        },
+        {
+          "table": "erf_site_projects",
+          "query": {
+            "select": "*",
+            "user_id": "eq.synthetic-owner-A",
+            "parcel_id": "eq.csg:lpi:synthetic-1"
+          },
+          "returned": [
+            {
+              "owner": "synthetic-owner-A",
+              "parcel": "csg:lpi:synthetic-1"
+            }
+          ],
+          "bodyCount": 0,
+          "method": "GET",
+          "aborted": true
+        },
+        {
+          "table": "erf_assets",
+          "query": {
+            "select": "*",
+            "user_id": "eq.synthetic-owner-A",
+            "parcel_id": "eq.csg:lpi:synthetic-1",
+            "status": "neq.deleted",
+            "order": "created_at.desc",
+            "asset_category": "in.(site_photo,existing_house_photo,topography,architectural_plan,inspiration_image,other,generated_design)"
+          },
+          "returned": [],
+          "bodyCount": 0,
+          "method": "GET",
+          "aborted": true
+        }
+      ],
+      "mutations": [],
+      "flushes": [],
+      "recordHashes": [
+        {
+          "parcel": "csg:lpi:synthetic-1",
+          "sha256": "0f3ab376a55ca7d74e3ba0e4ab788563d286ee6cdce9878db58179d139ff4e7f"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-2",
+          "sha256": "a418bb3cce952f4c882d967834c369b71cbd8997ec070a6f5d834b9e6471b9bd"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-3",
+          "sha256": "2495354b01c6ca340ee0cd0c0c5f34f289e5486bf6d57ec6fab77bcf68e2ec6b"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-4",
+          "sha256": "84376e1a08f09309a2d418d7d7743a3479b1299a348c1b21db2302b8af8a990e"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-5",
+          "sha256": "6402fc33f5e47066d22c41cccebf21993fb866822cbf1d9894c968edd679dcf9"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-6",
+          "sha256": "6279bec877646e8682901ec3e4379311ff5b01c2d5654fcc95e6aa91dbe81771"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-7",
+          "sha256": "7e6735ac75d095ecf96991e27cff8d772899c2002be741909444e94761c77ae4"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-8",
+          "sha256": "d7e1f56a538b88344ed10cba687814242594fbe27a21f9eb799bcfa47a6eb3cd"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-9",
+          "sha256": "f0375d5720906cd531d611aae86fe4aecc4d2cabe6fe731104920a63c2c92a40"
+        }
+      ]
+    },
+    {
+      "name": "debounced-save-cancelled-draft-retained",
+      "status": "passed",
+      "requests": [
+        {
+          "table": "saved_properties",
+          "query": {
+            "select": "id,user_id,parcel_id,user_data",
+            "user_id": "eq.synthetic-owner-A",
+            "parcel_id": "eq.csg:lpi:synthetic-1"
+          },
+          "returned": [
+            {
+              "owner": "synthetic-owner-A",
+              "parcel": "csg:lpi:synthetic-1"
+            }
+          ],
+          "bodyCount": 1,
+          "method": "GET",
+          "aborted": true
+        },
+        {
+          "table": "erf_site_projects",
+          "query": {
+            "select": "*",
+            "user_id": "eq.synthetic-owner-A",
+            "parcel_id": "eq.csg:lpi:synthetic-1"
+          },
+          "returned": [
+            {
+              "owner": "synthetic-owner-A",
+              "parcel": "csg:lpi:synthetic-1"
+            }
+          ],
+          "bodyCount": 0,
+          "method": "GET",
+          "aborted": true
+        },
+        {
+          "table": "erf_assets",
+          "query": {
+            "select": "*",
+            "user_id": "eq.synthetic-owner-A",
+            "parcel_id": "eq.csg:lpi:synthetic-1",
+            "status": "neq.deleted",
+            "order": "created_at.desc",
+            "asset_category": "in.(site_photo,existing_house_photo,topography,architectural_plan,inspiration_image,other,generated_design)"
+          },
+          "returned": [],
+          "bodyCount": 0,
+          "method": "GET",
+          "aborted": true
+        },
+        {
+          "table": "saved_properties",
+          "query": {
+            "select": "id,user_id,parcel_id,user_data",
+            "user_id": "eq.synthetic-owner-A",
+            "parcel_id": "eq.csg:lpi:synthetic-2"
+          },
+          "returned": [
+            {
+              "owner": "synthetic-owner-A",
+              "parcel": "csg:lpi:synthetic-2"
+            }
+          ],
+          "bodyCount": 1,
+          "method": "GET",
+          "aborted": false
+        },
+        {
+          "table": "erf_site_projects",
+          "query": {
+            "select": "*",
+            "user_id": "eq.synthetic-owner-A",
+            "parcel_id": "eq.csg:lpi:synthetic-2"
+          },
+          "returned": [
+            {
+              "owner": "synthetic-owner-A",
+              "parcel": "csg:lpi:synthetic-2"
+            }
+          ],
+          "bodyCount": 0,
+          "method": "GET",
+          "aborted": false
+        },
+        {
+          "table": "erf_assets",
+          "query": {
+            "select": "*",
+            "user_id": "eq.synthetic-owner-A",
+            "parcel_id": "eq.csg:lpi:synthetic-2",
+            "status": "neq.deleted",
+            "order": "created_at.desc",
+            "asset_category": "in.(site_photo,existing_house_photo,topography,architectural_plan,inspiration_image,other,generated_design)"
+          },
+          "returned": [],
+          "bodyCount": 0,
+          "method": "GET",
+          "aborted": false
+        }
+      ],
+      "mutations": [],
+      "flushes": [],
+      "recordHashes": [
+        {
+          "parcel": "csg:lpi:synthetic-1",
+          "sha256": "366688e2a4b408ac79771d5f193f9f249abf6ad767457834f2c3c2b2507a894d"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-2",
+          "sha256": "d578ffd8201023f16e1f4947e5b58925c4c6a8bc2f0019bf793c8202f5bfd561"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-3",
+          "sha256": "23452f72935adfc0643ad2a9229f96fa58c4cfefa7fd8ece098d1933331a681c"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-4",
+          "sha256": "9d561d0bd9831b5b7f7512712f04322cc44f67c38acd6d18726803b01a55dbc1"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-5",
+          "sha256": "93683eb6651490420237ffeb993c61450213b6b21dd8aa9b5714d5041e540ef4"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-6",
+          "sha256": "ca5f9609ec6935741d6450971a1fb0e905572537cb10ea84f4e7dfe5aec5524f"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-7",
+          "sha256": "2f13c1778ba2aa102677bc9bba0ba59e6da68b47dbec545fdfbead037f3d4026"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-8",
+          "sha256": "d1482ca149111fafac16c0985199440ec33062ec6c24b66bebd83eca99db9c12"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-9",
+          "sha256": "1d7b2a054338d47697c909c0f831be635ed2fbf538df91605dfa5436567ae324"
+        }
+      ]
+    },
+    {
+      "name": "pending-flush-settles-on-switch-without-save",
+      "status": "passed",
+      "requests": [
+        {
+          "table": "saved_properties",
+          "query": {
+            "select": "id,user_id,parcel_id,user_data",
+            "user_id": "eq.synthetic-owner-A",
+            "parcel_id": "eq.csg:lpi:synthetic-1"
+          },
+          "returned": [
+            {
+              "owner": "synthetic-owner-A",
+              "parcel": "csg:lpi:synthetic-1"
+            }
+          ],
+          "bodyCount": 1,
+          "method": "GET",
+          "aborted": true
+        },
+        {
+          "table": "saved_properties",
+          "query": {
+            "select": "id,user_id,parcel_id,user_data",
+            "user_id": "eq.synthetic-owner-A",
+            "parcel_id": "eq.csg:lpi:synthetic-2"
+          },
+          "returned": [
+            {
+              "owner": "synthetic-owner-A",
+              "parcel": "csg:lpi:synthetic-2"
+            }
+          ],
+          "bodyCount": 1,
+          "method": "GET",
+          "aborted": false
+        },
+        {
+          "table": "erf_site_projects",
+          "query": {
+            "select": "*",
+            "user_id": "eq.synthetic-owner-A",
+            "parcel_id": "eq.csg:lpi:synthetic-2"
+          },
+          "returned": [
+            {
+              "owner": "synthetic-owner-A",
+              "parcel": "csg:lpi:synthetic-2"
+            }
+          ],
+          "bodyCount": 0,
+          "method": "GET",
+          "aborted": false
+        },
+        {
+          "table": "erf_assets",
+          "query": {
+            "select": "*",
+            "user_id": "eq.synthetic-owner-A",
+            "parcel_id": "eq.csg:lpi:synthetic-2",
+            "status": "neq.deleted",
+            "order": "created_at.desc",
+            "asset_category": "in.(site_photo,existing_house_photo,topography,architectural_plan,inspiration_image,other,generated_design)"
+          },
+          "returned": [],
+          "bodyCount": 0,
+          "method": "GET",
+          "aborted": false
+        }
+      ],
+      "mutations": [],
+      "flushes": [
+        {
+          "parcel": "csg:lpi:synthetic-1",
+          "status": "rejected",
+          "error": "The selected investigation changed before save confirmation. Your draft is retained; an already dispatched save may still finish."
+        }
+      ],
+      "recordHashes": [
+        {
+          "parcel": "csg:lpi:synthetic-1",
+          "sha256": "9c12206e9b800d7dc48e61eea6ff59fcc6ea5c8b7e3bc0d614ce6b88c5e35618"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-2",
+          "sha256": "8f38695d32b68bb18957e909fe37ac9333d0a8113c6d2cdc856a98029f220eac"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-3",
+          "sha256": "3567c66fe95345f22ab4eb78ea96db0558412ff757279f53dc1db233d309d838"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-4",
+          "sha256": "b5681ee0e4827d7afcc3ae665e424c6eb487c186de8b73822f59ce7a9f63a175"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-5",
+          "sha256": "ef32a46082b1216d701576c9a9830713b2009266f69f2566d2cdfdb79eb6b220"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-6",
+          "sha256": "8e53f878ce15823c380f15e8bb3fa82e4247c2831842029f5129a3d00f307017"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-7",
+          "sha256": "bc7f6529ad116aca6c1d76f0a4c05f1f57d979733b3c1538156a2fcd1a32b30e"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-8",
+          "sha256": "e518460348f909748e86a1e1374d14ac2daac8b2333bbb09418738f2974ed41b"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-9",
+          "sha256": "1a90e6ed56ecde36be0eec0f52da238951dce7935f9181230f36ca657933d33d"
+        }
+      ]
+    },
+    {
+      "name": "queued-save-A-B-A-is-not-new-generation",
+      "status": "passed",
+      "requests": [
+        {
+          "table": "saved_properties",
+          "query": {
+            "select": "id,user_id,parcel_id,user_data",
+            "user_id": "eq.synthetic-owner-A",
+            "parcel_id": "eq.csg:lpi:synthetic-1"
+          },
+          "returned": [
+            {
+              "owner": "synthetic-owner-A",
+              "parcel": "csg:lpi:synthetic-1"
+            }
+          ],
+          "bodyCount": 1,
+          "method": "GET",
+          "aborted": true
+        },
+        {
+          "table": "erf_site_projects",
+          "query": {
+            "select": "*",
+            "user_id": "eq.synthetic-owner-A",
+            "parcel_id": "eq.csg:lpi:synthetic-1"
+          },
+          "returned": [
+            {
+              "owner": "synthetic-owner-A",
+              "parcel": "csg:lpi:synthetic-1"
+            }
+          ],
+          "bodyCount": 0,
+          "method": "GET",
+          "aborted": true
+        },
+        {
+          "table": "erf_assets",
+          "query": {
+            "select": "*",
+            "user_id": "eq.synthetic-owner-A",
+            "parcel_id": "eq.csg:lpi:synthetic-1",
+            "status": "neq.deleted",
+            "order": "created_at.desc",
+            "asset_category": "in.(site_photo,existing_house_photo,topography,architectural_plan,inspiration_image,other,generated_design)"
+          },
+          "returned": [],
+          "bodyCount": 0,
+          "method": "GET",
+          "aborted": true
+        },
+        {
+          "table": "saved_properties",
+          "query": {
+            "select": "id,user_id,parcel_id,user_data",
+            "user_id": "eq.synthetic-owner-A",
+            "parcel_id": "eq.csg:lpi:synthetic-1"
+          },
+          "returned": [
+            {
+              "owner": "synthetic-owner-A",
+              "parcel": "csg:lpi:synthetic-1"
+            }
+          ],
+          "bodyCount": 1,
+          "method": "GET",
+          "aborted": true
+        },
+        {
+          "table": "erf_site_projects",
+          "query": {
+            "select": "*",
+            "user_id": "eq.synthetic-owner-A",
+            "parcel_id": "eq.csg:lpi:synthetic-1"
+          },
+          "returned": [
+            {
+              "owner": "synthetic-owner-A",
+              "parcel": "csg:lpi:synthetic-1"
+            }
+          ],
+          "bodyCount": 0,
+          "method": "GET",
+          "aborted": true
+        },
+        {
+          "table": "saved_properties",
+          "query": {
+            "select": "id,user_id,parcel_id,user_data",
+            "user_id": "eq.synthetic-owner-A",
+            "parcel_id": "eq.csg:lpi:synthetic-2"
+          },
+          "returned": [
+            {
+              "owner": "synthetic-owner-A",
+              "parcel": "csg:lpi:synthetic-2"
+            }
+          ],
+          "bodyCount": 1,
+          "method": "GET",
+          "aborted": true
+        },
+        {
+          "table": "erf_site_projects",
+          "query": {
+            "select": "*",
+            "user_id": "eq.synthetic-owner-A",
+            "parcel_id": "eq.csg:lpi:synthetic-2"
+          },
+          "returned": [
+            {
+              "owner": "synthetic-owner-A",
+              "parcel": "csg:lpi:synthetic-2"
+            }
+          ],
+          "bodyCount": 0,
+          "method": "GET",
+          "aborted": true
+        },
+        {
+          "table": "erf_assets",
+          "query": {
+            "select": "*",
+            "user_id": "eq.synthetic-owner-A",
+            "parcel_id": "eq.csg:lpi:synthetic-2",
+            "status": "neq.deleted",
+            "order": "created_at.desc",
+            "asset_category": "in.(site_photo,existing_house_photo,topography,architectural_plan,inspiration_image,other,generated_design)"
+          },
+          "returned": [],
+          "bodyCount": 0,
+          "method": "GET",
+          "aborted": true
+        },
+        {
+          "table": "saved_properties",
+          "query": {
+            "select": "id,user_id,parcel_id,user_data",
+            "user_id": "eq.synthetic-owner-A",
+            "parcel_id": "eq.csg:lpi:synthetic-1"
+          },
+          "returned": [
+            {
+              "owner": "synthetic-owner-A",
+              "parcel": "csg:lpi:synthetic-1"
+            }
+          ],
+          "bodyCount": 1,
+          "method": "GET",
+          "aborted": false
+        },
+        {
+          "table": "erf_site_projects",
+          "query": {
+            "select": "*",
+            "user_id": "eq.synthetic-owner-A",
+            "parcel_id": "eq.csg:lpi:synthetic-1"
+          },
+          "returned": [
+            {
+              "owner": "synthetic-owner-A",
+              "parcel": "csg:lpi:synthetic-1"
+            }
+          ],
+          "bodyCount": 0,
+          "method": "GET",
+          "aborted": false
+        },
+        {
+          "table": "erf_assets",
+          "query": {
+            "select": "*",
+            "user_id": "eq.synthetic-owner-A",
+            "parcel_id": "eq.csg:lpi:synthetic-1",
+            "status": "neq.deleted",
+            "order": "created_at.desc",
+            "asset_category": "in.(site_photo,existing_house_photo,topography,architectural_plan,inspiration_image,other,generated_design)"
+          },
+          "returned": [],
+          "bodyCount": 0,
+          "method": "GET",
+          "aborted": false
+        }
+      ],
+      "mutations": [],
+      "flushes": [
+        {
+          "parcel": "csg:lpi:synthetic-1",
+          "status": "rejected",
+          "error": "The selected investigation changed before save confirmation. Your draft is retained; an already dispatched save may still finish."
+        },
+        {
+          "parcel": "csg:lpi:synthetic-1",
+          "status": "rejected",
+          "error": "The selected investigation changed before save confirmation. Your draft is retained; an already dispatched save may still finish."
+        }
+      ],
+      "recordHashes": [
+        {
+          "parcel": "csg:lpi:synthetic-1",
+          "sha256": "c5974fbe14235c0469c60a666558587509e72d2e97d0d646536a9b0f40ab9687"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-2",
+          "sha256": "f9413cbe311574d7cf2d9abe2a660d4277da6c51e3751d2e83f6b5505b4b1f13"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-3",
+          "sha256": "0bb0e258889fe221d5c8ecc87efbf7348fc558119234133bc9b3d0a7291ad7bd"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-4",
+          "sha256": "1e0c061e4b1c3190ba071bb88bd461d080c3d05d81d110c7f3a4d87564e56704"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-5",
+          "sha256": "5f39c4071eed9ce6506404e59b11d26a3fac606f7e5d1a6be3359ea3e724dd3d"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-6",
+          "sha256": "784cc8d4fcebea49b4423ff20399eadea53d591b3a799c1453a3be7b109fb129"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-7",
+          "sha256": "cff6e2f82150927a3c305d592a20f7792440e50d584e98b20339b17025877f99"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-8",
+          "sha256": "3dcf343d96fa31447d6a173c4f10c537ae236e1378d76718c465bf2418e5b3d7"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-9",
+          "sha256": "f40b2173bf508904dcf4dd188c74ee9119817e6c1e643044b25b622cd97f3118"
+        }
+      ]
+    },
+    {
+      "name": "account-change-before-dispatch",
+      "status": "passed",
+      "requests": [
+        {
+          "table": "saved_properties",
+          "query": {
+            "select": "id,user_id,parcel_id,user_data",
+            "user_id": "eq.synthetic-owner-A",
+            "parcel_id": "eq.csg:lpi:synthetic-1"
+          },
+          "returned": [
+            {
+              "owner": "synthetic-owner-A",
+              "parcel": "csg:lpi:synthetic-1"
+            }
+          ],
+          "bodyCount": 1,
+          "method": "GET",
+          "aborted": true
+        },
+        {
+          "table": "erf_site_projects",
+          "query": {
+            "select": "*",
+            "user_id": "eq.synthetic-owner-A",
+            "parcel_id": "eq.csg:lpi:synthetic-1"
+          },
+          "returned": [
+            {
+              "owner": "synthetic-owner-A",
+              "parcel": "csg:lpi:synthetic-1"
+            }
+          ],
+          "bodyCount": 0,
+          "method": "GET",
+          "aborted": true
+        },
+        {
+          "table": "erf_assets",
+          "query": {
+            "select": "*",
+            "user_id": "eq.synthetic-owner-A",
+            "parcel_id": "eq.csg:lpi:synthetic-1",
+            "status": "neq.deleted",
+            "order": "created_at.desc",
+            "asset_category": "in.(site_photo,existing_house_photo,topography,architectural_plan,inspiration_image,other,generated_design)"
+          },
+          "returned": [],
+          "bodyCount": 0,
+          "method": "GET",
+          "aborted": true
+        },
+        {
+          "table": "saved_properties",
+          "query": {
+            "select": "id,user_id,parcel_id,user_data",
+            "user_id": "eq.synthetic-owner-A",
+            "parcel_id": "eq.csg:lpi:synthetic-1"
+          },
+          "returned": [
+            {
+              "owner": "synthetic-owner-A",
+              "parcel": "csg:lpi:synthetic-1"
+            }
+          ],
+          "bodyCount": 1,
+          "method": "GET",
+          "aborted": false
+        },
+        {
+          "table": "saved_properties",
+          "query": {
+            "select": "id,user_id,parcel_id,user_data",
+            "user_id": "eq.synthetic-owner-B",
+            "parcel_id": "eq.csg:lpi:synthetic-1"
+          },
+          "returned": [],
+          "bodyCount": 0,
+          "method": "GET",
+          "aborted": false
+        }
+      ],
+      "mutations": [],
+      "flushes": [
+        {
+          "parcel": "csg:lpi:synthetic-1",
+          "status": "rejected",
+          "error": "The selected investigation changed before save confirmation. Your draft is retained; an already dispatched save may still finish."
+        }
+      ],
+      "recordHashes": [
+        {
+          "parcel": "csg:lpi:synthetic-1",
+          "sha256": "d4606930d305c605e4ee29f70b8b559c517c935b0dd51613628538b3b4cc4241"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-2",
+          "sha256": "38238d2a69ff3ac5d8fff532b04e405e0e4fb2c42f79ab064de2a97afeb41135"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-3",
+          "sha256": "8c3cc3768cfd04cb195f92ea57ee994e371d990329ac27704a8eea69404f5263"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-4",
+          "sha256": "5a89b679c8a1af1d03cd153b227e71a303a771cb9b223d6c7e5be299addd45fb"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-5",
+          "sha256": "d79db75b2e193677185b8ba3761eb4db9aac2bac49d20a14f8962c05eaff4d44"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-6",
+          "sha256": "49b9282f7e297b9af7f133239a34e885b53f8cd2b48355e87656dc0d0e344cae"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-7",
+          "sha256": "2dffb25db10dddbcf9dd540c84662a8503b9263b2c63633d744c9ef5844a5395"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-8",
+          "sha256": "f2b9db7dec0830ef7593efdf1606d5ae7eba511036099c541ddd66c9c569156a"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-9",
+          "sha256": "d65ec24532248879d2cf7991f6bd31d4c27ffc633ad40be7a0cdb3d3441c6cf4"
+        }
+      ]
+    },
+    {
+      "name": "inflight-save-keeps-original-target-no-stale-baseline",
+      "status": "passed",
+      "requests": [
+        {
+          "table": "saved_properties",
+          "query": {
+            "select": "id,user_id,parcel_id,user_data",
+            "user_id": "eq.synthetic-owner-A",
+            "parcel_id": "eq.csg:lpi:synthetic-1"
+          },
+          "returned": [
+            {
+              "owner": "synthetic-owner-A",
+              "parcel": "csg:lpi:synthetic-1"
+            }
+          ],
+          "bodyCount": 1,
+          "method": "GET",
+          "aborted": true
+        },
+        {
+          "table": "erf_site_projects",
+          "query": {
+            "select": "*",
+            "user_id": "eq.synthetic-owner-A",
+            "parcel_id": "eq.csg:lpi:synthetic-1"
+          },
+          "returned": [
+            {
+              "owner": "synthetic-owner-A",
+              "parcel": "csg:lpi:synthetic-1"
+            }
+          ],
+          "bodyCount": 0,
+          "method": "GET",
+          "aborted": true
+        },
+        {
+          "table": "erf_assets",
+          "query": {
+            "select": "*",
+            "user_id": "eq.synthetic-owner-A",
+            "parcel_id": "eq.csg:lpi:synthetic-1",
+            "status": "neq.deleted",
+            "order": "created_at.desc",
+            "asset_category": "in.(site_photo,existing_house_photo,topography,architectural_plan,inspiration_image,other,generated_design)"
+          },
+          "returned": [],
+          "bodyCount": 0,
+          "method": "GET",
+          "aborted": true
+        },
+        {
+          "table": "saved_properties",
+          "query": {
+            "select": "id,user_id,parcel_id,user_data",
+            "user_id": "eq.synthetic-owner-A",
+            "parcel_id": "eq.csg:lpi:synthetic-1"
+          },
+          "returned": [
+            {
+              "owner": "synthetic-owner-A",
+              "parcel": "csg:lpi:synthetic-1"
+            }
+          ],
+          "bodyCount": 1,
+          "method": "GET",
+          "aborted": true
+        },
+        {
+          "table": "erf_site_projects",
+          "query": {
+            "select": "*",
+            "user_id": "eq.synthetic-owner-A",
+            "parcel_id": "eq.csg:lpi:synthetic-1"
+          },
+          "returned": [
+            {
+              "owner": "synthetic-owner-A",
+              "parcel": "csg:lpi:synthetic-1"
+            }
+          ],
+          "bodyCount": 0,
+          "method": "GET",
+          "aborted": true
+        },
+        {
+          "table": "erf_assets",
+          "query": {
+            "select": "*",
+            "user_id": "eq.synthetic-owner-A",
+            "parcel_id": "eq.csg:lpi:synthetic-1",
+            "status": "neq.deleted",
+            "order": "created_at.desc",
+            "asset_category": "in.(site_photo,existing_house_photo,topography,architectural_plan,inspiration_image,other,generated_design)"
+          },
+          "returned": [],
+          "bodyCount": 0,
+          "method": "GET",
+          "aborted": true
+        },
+        {
+          "table": "patch_saved_property_user_data_if_unchanged",
+          "query": {},
+          "returned": [],
+          "bodyCount": 0,
+          "method": "POST",
+          "aborted": true,
+          "target": {
+            "owner": "synthetic-owner-A",
+            "parcel": "csg:lpi:synthetic-1"
+          }
+        }
+      ],
+      "mutations": [
+        {
+          "owner": "synthetic-owner-A",
+          "parcel": "csg:lpi:synthetic-1"
+        }
+      ],
+      "flushes": [
+        {
+          "parcel": "csg:lpi:synthetic-1",
+          "status": "rejected",
+          "error": "The selected investigation changed before save confirmation. Your draft is retained; an already dispatched save may still finish."
+        }
+      ],
+      "recordHashes": [
+        {
+          "parcel": "csg:lpi:synthetic-1",
+          "sha256": "68d673f3236939e2a0fda655de65b3f97a486432e0e7ad56c2049886284b9ea3"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-2",
+          "sha256": "aaad3255ed9bd4bda5ad7c460606f3369c13f0495685fa54a860d9c898653451"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-3",
+          "sha256": "c463f957f04a795bf3b44cfb353ed1ad8b9c631c00fa00750cd2e424f388f252"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-4",
+          "sha256": "0b804893fe1a90eb4b5a5bb8bd9aa0cfd24535d8c6b75a2aa125bf653ad8598a"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-5",
+          "sha256": "7f2202c97c937e1791815a85859c425327c193c1a8df70d6517b9dfb81aa6366"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-6",
+          "sha256": "6a2984e5a2c565c550b9508eaaf0ed21ea700e0ea2299ed63c081ef503967fd4"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-7",
+          "sha256": "2dc3ef59d290b3faae6401f8323a28195c7b92a0d7129b5ace2e99c84d19e62d"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-8",
+          "sha256": "a7be5dae066179ae49ddd3ee52478f6c3ce7e9b6eac4ceb75e38a441bf7ba439"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-9",
+          "sha256": "f83894abb1cf1a1599418f6cc676e08f6869d33cb3c6f133204d3270e190ccaa"
+        }
+      ]
+    },
+    {
+      "name": "guarded-save-reload-meaningful-inputs",
+      "status": "passed",
+      "requests": [
+        {
+          "table": "saved_properties",
+          "query": {
+            "select": "id,user_id,parcel_id,user_data",
+            "user_id": "eq.synthetic-owner-A",
+            "parcel_id": "eq.csg:lpi:synthetic-1"
+          },
+          "returned": [
+            {
+              "owner": "synthetic-owner-A",
+              "parcel": "csg:lpi:synthetic-1"
+            }
+          ],
+          "bodyCount": 1,
+          "method": "GET",
+          "aborted": false
+        },
+        {
+          "table": "erf_site_projects",
+          "query": {
+            "select": "*",
+            "user_id": "eq.synthetic-owner-A",
+            "parcel_id": "eq.csg:lpi:synthetic-1"
+          },
+          "returned": [
+            {
+              "owner": "synthetic-owner-A",
+              "parcel": "csg:lpi:synthetic-1"
+            }
+          ],
+          "bodyCount": 0,
+          "method": "GET",
+          "aborted": false
+        },
+        {
+          "table": "erf_assets",
+          "query": {
+            "select": "*",
+            "user_id": "eq.synthetic-owner-A",
+            "parcel_id": "eq.csg:lpi:synthetic-1",
+            "status": "neq.deleted",
+            "order": "created_at.desc",
+            "asset_category": "in.(site_photo,existing_house_photo,topography,architectural_plan,inspiration_image,other,generated_design)"
+          },
+          "returned": [],
+          "bodyCount": 0,
+          "method": "GET",
+          "aborted": false
+        }
+      ],
+      "mutations": [],
+      "flushes": [],
+      "recordHashes": [
+        {
+          "parcel": "csg:lpi:synthetic-1",
+          "sha256": "5844b6a78ea89fce6393cad836d463fb471573ccb3ece4f707dcd6990c431d1c"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-2",
+          "sha256": "55c4b819a65c605b3f36f2d59db922fd103e737dc5b0ad15116b87be72fef4db"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-3",
+          "sha256": "c6c20c4a61e21e72a11d1f0f5d93640b96407c3b81151057822a9cefe56b55cb"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-4",
+          "sha256": "ed513a1a64b86066e1b43d08c44cd9feee86a32061f31057bd64b9843f6e4d66"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-5",
+          "sha256": "65a956cd05da039d133621793f2ed90ab955f2cb87d36660b0ff100af1ee1f74"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-6",
+          "sha256": "d25f69a1330e92367dd0cb4d1bfeab0fb38ee59363c56a389acf7a729e7dc882"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-7",
+          "sha256": "8fcc2d3631fe9ca6ab8eee8e2ad34aceaf965029c24c4f631ceb24cbce7b9d5c"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-8",
+          "sha256": "26f64d7465ded0cf1c475c97e773841cfc247a2e902f117f458223cb009abe0b"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-9",
+          "sha256": "57ee7151f66de9d90385ee2113a7349997358220f14b641b2dc21376ba4cf7d5"
+        }
+      ]
+    },
+    {
+      "name": "guarded-save-reload-legacy-empty",
+      "status": "passed",
+      "requests": [
+        {
+          "table": "saved_properties",
+          "query": {
+            "select": "id,user_id,parcel_id,user_data",
+            "user_id": "eq.synthetic-owner-A",
+            "parcel_id": "eq.csg:lpi:synthetic-1"
+          },
+          "returned": [
+            {
+              "owner": "synthetic-owner-A",
+              "parcel": "csg:lpi:synthetic-1"
+            }
+          ],
+          "bodyCount": 1,
+          "method": "GET",
+          "aborted": false
+        },
+        {
+          "table": "erf_site_projects",
+          "query": {
+            "select": "*",
+            "user_id": "eq.synthetic-owner-A",
+            "parcel_id": "eq.csg:lpi:synthetic-1"
+          },
+          "returned": [
+            {
+              "owner": "synthetic-owner-A",
+              "parcel": "csg:lpi:synthetic-1"
+            }
+          ],
+          "bodyCount": 0,
+          "method": "GET",
+          "aborted": false
+        },
+        {
+          "table": "erf_assets",
+          "query": {
+            "select": "*",
+            "user_id": "eq.synthetic-owner-A",
+            "parcel_id": "eq.csg:lpi:synthetic-1",
+            "status": "neq.deleted",
+            "order": "created_at.desc",
+            "asset_category": "in.(site_photo,existing_house_photo,topography,architectural_plan,inspiration_image,other,generated_design)"
+          },
+          "returned": [],
+          "bodyCount": 0,
+          "method": "GET",
+          "aborted": false
+        }
+      ],
+      "mutations": [],
+      "flushes": [],
+      "recordHashes": [
+        {
+          "parcel": "csg:lpi:synthetic-1",
+          "sha256": "c6a6a536aca19240dd9b00a19f44a22cd975293897cac264e942968317d734cb"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-2",
+          "sha256": "ef1c0ded917c86770f2cb64d2b29bfec7b64d8c877bbbddbffff4b3bb74c8508"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-3",
+          "sha256": "8abe35fe99f01aa2be6572da0fa53439490ba07eb2da5b6d0481c235934a2d11"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-4",
+          "sha256": "b892fb9cd39c32b39bfe36388572bb294ecc8c43b9790c36f6102da01dc4c3e9"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-5",
+          "sha256": "6d0ee32ebded8ce90df8adf4d7668352926833cdc71b38d8736f7813da3cdef5"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-6",
+          "sha256": "7e03767d95792323ec14e42bbc3aa321acbdb3ac7e32af6f18a231bc413a3722"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-7",
+          "sha256": "bd4f92af4d5c41aced2fdf2bb43a4ee60efb2bc50c02a74f91e5d48f4f7d2e00"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-8",
+          "sha256": "0ed1a46b5b28b8de7a9bb2a18132a7d6849d306605eb2e0451d3c9b0274e7717"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-9",
+          "sha256": "79e00a37038b9eca9505f1b3ecdd8f0220a84187157d85a326f45e97708f7b79"
+        }
+      ]
+    },
+    {
+      "name": "competing-edit-conflict-explicit-restore-preserves-draft",
+      "status": "passed",
+      "requests": [
+        {
+          "table": "saved_properties",
+          "query": {
+            "select": "id,user_id,parcel_id,user_data",
+            "user_id": "eq.synthetic-owner-A",
+            "parcel_id": "eq.csg:lpi:synthetic-1"
+          },
+          "returned": [
+            {
+              "owner": "synthetic-owner-A",
+              "parcel": "csg:lpi:synthetic-1"
+            }
+          ],
+          "bodyCount": 1,
+          "method": "GET",
+          "aborted": false
+        },
+        {
+          "table": "erf_site_projects",
+          "query": {
+            "select": "*",
+            "user_id": "eq.synthetic-owner-A",
+            "parcel_id": "eq.csg:lpi:synthetic-1"
+          },
+          "returned": [
+            {
+              "owner": "synthetic-owner-A",
+              "parcel": "csg:lpi:synthetic-1"
+            }
+          ],
+          "bodyCount": 0,
+          "method": "GET",
+          "aborted": false
+        },
+        {
+          "table": "erf_assets",
+          "query": {
+            "select": "*",
+            "user_id": "eq.synthetic-owner-A",
+            "parcel_id": "eq.csg:lpi:synthetic-1",
+            "status": "neq.deleted",
+            "order": "created_at.desc",
+            "asset_category": "in.(site_photo,existing_house_photo,topography,architectural_plan,inspiration_image,other,generated_design)"
+          },
+          "returned": [],
+          "bodyCount": 0,
+          "method": "GET",
+          "aborted": false
+        },
+        {
+          "table": "saved_properties",
+          "query": {
+            "select": "id,user_id,parcel_id,user_data",
+            "user_id": "eq.synthetic-owner-A",
+            "parcel_id": "eq.csg:lpi:synthetic-1"
+          },
+          "returned": [
+            {
+              "owner": "synthetic-owner-A",
+              "parcel": "csg:lpi:synthetic-1"
+            }
+          ],
+          "bodyCount": 1,
+          "method": "GET",
+          "aborted": false
+        },
+        {
+          "table": "erf_site_projects",
+          "query": {
+            "select": "*",
+            "user_id": "eq.synthetic-owner-A",
+            "parcel_id": "eq.csg:lpi:synthetic-1"
+          },
+          "returned": [
+            {
+              "owner": "synthetic-owner-A",
+              "parcel": "csg:lpi:synthetic-1"
+            }
+          ],
+          "bodyCount": 0,
+          "method": "GET",
+          "aborted": false
+        },
+        {
+          "table": "erf_assets",
+          "query": {
+            "select": "*",
+            "user_id": "eq.synthetic-owner-A",
+            "parcel_id": "eq.csg:lpi:synthetic-1",
+            "status": "neq.deleted",
+            "order": "created_at.desc",
+            "asset_category": "in.(site_photo,existing_house_photo,topography,architectural_plan,inspiration_image,other,generated_design)"
+          },
+          "returned": [],
+          "bodyCount": 0,
+          "method": "GET",
+          "aborted": false
+        },
+        {
+          "table": "patch_saved_property_user_data_if_unchanged",
+          "query": {},
+          "returned": [],
+          "bodyCount": 0,
+          "method": "POST",
+          "aborted": false,
+          "target": {
+            "owner": "synthetic-owner-A",
+            "parcel": "csg:lpi:synthetic-1"
+          }
+        },
+        {
+          "table": "saved_properties",
+          "query": {
+            "select": "id,user_id,parcel_id,user_data",
+            "user_id": "eq.synthetic-owner-A",
+            "parcel_id": "eq.csg:lpi:synthetic-1"
+          },
+          "returned": [
+            {
+              "owner": "synthetic-owner-A",
+              "parcel": "csg:lpi:synthetic-1"
+            }
+          ],
+          "bodyCount": 1,
+          "method": "GET",
+          "aborted": false
+        }
+      ],
+      "mutations": [],
+      "flushes": [
+        {
+          "parcel": "csg:lpi:synthetic-1",
+          "status": "rejected",
+          "error": "This investigation changed in another session. Your browser draft is retained; review the saved version before retrying."
+        }
+      ],
+      "recordHashes": [
+        {
+          "parcel": "csg:lpi:synthetic-1",
+          "sha256": "c51585f31c0adcbf11fec9b2d3a9bfc5ee5b2625e6574ee688a8f508b9b007f0"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-2",
+          "sha256": "86f76db085981e336775239f84df3ecfb3ec68730f978d1c8fe27650e1fbb15d"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-3",
+          "sha256": "208e19188712d3f74ac356440788d0cfac92a9bd0a050ae834ba90203a6865ef"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-4",
+          "sha256": "2131c78ca16d0ba1562acc424bc58776dfd15087c5c12f3087a5f10dcf0c48b9"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-5",
+          "sha256": "1afb0fc7a465534ce109e1592d03aae97b4743e68ac1bc407b05e3de6c6d4ec0"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-6",
+          "sha256": "a4d54cdc3136b48af19471413d4d010e6192cf8b37c55da73b2e264ad0477833"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-7",
+          "sha256": "2da82a598f761ba62dbfffb4c1de5da6b1edef212d5043e8d86e4545ee4703df"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-8",
+          "sha256": "064ee07a716e3866beb42dfc9d78de28d4f8caa058e29d897657dfd1e89e2df1"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-9",
+          "sha256": "6c6578175a6ed80c01b5707d738284bb3b7d894716fdf3da6e7678e1e610004a"
+        }
+      ]
+    },
+    {
+      "name": "initial-browser-conflict-is-not-force-restored",
+      "status": "passed",
+      "requests": [
+        {
+          "table": "saved_properties",
+          "query": {
+            "select": "id,user_id,parcel_id,user_data",
+            "user_id": "eq.synthetic-owner-A",
+            "parcel_id": "eq.csg:lpi:synthetic-1"
+          },
+          "returned": [
+            {
+              "owner": "synthetic-owner-A",
+              "parcel": "csg:lpi:synthetic-1"
+            }
+          ],
+          "bodyCount": 1,
+          "method": "GET",
+          "aborted": false
+        }
+      ],
+      "mutations": [],
+      "flushes": [
+        {
+          "parcel": "csg:lpi:synthetic-1",
+          "status": "rejected",
+          "error": "Review the saved investigation before saving. Your draft is retained."
+        }
+      ],
+      "recordHashes": [
+        {
+          "parcel": "csg:lpi:synthetic-1",
+          "sha256": "7d195cc2c2577f94d1620479a635b2e46ec36b7ea41b79f797c30f18b1000815"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-2",
+          "sha256": "47ce0a506720d6cad397b35f2b7d2cd9306b01cd84154d0eb96b99f098c251b9"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-3",
+          "sha256": "b5b237665a92b9979b93496a9c34292d160d79e5d2c532db3bfcd1f2e90fc12c"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-4",
+          "sha256": "e89eeb0033c3cd426e9c6150d2dd44582d71109418f4043f958943cf93977bb7"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-5",
+          "sha256": "ea4d8d26eb1bf23f69e0681a773c2892ced501d27b52d2b7a1c12c64112758c4"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-6",
+          "sha256": "caf95c2c0ca45bb5a72532a9d516a395200e728fe42c045158aee7d11c6eb970"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-7",
+          "sha256": "2b9c80c9f4d0f2b22accec55899e2672facedbab66a8f5f4196ac0fd44d9b336"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-8",
+          "sha256": "e0a86b8f19af3c0042e4831fe1e0a7dbf83d9eac9ec87e2dccec48e2d9876dcd"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-9",
+          "sha256": "9660ee031fad08478ee57a0a4b8f3c94262febfa2c4670e0d0cbd15c41432d88"
+        }
+      ]
+    },
+    {
+      "name": "delayed-explicit-restore-cancelled",
+      "status": "passed",
+      "requests": [
+        {
+          "table": "saved_properties",
+          "query": {
+            "select": "id,user_id,parcel_id,user_data",
+            "user_id": "eq.synthetic-owner-A",
+            "parcel_id": "eq.csg:lpi:synthetic-1"
+          },
+          "returned": [
+            {
+              "owner": "synthetic-owner-A",
+              "parcel": "csg:lpi:synthetic-1"
+            }
+          ],
+          "bodyCount": 1,
+          "method": "GET",
+          "aborted": true
+        },
+        {
+          "table": "erf_site_projects",
+          "query": {
+            "select": "*",
+            "user_id": "eq.synthetic-owner-A",
+            "parcel_id": "eq.csg:lpi:synthetic-1"
+          },
+          "returned": [
+            {
+              "owner": "synthetic-owner-A",
+              "parcel": "csg:lpi:synthetic-1"
+            }
+          ],
+          "bodyCount": 0,
+          "method": "GET",
+          "aborted": true
+        },
+        {
+          "table": "erf_assets",
+          "query": {
+            "select": "*",
+            "user_id": "eq.synthetic-owner-A",
+            "parcel_id": "eq.csg:lpi:synthetic-1",
+            "status": "neq.deleted",
+            "order": "created_at.desc",
+            "asset_category": "in.(site_photo,existing_house_photo,topography,architectural_plan,inspiration_image,other,generated_design)"
+          },
+          "returned": [],
+          "bodyCount": 0,
+          "method": "GET",
+          "aborted": true
+        },
+        {
+          "table": "saved_properties",
+          "query": {
+            "select": "id,user_id,parcel_id,user_data",
+            "user_id": "eq.synthetic-owner-A",
+            "parcel_id": "eq.csg:lpi:synthetic-1"
+          },
+          "returned": [
+            {
+              "owner": "synthetic-owner-A",
+              "parcel": "csg:lpi:synthetic-1"
+            }
+          ],
+          "bodyCount": 1,
+          "method": "GET",
+          "aborted": true
+        },
+        {
+          "table": "erf_site_projects",
+          "query": {
+            "select": "*",
+            "user_id": "eq.synthetic-owner-A",
+            "parcel_id": "eq.csg:lpi:synthetic-1"
+          },
+          "returned": [
+            {
+              "owner": "synthetic-owner-A",
+              "parcel": "csg:lpi:synthetic-1"
+            }
+          ],
+          "bodyCount": 0,
+          "method": "GET",
+          "aborted": true
+        },
+        {
+          "table": "erf_assets",
+          "query": {
+            "select": "*",
+            "user_id": "eq.synthetic-owner-A",
+            "parcel_id": "eq.csg:lpi:synthetic-1",
+            "status": "neq.deleted",
+            "order": "created_at.desc",
+            "asset_category": "in.(site_photo,existing_house_photo,topography,architectural_plan,inspiration_image,other,generated_design)"
+          },
+          "returned": [],
+          "bodyCount": 0,
+          "method": "GET",
+          "aborted": true
+        },
+        {
+          "table": "patch_saved_property_user_data_if_unchanged",
+          "query": {},
+          "returned": [],
+          "bodyCount": 0,
+          "method": "POST",
+          "aborted": true,
+          "target": {
+            "owner": "synthetic-owner-A",
+            "parcel": "csg:lpi:synthetic-1"
+          }
+        },
+        {
+          "table": "saved_properties",
+          "query": {
+            "select": "id,user_id,parcel_id,user_data",
+            "user_id": "eq.synthetic-owner-A",
+            "parcel_id": "eq.csg:lpi:synthetic-1"
+          },
+          "returned": [
+            {
+              "owner": "synthetic-owner-A",
+              "parcel": "csg:lpi:synthetic-1"
+            }
+          ],
+          "bodyCount": 1,
+          "method": "GET",
+          "aborted": true
+        },
+        {
+          "table": "saved_properties",
+          "query": {
+            "select": "id,user_id,parcel_id,user_data",
+            "user_id": "eq.synthetic-owner-A",
+            "parcel_id": "eq.csg:lpi:synthetic-2"
+          },
+          "returned": [
+            {
+              "owner": "synthetic-owner-A",
+              "parcel": "csg:lpi:synthetic-2"
+            }
+          ],
+          "bodyCount": 1,
+          "method": "GET",
+          "aborted": true
+        },
+        {
+          "table": "erf_site_projects",
+          "query": {
+            "select": "*",
+            "user_id": "eq.synthetic-owner-A",
+            "parcel_id": "eq.csg:lpi:synthetic-2"
+          },
+          "returned": [
+            {
+              "owner": "synthetic-owner-A",
+              "parcel": "csg:lpi:synthetic-2"
+            }
+          ],
+          "bodyCount": 0,
+          "method": "GET",
+          "aborted": true
+        },
+        {
+          "table": "erf_assets",
+          "query": {
+            "select": "*",
+            "user_id": "eq.synthetic-owner-A",
+            "parcel_id": "eq.csg:lpi:synthetic-2",
+            "status": "neq.deleted",
+            "order": "created_at.desc",
+            "asset_category": "in.(site_photo,existing_house_photo,topography,architectural_plan,inspiration_image,other,generated_design)"
+          },
+          "returned": [],
+          "bodyCount": 0,
+          "method": "GET",
+          "aborted": true
+        },
+        {
+          "table": "saved_properties",
+          "query": {
+            "select": "id,user_id,parcel_id,user_data",
+            "user_id": "eq.synthetic-owner-A",
+            "parcel_id": "eq.csg:lpi:synthetic-1"
+          },
+          "returned": [
+            {
+              "owner": "synthetic-owner-A",
+              "parcel": "csg:lpi:synthetic-1"
+            }
+          ],
+          "bodyCount": 1,
+          "method": "GET",
+          "aborted": false
+        }
+      ],
+      "mutations": [],
+      "flushes": [
+        {
+          "parcel": "csg:lpi:synthetic-1",
+          "status": "rejected",
+          "error": "This investigation changed in another session. Your browser draft is retained; review the saved version before retrying."
+        }
+      ],
+      "recordHashes": [
+        {
+          "parcel": "csg:lpi:synthetic-1",
+          "sha256": "6691ee7755bd6666f6d5dd2f64167b45891ad8c230685ae8a706ca28106e68d1"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-2",
+          "sha256": "d57b971ff5ca9b38bd018df43a186d7ad2c7cb6cb141c05cc6bdf7b3671fae13"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-3",
+          "sha256": "98f32b3d259e299e89210cf31535bb8ef383c791a71423ad0f922c69e71a7104"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-4",
+          "sha256": "2433d3cbddb76e6a18792ffe3b2cecc030e610a544e3449a187e93feb85963fe"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-5",
+          "sha256": "f70c266fd64db9eb116a95a072c2b5f173eae961871a3b4c865d36d918dda9c8"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-6",
+          "sha256": "efd4ebcc4d7aa26b5e59d83adb59398c083e5fedc706b2fd9c10069bd9a09fdf"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-7",
+          "sha256": "15928ca44e48778a91dd3611641dce3957eca3c65bafc85fc6f55c5c58e6daba"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-8",
+          "sha256": "bf10d2b2694fa3ecf509d1b42bb2ceb61217a2f0877480890ef907d0293ad3e5"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-9",
+          "sha256": "f6637e51740eaa18ee94aa46e3a2c37f08364048c1873ed46c80478141f0015f"
+        }
+      ]
+    },
+    {
+      "name": "history-back-forward-and-account-provenance",
+      "status": "passed",
+      "requests": [
+        {
+          "table": "saved_properties",
+          "query": {
+            "select": "id,user_id,parcel_id,user_data",
+            "user_id": "eq.synthetic-owner-A",
+            "parcel_id": "eq.csg:lpi:synthetic-1"
+          },
+          "returned": [
+            {
+              "owner": "synthetic-owner-A",
+              "parcel": "csg:lpi:synthetic-1"
+            }
+          ],
+          "bodyCount": 1,
+          "method": "GET",
+          "aborted": true
+        },
+        {
+          "table": "erf_site_projects",
+          "query": {
+            "select": "*",
+            "user_id": "eq.synthetic-owner-A",
+            "parcel_id": "eq.csg:lpi:synthetic-1"
+          },
+          "returned": [
+            {
+              "owner": "synthetic-owner-A",
+              "parcel": "csg:lpi:synthetic-1"
+            }
+          ],
+          "bodyCount": 0,
+          "method": "GET",
+          "aborted": true
+        },
+        {
+          "table": "erf_assets",
+          "query": {
+            "select": "*",
+            "user_id": "eq.synthetic-owner-A",
+            "parcel_id": "eq.csg:lpi:synthetic-1",
+            "status": "neq.deleted",
+            "order": "created_at.desc",
+            "asset_category": "in.(site_photo,existing_house_photo,topography,architectural_plan,inspiration_image,other,generated_design)"
+          },
+          "returned": [],
+          "bodyCount": 0,
+          "method": "GET",
+          "aborted": true
+        },
+        {
+          "table": "saved_properties",
+          "query": {
+            "select": "id,user_id,parcel_id,user_data",
+            "user_id": "eq.synthetic-owner-A",
+            "parcel_id": "eq.csg:lpi:synthetic-2"
+          },
+          "returned": [
+            {
+              "owner": "synthetic-owner-A",
+              "parcel": "csg:lpi:synthetic-2"
+            }
+          ],
+          "bodyCount": 1,
+          "method": "GET",
+          "aborted": true
+        },
+        {
+          "table": "erf_site_projects",
+          "query": {
+            "select": "*",
+            "user_id": "eq.synthetic-owner-A",
+            "parcel_id": "eq.csg:lpi:synthetic-2"
+          },
+          "returned": [
+            {
+              "owner": "synthetic-owner-A",
+              "parcel": "csg:lpi:synthetic-2"
+            }
+          ],
+          "bodyCount": 0,
+          "method": "GET",
+          "aborted": true
+        },
+        {
+          "table": "erf_assets",
+          "query": {
+            "select": "*",
+            "user_id": "eq.synthetic-owner-A",
+            "parcel_id": "eq.csg:lpi:synthetic-2",
+            "status": "neq.deleted",
+            "order": "created_at.desc",
+            "asset_category": "in.(site_photo,existing_house_photo,topography,architectural_plan,inspiration_image,other,generated_design)"
+          },
+          "returned": [],
+          "bodyCount": 0,
+          "method": "GET",
+          "aborted": true
+        },
+        {
+          "table": "saved_properties",
+          "query": {
+            "select": "id,user_id,parcel_id,user_data",
+            "user_id": "eq.synthetic-owner-A",
+            "parcel_id": "eq.csg:lpi:synthetic-1"
+          },
+          "returned": [
+            {
+              "owner": "synthetic-owner-A",
+              "parcel": "csg:lpi:synthetic-1"
+            }
+          ],
+          "bodyCount": 1,
+          "method": "GET",
+          "aborted": true
+        },
+        {
+          "table": "erf_site_projects",
+          "query": {
+            "select": "*",
+            "user_id": "eq.synthetic-owner-A",
+            "parcel_id": "eq.csg:lpi:synthetic-1"
+          },
+          "returned": [
+            {
+              "owner": "synthetic-owner-A",
+              "parcel": "csg:lpi:synthetic-1"
+            }
+          ],
+          "bodyCount": 0,
+          "method": "GET",
+          "aborted": true
+        },
+        {
+          "table": "erf_assets",
+          "query": {
+            "select": "*",
+            "user_id": "eq.synthetic-owner-A",
+            "parcel_id": "eq.csg:lpi:synthetic-1",
+            "status": "neq.deleted",
+            "order": "created_at.desc",
+            "asset_category": "in.(site_photo,existing_house_photo,topography,architectural_plan,inspiration_image,other,generated_design)"
+          },
+          "returned": [],
+          "bodyCount": 0,
+          "method": "GET",
+          "aborted": true
+        },
+        {
+          "table": "saved_properties",
+          "query": {
+            "select": "id,user_id,parcel_id,user_data",
+            "user_id": "eq.synthetic-owner-A",
+            "parcel_id": "eq.csg:lpi:synthetic-2"
+          },
+          "returned": [
+            {
+              "owner": "synthetic-owner-A",
+              "parcel": "csg:lpi:synthetic-2"
+            }
+          ],
+          "bodyCount": 1,
+          "method": "GET",
+          "aborted": true
+        },
+        {
+          "table": "erf_site_projects",
+          "query": {
+            "select": "*",
+            "user_id": "eq.synthetic-owner-A",
+            "parcel_id": "eq.csg:lpi:synthetic-2"
+          },
+          "returned": [
+            {
+              "owner": "synthetic-owner-A",
+              "parcel": "csg:lpi:synthetic-2"
+            }
+          ],
+          "bodyCount": 0,
+          "method": "GET",
+          "aborted": true
+        },
+        {
+          "table": "erf_assets",
+          "query": {
+            "select": "*",
+            "user_id": "eq.synthetic-owner-A",
+            "parcel_id": "eq.csg:lpi:synthetic-2",
+            "status": "neq.deleted",
+            "order": "created_at.desc",
+            "asset_category": "in.(site_photo,existing_house_photo,topography,architectural_plan,inspiration_image,other,generated_design)"
+          },
+          "returned": [],
+          "bodyCount": 0,
+          "method": "GET",
+          "aborted": true
+        },
+        {
+          "table": "saved_properties",
+          "query": {
+            "select": "id,user_id,parcel_id,user_data",
+            "user_id": "eq.synthetic-owner-B",
+            "parcel_id": "eq.csg:lpi:synthetic-3"
+          },
+          "returned": [],
+          "bodyCount": 0,
+          "method": "GET",
+          "aborted": false
+        }
+      ],
+      "mutations": [],
+      "flushes": [],
+      "recordHashes": [
+        {
+          "parcel": "csg:lpi:synthetic-1",
+          "sha256": "e6dd77cd7542802a48ca6cdecec004463e277f881fd2243e3b63f3de78ab4a31"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-2",
+          "sha256": "6fb4a2743009b6add92a908b0e76b571ab935f8a6187d615c50265d1e83fd4e5"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-3",
+          "sha256": "fdbc2c7f8a026f4bc0e7df05e5b3d864e1983b97dcc916e3a8f945e2113e821b"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-4",
+          "sha256": "bfbc996b1c1109aa59a7a802f1d331720ebf330f11e15d875205b29617be92ab"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-5",
+          "sha256": "8e05063acc1a060cded858914c696bc3f7f62a2ef13414e89476f2a770b221f5"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-6",
+          "sha256": "72b6fd2b3ff8e56b55d7ad843e4d815324d5f13488516bbc8959a45302534c5e"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-7",
+          "sha256": "cca54e91ec6238fef30b3897dcc20581e04b9684f095a2fab75501413691332c"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-8",
+          "sha256": "0311016039a6153bdd1cf0f0a5fabac4adc64e9fd35c7bd29da10f2b6cd581f8"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-9",
+          "sha256": "018de75b096e48b31935810a0fa6021ff549587d36c97be7b6d54f9e3eac6ee7"
+        }
+      ]
+    },
+    {
+      "name": "direct-selected-property-navigation",
+      "status": "passed",
+      "requests": [
+        {
+          "table": "saved_properties",
+          "query": {
+            "select": "id,user_id,parcel_id,user_data",
+            "user_id": "eq.synthetic-owner-A",
+            "parcel_id": "eq.csg:lpi:synthetic-1"
+          },
+          "returned": [
+            {
+              "owner": "synthetic-owner-A",
+              "parcel": "csg:lpi:synthetic-1"
+            }
+          ],
+          "bodyCount": 1,
+          "method": "GET",
+          "aborted": false
+        },
+        {
+          "table": "erf_site_projects",
+          "query": {
+            "select": "*",
+            "user_id": "eq.synthetic-owner-A",
+            "parcel_id": "eq.csg:lpi:synthetic-1"
+          },
+          "returned": [
+            {
+              "owner": "synthetic-owner-A",
+              "parcel": "csg:lpi:synthetic-1"
+            }
+          ],
+          "bodyCount": 0,
+          "method": "GET",
+          "aborted": false
+        },
+        {
+          "table": "erf_assets",
+          "query": {
+            "select": "*",
+            "user_id": "eq.synthetic-owner-A",
+            "parcel_id": "eq.csg:lpi:synthetic-1",
+            "status": "neq.deleted",
+            "order": "created_at.desc",
+            "asset_category": "in.(site_photo,existing_house_photo,topography,architectural_plan,inspiration_image,other,generated_design)"
+          },
+          "returned": [],
+          "bodyCount": 0,
+          "method": "GET",
+          "aborted": false
+        }
+      ],
+      "mutations": [],
+      "flushes": [],
+      "recordHashes": [
+        {
+          "parcel": "csg:lpi:synthetic-1",
+          "sha256": "d1cb46d54179b2f291e40d7bebe0da2166f3ec70764b8a98aae4c2c26925d96f"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-2",
+          "sha256": "03f02e98a903836d8e099b8b4dab4f75da94b04c74e219a9c546ee82a4fb65b3"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-3",
+          "sha256": "5771a5acd4edbd4be625789b1d0e736373f91c3653e1088d32afa5023ded69de"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-4",
+          "sha256": "47bcfdc42e86715732f157c565c1683380b24bd3c41778312f67c89760dc4fcf"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-5",
+          "sha256": "899dbaf11278ea2f867561749ee341be5296a492f32f90c620810d6aed369c5a"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-6",
+          "sha256": "761c8a97218b6f1672d0bf4656560a1379d973de8cbf042bc735cbe05f0bc8c1"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-7",
+          "sha256": "f8d1a6c13cd885bbf36bb3fb4d60d810511a5973710778f0952522669baa1924"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-8",
+          "sha256": "bbbb4986b53b68a528867c9b40d57c5b41f9acb68355689529e6a3d6183f3f6c"
+        },
+        {
+          "parcel": "csg:lpi:synthetic-9",
+          "sha256": "b32b6c8c32413fcf3b5591c33311102c9db3208c4c048f625c491cff73de5901"
+        }
+      ]
+    }
+  ]
+}
