@@ -1,5 +1,12 @@
 # Easy Erf Current State
 
+## Dashboard metadata source tranche, 2026-09-23
+
+Issue #191 is implemented on `codex/dashboard-metadata`, based on merged PR #190 main `a28db850cf07b30f3192f235af41b79557eefdc8`. Tested source `877ceafc97afa084309133182fd3deb5f3ce4242`. The dashboard now requests explicit display/progress scalar leaves and narrow note metadata; Market detail opens only after deliberate property selection. Missing data remains unknown, pagination is bounded and honest, and account lifetimes reject stale results. Browser drafts are preserved without reading their bodies for list summaries.
+
+25 synthetic browser cases, 1770 full local tests, normal configured build, TypeScript and changed-source lint passed. The fixture models Auth/transport/router and heavy map/panels; this is not real PostgREST/Auth/RLS or production acceptance. [Evidence and limitations](reviews/dashboard-metadata/README.md). Source-only draft review, no new release or backend work. PR #190 remains merged and its release is not repeated. The older dashboard bulk-body statement below describes the prior source.
+
+
 ## Selected-property source tranche, 2026-09-22
 
 Section A of corrected package comment 5786992038 is implemented on `codex/selected-property-workspace`, based on main `5026ba639ba19bc2b9b9fec6f41301e18c5d4be9`. Tested source: `98684f4783a00d9838d6ff4a9da945fa04ba7298`. The new draft PR is for independent review only.
