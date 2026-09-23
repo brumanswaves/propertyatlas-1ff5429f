@@ -1,0 +1,8 @@
+{
+  "initialExit": 1,
+  "errors": 2217,
+  "kind": "CRLF-only prettier errors",
+  "rawLogSha256": "5c0d5dd254b70c76627e13c160d41c9cf75fc3d8d284a04a6811139418963519",
+  "normalizedContentsMatchGit": true,
+  "rerunExit": 0
+}

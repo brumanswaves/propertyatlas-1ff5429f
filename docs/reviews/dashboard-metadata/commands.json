@@ -1,0 +1,65 @@
+{
+  "environment": {
+    "inherited": "Windows process essentials only",
+    "NODE_OPTIONS": "--import=[candidate]/scripts/verify-shared-investigation-network.mjs",
+    "dotenv": "Original tracked configuration",
+    "buildPresetOverride": "none",
+    "network": "External Node fetch/http/https/net/tls blocked"
+  },
+  "records": [
+    {
+      "name": "network-boundary",
+      "source": "877ceafc97afa084309133182fd3deb5f3ce4242",
+      "command": "node --input-type=module -e import net from 'node:net'; import https from 'node:https'; let blocked=0; for(const fn of [()=>fetch('https://example.invalid'),()=>https.get('https://example.invalid'),()=>net.connect({host:'example.invalid',port:443})]){try{await fn()}catch(e){if(e.message==='Isolated test blocked external service traffic')blocked++;else throw e}}if(blocked!==3)throw Error('Network boundary failed');console.log('3 external transport attempts blocked before network dispatch');",
+      "startedAt": "2026-09-23T16:07:17.107Z",
+      "endedAt": "2026-09-23T16:07:17.197Z",
+      "exitCode": 0,
+      "signal": null
+    },
+    {
+      "name": "full-regression",
+      "source": "877ceafc97afa084309133182fd3deb5f3ce4242",
+      "command": "node node_modules/vitest/vitest.mjs run",
+      "startedAt": "2026-09-23T16:07:17.197Z",
+      "endedAt": "2026-09-23T16:07:30.844Z",
+      "exitCode": 0,
+      "signal": null
+    },
+    {
+      "name": "configured-build",
+      "source": "877ceafc97afa084309133182fd3deb5f3ce4242",
+      "command": "node node_modules/vite/bin/vite.js build",
+      "startedAt": "2026-09-23T16:07:30.846Z",
+      "endedAt": "2026-09-23T16:08:12.444Z",
+      "exitCode": 0,
+      "signal": null
+    },
+    {
+      "name": "typecheck",
+      "source": "877ceafc97afa084309133182fd3deb5f3ce4242",
+      "command": "node node_modules/typescript/bin/tsc --noEmit",
+      "startedAt": "2026-09-23T16:08:12.445Z",
+      "endedAt": "2026-09-23T16:08:30.171Z",
+      "exitCode": 0,
+      "signal": null
+    },
+    {
+      "name": "changed-lint",
+      "source": "877ceafc97afa084309133182fd3deb5f3ce4242",
+      "command": "node node_modules/eslint/bin/eslint.js src/routes/dashboard.tsx src/lib/workbench/dashboardMetadata.ts src/lib/workbench/__tests__/dashboardMetadata.test.ts src/components/property/__tests__/dossierUx.test.ts",
+      "startedAt": "2026-09-23T16:08:30.172Z",
+      "endedAt": "2026-09-23T16:08:32.365Z",
+      "exitCode": 1,
+      "signal": null
+    },
+    {
+      "name": "changed-lint-canonical-lf",
+      "source": "877ceafc97afa084309133182fd3deb5f3ce4242",
+      "command": "node node_modules/eslint/bin/eslint.js src/routes/dashboard.tsx src/lib/workbench/dashboardMetadata.ts src/lib/workbench/__tests__/dashboardMetadata.test.ts src/components/property/__tests__/dossierUx.test.ts",
+      "startedAt": "2026-09-23T16:09:30.092432+00:00",
+      "endedAt": "2026-09-23T16:09:32.252470+00:00",
+      "exitCode": 0,
+      "note": "Replaced four export CRLF-only files with exact committed LF blobs before lint; normalized source identical."
+    }
+  ]
+}

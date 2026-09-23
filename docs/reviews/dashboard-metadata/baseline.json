@@ -1,0 +1,593 @@
+{
+  "requests": [
+    {
+      "table": "saved_properties",
+      "query": {
+        "select": "parcel_id,created_at,research_status,status,tags,user_data",
+        "user_id": "eq.synthetic-owner-A",
+        "order": "created_at.desc"
+      },
+      "body": [
+        {
+          "parcel_id": "csg:lpi:synthetic-9",
+          "created_at": "2026-01-09T00:00:00Z",
+          "research_status": null,
+          "status": null,
+          "tags": [],
+          "user_data": {
+            "displayTitle": "Synthetic A property 9",
+            "erfNumber": 9,
+            "portion": 0,
+            "municipality": "Synthetic town",
+            "province": "Eastern Cape",
+            "lat": -34,
+            "lng": 25,
+            "easyErfInvestigation": {
+              "version": 1,
+              "parcelId": "csg:lpi:synthetic-9",
+              "syncedAt": "2026-09-23T15:56:39.664Z",
+              "workspaceUpdatedAt": "2026-09-23T15:56:39.664Z",
+              "identityStatus": "none",
+              "sgDiagramAttachmentCount": 0,
+              "marketEvidenceStarted": false,
+              "strategyScenarioCount": 2,
+              "chosenScenarioId": null,
+              "reportStarted": false,
+              "openedSourceIds": [],
+              "reviewedSourceIds": [],
+              "marketAddressSaved": false,
+              "calculatorStarted": false,
+              "planning": {
+                "zoneCode": null,
+                "userConfirmedZoneCode": null,
+                "userConfirmedAt": null
+              },
+              "sitePotential": {
+                "skipped": false,
+                "conceptCount": 0,
+                "selectedDesignAssetId": null,
+                "progressState": "not_started"
+              },
+              "investigation": {
+                "startedAt": "2026-01-01T00:00:00Z",
+                "lastViewedAt": null,
+                "currentStepId": "identity",
+                "skippedStepIds": [],
+                "acknowledgedTaskIds": [],
+                "lastMeaningfulActionAt": null
+              }
+            },
+            "reportBody": "FORBIDDEN_REPORT_9",
+            "documentText": "FORBIDDEN_DOCUMENT_9",
+            "unrelated": {
+              "text": "FORBIDDEN_OTHER_9"
+            },
+            "savedMarketEvidence": [
+              {
+                "id": "market-9",
+                "sourceUrl": "https://example.invalid",
+                "notes": "FORBIDDEN_MARKET_9"
+              }
+            ]
+          }
+        },
+        {
+          "parcel_id": "csg:lpi:synthetic-8",
+          "created_at": "2026-01-08T00:00:00Z",
+          "research_status": null,
+          "status": null,
+          "tags": [],
+          "user_data": {
+            "displayTitle": "Synthetic A property 8",
+            "erfNumber": 8,
+            "portion": 0,
+            "municipality": "Synthetic town",
+            "province": "Eastern Cape",
+            "lat": -34,
+            "lng": 25,
+            "easyErfInvestigation": {
+              "version": 1,
+              "parcelId": "csg:lpi:synthetic-8",
+              "syncedAt": "2026-09-23T15:56:39.664Z",
+              "workspaceUpdatedAt": "2026-09-23T15:56:39.664Z",
+              "identityStatus": "none",
+              "sgDiagramAttachmentCount": 0,
+              "marketEvidenceStarted": false,
+              "strategyScenarioCount": 2,
+              "chosenScenarioId": null,
+              "reportStarted": true,
+              "openedSourceIds": [],
+              "reviewedSourceIds": [],
+              "marketAddressSaved": false,
+              "calculatorStarted": false,
+              "planning": {
+                "zoneCode": null,
+                "userConfirmedZoneCode": null,
+                "userConfirmedAt": null
+              },
+              "sitePotential": {
+                "skipped": false,
+                "conceptCount": 0,
+                "selectedDesignAssetId": null,
+                "progressState": "not_started"
+              },
+              "investigation": {
+                "startedAt": "2026-01-01T00:00:00Z",
+                "lastViewedAt": null,
+                "currentStepId": "identity",
+                "skippedStepIds": [],
+                "acknowledgedTaskIds": [],
+                "lastMeaningfulActionAt": null
+              }
+            },
+            "reportBody": "FORBIDDEN_REPORT_8",
+            "documentText": "FORBIDDEN_DOCUMENT_8",
+            "unrelated": {
+              "text": "FORBIDDEN_OTHER_8"
+            },
+            "savedMarketEvidence": [
+              {
+                "id": "market-8",
+                "sourceUrl": "https://example.invalid",
+                "notes": "FORBIDDEN_MARKET_8"
+              }
+            ]
+          }
+        },
+        {
+          "parcel_id": "csg:lpi:synthetic-7",
+          "created_at": "2026-01-07T00:00:00Z",
+          "research_status": null,
+          "status": null,
+          "tags": [],
+          "user_data": {
+            "displayTitle": "Synthetic A property 7",
+            "erfNumber": 7,
+            "portion": 0,
+            "municipality": "Synthetic town",
+            "province": "Eastern Cape",
+            "lat": -34,
+            "lng": 25,
+            "easyErfInvestigation": {
+              "version": 1,
+              "parcelId": "csg:lpi:synthetic-7",
+              "syncedAt": "2026-09-23T15:56:39.664Z",
+              "workspaceUpdatedAt": "2026-09-23T15:56:39.664Z",
+              "identityStatus": "none",
+              "sgDiagramAttachmentCount": 0,
+              "marketEvidenceStarted": false,
+              "strategyScenarioCount": 2,
+              "chosenScenarioId": null,
+              "reportStarted": false,
+              "openedSourceIds": [],
+              "reviewedSourceIds": [],
+              "marketAddressSaved": false,
+              "calculatorStarted": false,
+              "planning": {
+                "zoneCode": null,
+                "userConfirmedZoneCode": null,
+                "userConfirmedAt": null
+              },
+              "sitePotential": {
+                "skipped": false,
+                "conceptCount": 0,
+                "selectedDesignAssetId": null,
+                "progressState": "not_started"
+              },
+              "investigation": {
+                "startedAt": "2026-01-01T00:00:00Z",
+                "lastViewedAt": null,
+                "currentStepId": "identity",
+                "skippedStepIds": [],
+                "acknowledgedTaskIds": [],
+                "lastMeaningfulActionAt": null
+              }
+            },
+            "reportBody": "FORBIDDEN_REPORT_7",
+            "documentText": "FORBIDDEN_DOCUMENT_7",
+            "unrelated": {
+              "text": "FORBIDDEN_OTHER_7"
+            },
+            "savedMarketEvidence": [
+              {
+                "id": "market-7",
+                "sourceUrl": "https://example.invalid",
+                "notes": "FORBIDDEN_MARKET_7"
+              }
+            ]
+          }
+        },
+        {
+          "parcel_id": "csg:lpi:synthetic-6",
+          "created_at": "2026-01-06T00:00:00Z",
+          "research_status": null,
+          "status": null,
+          "tags": [],
+          "user_data": {
+            "displayTitle": "Synthetic A property 6",
+            "erfNumber": 6,
+            "portion": 0,
+            "municipality": "Synthetic town",
+            "province": "Eastern Cape",
+            "lat": -34,
+            "lng": 25,
+            "easyErfInvestigation": {
+              "version": 1,
+              "parcelId": "csg:lpi:synthetic-6",
+              "syncedAt": "2026-09-23T15:56:39.664Z",
+              "workspaceUpdatedAt": "2026-09-23T15:56:39.664Z",
+              "identityStatus": "none",
+              "sgDiagramAttachmentCount": 0,
+              "marketEvidenceStarted": false,
+              "strategyScenarioCount": 2,
+              "chosenScenarioId": null,
+              "reportStarted": true,
+              "openedSourceIds": [],
+              "reviewedSourceIds": [],
+              "marketAddressSaved": false,
+              "calculatorStarted": false,
+              "planning": {
+                "zoneCode": null,
+                "userConfirmedZoneCode": null,
+                "userConfirmedAt": null
+              },
+              "sitePotential": {
+                "skipped": false,
+                "conceptCount": 0,
+                "selectedDesignAssetId": null,
+                "progressState": "not_started"
+              },
+              "investigation": {
+                "startedAt": "2026-01-01T00:00:00Z",
+                "lastViewedAt": null,
+                "currentStepId": "identity",
+                "skippedStepIds": [],
+                "acknowledgedTaskIds": [],
+                "lastMeaningfulActionAt": null
+              }
+            },
+            "reportBody": "FORBIDDEN_REPORT_6",
+            "documentText": "FORBIDDEN_DOCUMENT_6",
+            "unrelated": {
+              "text": "FORBIDDEN_OTHER_6"
+            },
+            "savedMarketEvidence": [
+              {
+                "id": "market-6",
+                "sourceUrl": "https://example.invalid",
+                "notes": "FORBIDDEN_MARKET_6"
+              }
+            ]
+          }
+        },
+        {
+          "parcel_id": "csg:lpi:synthetic-5",
+          "created_at": "2026-01-05T00:00:00Z",
+          "research_status": null,
+          "status": null,
+          "tags": [],
+          "user_data": {
+            "displayTitle": "Synthetic A property 5",
+            "erfNumber": 5,
+            "portion": 0,
+            "municipality": "Synthetic town",
+            "province": "Eastern Cape",
+            "lat": -34,
+            "lng": 25,
+            "easyErfInvestigation": {
+              "version": 1,
+              "parcelId": "csg:lpi:synthetic-5",
+              "syncedAt": "2026-09-23T15:56:39.664Z",
+              "workspaceUpdatedAt": "2026-09-23T15:56:39.664Z",
+              "identityStatus": "none",
+              "sgDiagramAttachmentCount": 0,
+              "marketEvidenceStarted": false,
+              "strategyScenarioCount": 2,
+              "chosenScenarioId": null,
+              "reportStarted": false,
+              "openedSourceIds": [],
+              "reviewedSourceIds": [],
+              "marketAddressSaved": false,
+              "calculatorStarted": false,
+              "planning": {
+                "zoneCode": null,
+                "userConfirmedZoneCode": null,
+                "userConfirmedAt": null
+              },
+              "sitePotential": {
+                "skipped": false,
+                "conceptCount": 0,
+                "selectedDesignAssetId": null,
+                "progressState": "not_started"
+              },
+              "investigation": {
+                "startedAt": "2026-01-01T00:00:00Z",
+                "lastViewedAt": null,
+                "currentStepId": "identity",
+                "skippedStepIds": [],
+                "acknowledgedTaskIds": [],
+                "lastMeaningfulActionAt": null
+              }
+            },
+            "reportBody": "FORBIDDEN_REPORT_5",
+            "documentText": "FORBIDDEN_DOCUMENT_5",
+            "unrelated": {
+              "text": "FORBIDDEN_OTHER_5"
+            },
+            "savedMarketEvidence": [
+              {
+                "id": "market-5",
+                "sourceUrl": "https://example.invalid",
+                "notes": "FORBIDDEN_MARKET_5"
+              }
+            ]
+          }
+        },
+        {
+          "parcel_id": "csg:lpi:synthetic-4",
+          "created_at": "2026-01-04T00:00:00Z",
+          "research_status": null,
+          "status": null,
+          "tags": [],
+          "user_data": {
+            "displayTitle": "Synthetic A property 4",
+            "erfNumber": 4,
+            "portion": 0,
+            "municipality": "Synthetic town",
+            "province": "Eastern Cape",
+            "lat": -34,
+            "lng": 25,
+            "easyErfInvestigation": {
+              "version": 1,
+              "parcelId": "csg:lpi:synthetic-4",
+              "syncedAt": "2026-09-23T15:56:39.664Z",
+              "workspaceUpdatedAt": "2026-09-23T15:56:39.664Z",
+              "identityStatus": "none",
+              "sgDiagramAttachmentCount": 0,
+              "marketEvidenceStarted": false,
+              "strategyScenarioCount": 2,
+              "chosenScenarioId": null,
+              "reportStarted": true,
+              "openedSourceIds": [],
+              "reviewedSourceIds": [],
+              "marketAddressSaved": false,
+              "calculatorStarted": false,
+              "planning": {
+                "zoneCode": null,
+                "userConfirmedZoneCode": null,
+                "userConfirmedAt": null
+              },
+              "sitePotential": {
+                "skipped": false,
+                "conceptCount": 0,
+                "selectedDesignAssetId": null,
+                "progressState": "not_started"
+              },
+              "investigation": {
+                "startedAt": "2026-01-01T00:00:00Z",
+                "lastViewedAt": null,
+                "currentStepId": "identity",
+                "skippedStepIds": [],
+                "acknowledgedTaskIds": [],
+                "lastMeaningfulActionAt": null
+              }
+            },
+            "reportBody": "FORBIDDEN_REPORT_4",
+            "documentText": "FORBIDDEN_DOCUMENT_4",
+            "unrelated": {
+              "text": "FORBIDDEN_OTHER_4"
+            },
+            "savedMarketEvidence": [
+              {
+                "id": "market-4",
+                "sourceUrl": "https://example.invalid",
+                "notes": "FORBIDDEN_MARKET_4"
+              }
+            ]
+          }
+        },
+        {
+          "parcel_id": "csg:lpi:synthetic-3",
+          "created_at": "2026-01-03T00:00:00Z",
+          "research_status": null,
+          "status": null,
+          "tags": [],
+          "user_data": {
+            "displayTitle": "Synthetic A property 3",
+            "erfNumber": 3,
+            "portion": 0,
+            "municipality": "Synthetic town",
+            "province": "Eastern Cape",
+            "lat": -34,
+            "lng": 25,
+            "easyErfInvestigation": {
+              "version": 1,
+              "parcelId": "csg:lpi:synthetic-3",
+              "syncedAt": "2026-09-23T15:56:39.664Z",
+              "workspaceUpdatedAt": "2026-09-23T15:56:39.664Z",
+              "identityStatus": "none",
+              "sgDiagramAttachmentCount": 0,
+              "marketEvidenceStarted": false,
+              "strategyScenarioCount": 2,
+              "chosenScenarioId": null,
+              "reportStarted": false,
+              "openedSourceIds": [],
+              "reviewedSourceIds": [],
+              "marketAddressSaved": false,
+              "calculatorStarted": false,
+              "planning": {
+                "zoneCode": null,
+                "userConfirmedZoneCode": null,
+                "userConfirmedAt": null
+              },
+              "sitePotential": {
+                "skipped": false,
+                "conceptCount": 0,
+                "selectedDesignAssetId": null,
+                "progressState": "not_started"
+              },
+              "investigation": {
+                "startedAt": "2026-01-01T00:00:00Z",
+                "lastViewedAt": null,
+                "currentStepId": "identity",
+                "skippedStepIds": [],
+                "acknowledgedTaskIds": [],
+                "lastMeaningfulActionAt": null
+              }
+            },
+            "reportBody": "FORBIDDEN_REPORT_3",
+            "documentText": "FORBIDDEN_DOCUMENT_3",
+            "unrelated": {
+              "text": "FORBIDDEN_OTHER_3"
+            },
+            "savedMarketEvidence": [
+              {
+                "id": "market-3",
+                "sourceUrl": "https://example.invalid",
+                "notes": "FORBIDDEN_MARKET_3"
+              }
+            ]
+          }
+        },
+        {
+          "parcel_id": "csg:lpi:synthetic-2",
+          "created_at": "2026-01-02T00:00:00Z",
+          "research_status": null,
+          "status": null,
+          "tags": [],
+          "user_data": {
+            "displayTitle": "Synthetic A property 2",
+            "erfNumber": 2,
+            "portion": 0,
+            "municipality": "Synthetic town",
+            "province": "Eastern Cape",
+            "lat": -34,
+            "lng": 25,
+            "easyErfInvestigation": {
+              "version": 1,
+              "parcelId": "csg:lpi:synthetic-2",
+              "syncedAt": "2026-09-23T15:56:39.664Z",
+              "workspaceUpdatedAt": "2026-09-23T15:56:39.664Z",
+              "identityStatus": "none",
+              "sgDiagramAttachmentCount": 0,
+              "marketEvidenceStarted": false,
+              "strategyScenarioCount": 2,
+              "chosenScenarioId": null,
+              "reportStarted": true,
+              "openedSourceIds": [],
+              "reviewedSourceIds": [],
+              "marketAddressSaved": false,
+              "calculatorStarted": false,
+              "planning": {
+                "zoneCode": null,
+                "userConfirmedZoneCode": null,
+                "userConfirmedAt": null
+              },
+              "sitePotential": {
+                "skipped": false,
+                "conceptCount": 0,
+                "selectedDesignAssetId": null,
+                "progressState": "not_started"
+              },
+              "investigation": {
+                "startedAt": "2026-01-01T00:00:00Z",
+                "lastViewedAt": null,
+                "currentStepId": "identity",
+                "skippedStepIds": [],
+                "acknowledgedTaskIds": [],
+                "lastMeaningfulActionAt": null
+              }
+            },
+            "reportBody": "FORBIDDEN_REPORT_2",
+            "documentText": "FORBIDDEN_DOCUMENT_2",
+            "unrelated": {
+              "text": "FORBIDDEN_OTHER_2"
+            },
+            "savedMarketEvidence": [
+              {
+                "id": "market-2",
+                "sourceUrl": "https://example.invalid",
+                "notes": "FORBIDDEN_MARKET_2"
+              }
+            ]
+          }
+        },
+        {
+          "parcel_id": "csg:lpi:synthetic-1",
+          "created_at": "2026-01-01T00:00:00Z",
+          "research_status": null,
+          "status": null,
+          "tags": [],
+          "user_data": {
+            "displayTitle": "Synthetic A property 1",
+            "erfNumber": 1,
+            "portion": 0,
+            "municipality": "Synthetic town",
+            "province": "Eastern Cape",
+            "lat": -34,
+            "lng": 25,
+            "easyErfInvestigation": {
+              "version": 1,
+              "parcelId": "csg:lpi:synthetic-1",
+              "syncedAt": "2026-09-23T15:56:39.664Z",
+              "workspaceUpdatedAt": "2026-09-23T15:56:39.663Z",
+              "identityStatus": "none",
+              "sgDiagramAttachmentCount": 0,
+              "marketEvidenceStarted": false,
+              "strategyScenarioCount": 0,
+              "chosenScenarioId": null,
+              "reportStarted": false,
+              "openedSourceIds": [],
+              "reviewedSourceIds": [],
+              "marketAddressSaved": false,
+              "calculatorStarted": false,
+              "planning": {
+                "zoneCode": null,
+                "userConfirmedZoneCode": null,
+                "userConfirmedAt": null
+              },
+              "sitePotential": {
+                "skipped": false,
+                "conceptCount": 0,
+                "selectedDesignAssetId": null,
+                "progressState": "not_started"
+              },
+              "investigation": {
+                "startedAt": "2026-01-01T00:00:00Z",
+                "lastViewedAt": null,
+                "currentStepId": "identity",
+                "skippedStepIds": [],
+                "acknowledgedTaskIds": [],
+                "lastMeaningfulActionAt": null
+              }
+            },
+            "reportBody": "FORBIDDEN_REPORT_1",
+            "documentText": "FORBIDDEN_DOCUMENT_1",
+            "unrelated": {
+              "text": "FORBIDDEN_OTHER_1"
+            },
+            "savedMarketEvidence": [
+              {
+                "id": "market-1",
+                "sourceUrl": "https://example.invalid",
+                "notes": "FORBIDDEN_MARKET_1"
+              }
+            ]
+          }
+        }
+      ],
+      "aborted": false
+    },
+    {
+      "table": "property_notes",
+      "query": {
+        "select": "parcel_id,updated_at",
+        "user_id": "eq.synthetic-owner-A"
+      },
+      "body": [],
+      "aborted": false
+    }
+  ],
+  "cards": 9,
+  "external": 0
+}

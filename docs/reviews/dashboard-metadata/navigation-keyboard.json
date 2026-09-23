@@ -1,0 +1,75 @@
+{
+  "url": "http://127.0.0.1:4191/",
+  "detail": {
+    "table": "saved_properties",
+    "query": {
+      "select": "id,user_id,parcel_id,user_data",
+      "user_id": "eq.synthetic-owner-A",
+      "parcel_id": "eq.csg:lpi:synthetic-1"
+    },
+    "body": [
+      {
+        "id": "row-synthetic-owner-A-1",
+        "user_id": "synthetic-owner-A",
+        "parcel_id": "csg:lpi:synthetic-1",
+        "user_data": {
+          "displayTitle": "Synthetic A property 1",
+          "erfNumber": 1,
+          "portion": 0,
+          "municipality": "Synthetic town",
+          "province": "Eastern Cape",
+          "lat": -34,
+          "lng": 25,
+          "easyErfInvestigation": {
+            "version": 1,
+            "parcelId": "csg:lpi:synthetic-1",
+            "syncedAt": "2026-09-23T16:07:03.188Z",
+            "workspaceUpdatedAt": "2026-09-23T16:07:03.187Z",
+            "identityStatus": "none",
+            "sgDiagramAttachmentCount": 0,
+            "marketEvidenceStarted": false,
+            "strategyScenarioCount": 0,
+            "chosenScenarioId": null,
+            "reportStarted": false,
+            "openedSourceIds": [],
+            "reviewedSourceIds": [],
+            "marketAddressSaved": false,
+            "calculatorStarted": false,
+            "planning": {
+              "zoneCode": null,
+              "userConfirmedZoneCode": null,
+              "userConfirmedAt": null
+            },
+            "sitePotential": {
+              "skipped": false,
+              "conceptCount": 0,
+              "selectedDesignAssetId": null,
+              "progressState": "not_started"
+            },
+            "investigation": {
+              "startedAt": "2026-01-01T00:00:00Z",
+              "lastViewedAt": null,
+              "currentStepId": "confirm-property",
+              "skippedStepIds": [],
+              "acknowledgedTaskIds": [],
+              "lastMeaningfulActionAt": null
+            }
+          },
+          "reportBody": "FORBIDDEN_REPORT_1",
+          "documentText": "FORBIDDEN_DOCUMENT_1",
+          "unrelated": {
+            "text": "FORBIDDEN_OTHER_1"
+          },
+          "savedMarketEvidence": [
+            {
+              "id": "market-1",
+              "sourceUrl": "https://example.invalid",
+              "notes": "FORBIDDEN_MARKET_1"
+            }
+          ]
+        }
+      }
+    ],
+    "aborted": false
+  }
+}
