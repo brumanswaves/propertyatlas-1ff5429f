@@ -34,7 +34,7 @@ Desktop/mobile and keyboard navigation reach exact property links. First selecte
 
 Full regression ran once for this source: **172 files / 1770 tests, exit 0**. Normal configured build with original tracked configuration and default Cloudflare module target: **exit 0**. External Node fetch/http/https/net/tls blocked and probe verified. TypeScript: **exit 0**. Changed-source lint: **exit 0**. The first isolated lint attempt failed exclusively on CRLF endings introduced by Windows export; the four files matched Git blobs after newline normalization, were replaced by exact committed LF blobs, and only lint was repeated. No application source repair or broad test rerun followed. Whitespace check passed. Local build artifacts are not deployment.
 
-[Desktop](desktop-viewport.png), [mobile](mobile-viewport.png), [full desktop](desktop.png), [full mobile](mobile.png). Viewport and full screenshots were visually inspected. Unaffected PR190 workspace and PR189 export evidence is reused only with its original source/runtime attribution.
+[Desktop](desktop-viewport.png), [mobile](mobile-viewport.png), [full desktop](desktop.png), [full mobile](mobile.png). Desktop/mobile viewport and full mobile screenshots were visually inspected. Unaffected PR190 workspace and PR189 export evidence is reused only with its original source/runtime attribution.
 
 ## Reproduce without production
 
