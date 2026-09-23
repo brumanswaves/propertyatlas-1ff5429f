@@ -1,5 +1,16 @@
 # Easy Erf Current State
 
+## Selected-property source tranche, 2026-09-22
+
+Section A of corrected package comment 5786992038 is implemented on `codex/selected-property-workspace`, based on main `5026ba639ba19bc2b9b9fec6f41301e18c5d4be9`. Tested source: `98684f4783a00d9838d6ff4a9da945fa04ba7298`. The new draft PR is for independent review only.
+
+The map's deliberate account/parcel selection now owns workspace hydration, restore, queued saves, flush and Site Potential reconciliation. Global root hydration is removed. Synthetic nine-property fixtures verify exact filters, untouched other records/drafts, stale-response and save cancellation, conflict preservation and save/reload. All 35 focused browser cases, 43 related regressions, TypeScript, changed-source lint and isolated production-mode build passed. These are local source checks, not production acceptance.
+
+The separate My Properties dashboard still reads account-wide `user_data` for its list summaries. This is explicitly outside the map/report lifecycle proof and needs a separately scoped metadata-query/summary adaptation if the no-body-without-selection rule is extended across every route. No dashboard redesign or backend change was made.
+
+[Evidence, exact source, request counts, preservation hashes, limits and reproduction](reviews/selected-property-workspace/README.md). Existing #189 report/export and run-16 evidence retains its original attribution. No release or production action; additional discretionary spend $0.
+
+
 _Last reconciled: 2026-09-09_
 
 ## Source continuation checkpoint, 2026-09-20

@@ -1,0 +1,34 @@
+[
+  {
+    "name": "focused",
+    "command": "node node_modules/vitest/vitest.mjs run src/lib/workbench/__tests__/savedPropertyUserData.test.ts src/lib/workbench/__tests__/savedInvestigationProjection.test.ts src/lib/workbench/__tests__/propertyOverviewEntry.test.ts src/lib/workbench/__tests__/propertyJourneyHistory.test.ts src/lib/workbench/__tests__/investigationSyncBaseline.test.ts src/lib/sitePotential/__tests__/sitePotentialSnapshotSync.test.ts src/lib/__tests__/myInvestigationsGuardrails.test.ts",
+    "source": "98684f4783a00d9838d6ff4a9da945fa04ba7298",
+    "startedAt": "2026-09-23T03:53:49.096Z",
+    "endedAt": "2026-09-23T03:53:50.633Z",
+    "exitCode": 0
+  },
+  {
+    "name": "lint",
+    "command": "node node_modules/eslint/bin/eslint.js src/components/workbench/WorkspaceCloudSync.tsx src/lib/workbench/workspaceRequestScope.ts src/lib/workbench/savedPropertyUserData.ts src/lib/sitePotential/sitePotentialService.ts src/lib/workbench/erfFileVault.ts src/routes/index.tsx src/routes/__root.tsx src/lib/__tests__/myInvestigationsGuardrails.test.ts",
+    "source": "98684f4783a00d9838d6ff4a9da945fa04ba7298",
+    "startedAt": "2026-09-23T03:53:49.087Z",
+    "endedAt": "2026-09-23T03:53:52.468Z",
+    "exitCode": 0
+  },
+  {
+    "name": "typecheck",
+    "command": "node node_modules/typescript/bin/tsc --noEmit --pretty false",
+    "source": "98684f4783a00d9838d6ff4a9da945fa04ba7298",
+    "startedAt": "2026-09-23T03:53:49.080Z",
+    "endedAt": "2026-09-23T03:54:09.051Z",
+    "exitCode": 0
+  },
+  {
+    "name": "browser",
+    "command": "node scripts/verify-workspace-scope.mjs",
+    "source": "98684f4783a00d9838d6ff4a9da945fa04ba7298",
+    "startedAt": "2026-09-23T03:53:49.070Z",
+    "endedAt": "2026-09-23T03:55:07.532Z",
+    "exitCode": 0
+  }
+]

@@ -38,9 +38,16 @@ import {
 import type { PropertySearchResult } from "@/lib/search/propertySearch";
 import type { AddressMapTarget } from "@/components/map/SearchBar";
 import { useAuth } from "@/lib/auth/useAuth";
-import { readPropertyJourneyLocation, writePropertyJourneyLocation } from "@/lib/workbench/propertyJourneyHistory";
+import {
+  readPropertyJourneyLocation,
+  writePropertyJourneyLocation,
+} from "@/lib/workbench/propertyJourneyHistory";
 import { resolvePropertyEntryTab } from "@/lib/workbench/propertyOverviewEntry";
-import { hasParcelBoundary, loadSelectedParcelBoundary } from "@/lib/parcels/selectedParcelBoundary";
+import {
+  hasParcelBoundary,
+  loadSelectedParcelBoundary,
+} from "@/lib/parcels/selectedParcelBoundary";
+import { WorkspaceCloudSync } from "@/components/workbench/WorkspaceCloudSync";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -109,8 +116,14 @@ function geometryBounds(geometry: Geometry | null): [number, number, number, num
 }
 
 function AtlasHome() {
-  const { user } = useAuth();
-  const userId = user?.id ?? null;
+  const { user, loading } = useAuth();
+  if (loading) return <div role="status">Loading your property workspace…</div>;
+  // Retained map state from another account is not deliberate selection.
+  // Remount also invalidates pending map callbacks and selection lifetimes.
+  return <AccountPropertyMap key={user?.id ?? "signed-out"} userId={user?.id ?? null} />;
+}
+
+function AccountPropertyMap({ userId }: { userId: string | null }) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [selectedOfficial, setSelectedOfficial] = useState<OfficialFeatureSelection | null>(null);
   useEffect(() => {
@@ -119,7 +132,7 @@ function AtlasHome() {
       setSelectedOfficial(location?.selection ?? null);
       setSelectedId(null);
     };
-    if (readPropertyJourneyLocation(userId)) restore();
+    restore();
     window.addEventListener("popstate", restore);
     return () => window.removeEventListener("popstate", restore);
   }, [userId]);
@@ -127,19 +140,28 @@ function AtlasHome() {
     if (!selectedOfficial || hasParcelBoundary(selectedOfficial.geometry)) return;
     let active = true;
     const selection = selectedOfficial;
-    if (readPropertyJourneyLocation(userId)?.parcelId !== buildSelectedOfficialParcelId(selection)) return;
+    if (readPropertyJourneyLocation(userId)?.parcelId !== buildSelectedOfficialParcelId(selection))
+      return;
     void loadSelectedParcelBoundary(selection).then((geometry) => {
       if (!active || !geometry) return;
       const hydrated = { ...selection, geometry };
-      setSelectedOfficial((current) => current === selection ? hydrated : current);
+      setSelectedOfficial((current) => (current === selection ? hydrated : current));
       // Enrich only the current entry, retaining Guided position and router state.
       const location = readPropertyJourneyLocation(userId);
-      if (location?.parcelId === buildSelectedOfficialParcelId(selection) &&
-          location.selection && !hasParcelBoundary(location.selection.geometry)) {
-        writePropertyJourneyLocation({ ...location, selection: { ...location.selection, geometry } }, true);
+      if (
+        location?.parcelId === buildSelectedOfficialParcelId(selection) &&
+        location.selection &&
+        !hasParcelBoundary(location.selection.geometry)
+      ) {
+        writePropertyJourneyLocation(
+          { ...location, selection: { ...location.selection, geometry } },
+          true,
+        );
       }
     });
-    return () => { active = false; };
+    return () => {
+      active = false;
+    };
   }, [selectedOfficial, userId]);
   const [requestedOfficialParcel, setRequestedOfficialParcel] =
     useState<OfficialParcelReopenRequest | null>(null);
@@ -223,8 +245,13 @@ function AtlasHome() {
   const handleOfficialSelect = useCallback(
     (sel: OfficialFeatureSelection | null) => {
       setSelectedOfficial(sel);
-      writePropertyJourneyLocation({ userId, selection: sel, parcelId: sel ? buildSelectedOfficialParcelId(sel) : null,
-        tab: sel ? resolvePropertyEntryTab(window.location.search) : "overview", stepId: null });
+      writePropertyJourneyLocation({
+        userId,
+        selection: sel,
+        parcelId: sel ? buildSelectedOfficialParcelId(sel) : null,
+        tab: sel ? resolvePropertyEntryTab(window.location.search) : "overview",
+        stepId: null,
+      });
       if (sel) {
         setSelectedId(null);
         setSearchHighlight(null);
@@ -283,7 +310,10 @@ function AtlasHome() {
         source: parcel.sourceLabel as OfficialFeatureSelection["source"],
         layer: parcel.layer as OfficialFeatureSelection["layer"],
         properties: parcel.properties,
-        geometry: parcel.geometry ?? officialParcelIndex.find((loaded) => loaded.id === parcel.id)?.geometry ?? null,
+        geometry:
+          parcel.geometry ??
+          officialParcelIndex.find((loaded) => loaded.id === parcel.id)?.geometry ??
+          null,
         lngLat,
       });
 
@@ -343,6 +373,10 @@ function AtlasHome() {
 
   return (
     <div className="relative h-screen w-full overflow-hidden bg-background">
+      <WorkspaceCloudSync
+        userId={userId}
+        parcelId={selectedOfficial ? buildSelectedOfficialParcelId(selectedOfficial) : selectedId}
+      />
       <h1 className="sr-only">{BRAND.site} - Map-based property intelligence for South Africa</h1>
       <MapCanvas
         selectedId={selectedId}
@@ -365,10 +399,14 @@ function AtlasHome() {
         onSearchHighlightStatus={setSearchHighlightStatus}
       />
       <TopNav
-        signInHref={`/auth?redirect=${encodeURIComponent(buildSavedParcelMapHref(
-          selectedOfficial ? buildSelectedOfficialParcelId(selectedOfficial) : selectedId,
-          selectedOfficial ? { lng: selectedOfficial.lngLat[0], lat: selectedOfficial.lngLat[1], zoom: 18 } : {},
-        ))}`}
+        signInHref={`/auth?redirect=${encodeURIComponent(
+          buildSavedParcelMapHref(
+            selectedOfficial ? buildSelectedOfficialParcelId(selectedOfficial) : selectedId,
+            selectedOfficial
+              ? { lng: selectedOfficial.lngLat[0], lat: selectedOfficial.lngLat[1], zoom: 18 }
+              : {},
+          ),
+        )}`}
         onLogoClick={handleLogoHomeClick}
         center={
           <SearchBar
@@ -577,26 +615,27 @@ function AtlasHome() {
       {showHomeMapStatusCard && (
         <div className="pointer-events-none absolute bottom-16 left-4 z-20 hidden max-w-md md:block">
           <div className="rounded-2xl border border-white/10 bg-[#06152A]/85 px-4 py-3 text-[11px] font-medium text-white/75 shadow-[0_18px_50px_-20px_rgba(0,0,0,0.85),0_0_0_1px_rgba(255,106,0,0.05),0_0_40px_-10px_rgba(255,106,0,0.25)] backdrop-blur-xl">
-          {demoMode ? (
-            <>
-              <div className="mb-1 text-[10px] font-bold uppercase tracking-[0.14em] text-[#FF8A33]">
-                Demo Data
-              </div>
-              <div className="text-white/80">
-                Pilot region · St Francis Bay. Mock property information shown for demonstration.
-              </div>
-            </>
-          ) : (
-            <>
-              <div className="mb-1 text-[10px] font-bold uppercase tracking-[0.14em] text-[#FF8A33]">
-                Official Public Data
-              </div>
-              <div className="text-white/80">
-                Chief Surveyor-General cadastral · Kouga Municipality zoning. Pilot — St Francis Bay.
-              </div>
-            </>
-          )}
-        </div>
+            {demoMode ? (
+              <>
+                <div className="mb-1 text-[10px] font-bold uppercase tracking-[0.14em] text-[#FF8A33]">
+                  Demo Data
+                </div>
+                <div className="text-white/80">
+                  Pilot region · St Francis Bay. Mock property information shown for demonstration.
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="mb-1 text-[10px] font-bold uppercase tracking-[0.14em] text-[#FF8A33]">
+                  Official Public Data
+                </div>
+                <div className="text-white/80">
+                  Chief Surveyor-General cadastral · Kouga Municipality zoning. Pilot — St Francis
+                  Bay.
+                </div>
+              </>
+            )}
+          </div>
         </div>
       )}
 

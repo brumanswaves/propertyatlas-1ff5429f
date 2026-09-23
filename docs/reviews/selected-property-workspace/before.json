@@ -1,0 +1,25 @@
+{
+  "source": "5026ba639ba19bc2b9b9fec6f41301e18c5d4be9",
+  "selection": null,
+  "requests": [
+    {
+      "table": "saved_properties",
+      "query": {
+        "select": "parcel_id,user_data",
+        "user_id": "eq.synthetic-owner-A"
+      },
+      "returned": [
+        "synthetic-parcel-1",
+        "synthetic-parcel-2",
+        "synthetic-parcel-3",
+        "synthetic-parcel-4",
+        "synthetic-parcel-5",
+        "synthetic-parcel-6",
+        "synthetic-parcel-7",
+        "synthetic-parcel-8",
+        "synthetic-parcel-9"
+      ],
+      "method": "GET"
+    }
+  ]
+}

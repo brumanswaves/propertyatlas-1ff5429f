@@ -44,10 +44,13 @@ describe("My Investigations guardrails", () => {
     expect(projection).toContain("workspaceUpdatedAt");
   });
 
-  it("mounts workspace cloud sync without replacing the route outlet", () => {
+  it("mounts workspace sync only at the selected property owner", () => {
     const root = source("src/routes/__root.tsx");
 
-    expect(root).toContain("<WorkspaceCloudSync />");
+    expect(root).not.toContain("WorkspaceCloudSync");
+    const map = source("src/routes/index.tsx");
+    expect(map.replace(/\s+/g, " ")).toContain("<WorkspaceCloudSync userId={userId} parcelId=");
+    expect(map).toContain('key={user?.id ?? "signed-out"}');
     expect(root).toContain("<Outlet />");
   });
 });
