@@ -488,6 +488,14 @@ export function SatelliteParcelMap({
     return (
       <div className={cn("relative", className)} data-satellite-context="unavailable">
         <BuildEnvelopeDiagram result={result} />
+        {selectableEdges && hasGeometry ? <div aria-label="Select street-facing boundaries" className="mt-3 flex flex-wrap gap-2">
+          {result.parcelPolygon.map((_, index) => <button key={index} type="button"
+            aria-pressed={confirmedStreetEdgeIndexes.includes(index)}
+            onClick={() => onEdgeSelect?.(index)}
+            className={cn("min-h-11 rounded-lg border px-3 py-2 text-sm", confirmedStreetEdgeIndexes.includes(index) ? "border-orange-500 bg-orange-50" : "border-slate-300 bg-white")}>
+            Boundary {index + 1}{suggestedStreetEdgeIndex === index ? " (suggested)" : ""}
+          </button>)}
+        </div> : null}
         {fallbackNotice ? (
           <p className="mt-2 text-xs leading-5 text-[#64748B]">{fallbackNotice}</p>
         ) : null}

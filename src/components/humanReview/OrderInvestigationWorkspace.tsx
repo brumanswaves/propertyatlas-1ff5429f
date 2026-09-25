@@ -28,6 +28,7 @@ import { HUMAN_ONLY_REVIEW_MODEL, investigationReviewVersionSchema, type Investi
 import { validateInvestigationBrief } from "../../../supabase/functions/_shared/investigationBrief";
 import { SharedInvestigationReport } from "./SharedInvestigationReport";
 import { HumanOnlyReviewEditor } from "./HumanOnlyReviewEditor";
+import { assertSharedGeometryReadback, type RecoveredParcelGeometry } from "@/lib/investigation/sharedParcelGeometry";
 
 const button = "inline-flex min-h-11 items-center gap-2 rounded-md border border-border px-3 py-2 text-sm font-semibold disabled:opacity-50";
 
@@ -80,16 +81,19 @@ function ScopedOrderWorkspace({ orderId, actorId, onApproved }: { orderId: strin
     setSelectedStep(journey[index + 1]?.id ?? "report");
   }
 
-  async function mutate<T>(action: (current: OrderInvestigation, signal: AbortSignal) => Promise<T>): Promise<T> {
+  async function mutate<T>(action: (current: OrderInvestigation, signal: AbortSignal) => Promise<T>, verify?: (before: OrderInvestigation, after: OrderInvestigation) => void): Promise<T> {
     if (mutation.current || !currentScope.current?.canWork) throw new Error("This investigation is not available for another save yet.");
     mutation.current = true; setBusy(true); setError(null);
     const controller = new AbortController(); request.current = controller;
     try {
       const { data } = await supabase.auth.getSession();
       if (!mounted.current || data.session?.user.id !== actorId) throw new Error("The active account changed. Reload the investigation.");
-      const result = await action(currentScope.current, controller.signal);
+      const before = currentScope.current;
+      const result = await action(before, controller.signal);
       const next = await readOrderInvestigation(orderId, controller.signal);
       if (!mounted.current || controller.signal.aborted) throw new Error("The investigation was closed.");
+      if (next.orderId !== before.orderId || next.customerId !== before.customerId || next.parcelId !== before.parcelId) throw new Error("The returned investigation identity changed.");
+      verify?.(before, next);
       currentScope.current = next; setScope(next);
       setVersion((saved) => saved ? { ...saved, currentEvidenceRevision: next.revision } : null);
       return result;
@@ -105,7 +109,8 @@ function ScopedOrderWorkspace({ orderId, actorId, onApproved }: { orderId: strin
     snapshot: scope, busy, refresh: reload,
     save: async (patch) => { await mutate(async (current, signal) => {
       await patchOrderInvestigation(orderId, current.revision, normalizeInvestigationPatch(current.parcelId, patch), signal);
-    }); },
+    }, typeof patch === "object" && patch !== null && !Array.isArray(patch) && patch.parcelRing && patch.normalizedParcel
+      ? (before, after) => assertSharedGeometryReadback(before, after, patch as unknown as RecoveredParcelGeometry) : undefined); },
     files: {
       upload: async (input) => mutate(async (current, signal) => {
         const result = await uploadInvestigationAsset({ orderId, revision: current.revision, category: input.category,
@@ -266,7 +271,7 @@ function InvestigationWorkEditor({ value, assets, disabled, onSave }: {
       <fieldset disabled={disabled} className="grid gap-3 sm:grid-cols-2">
         <label className="text-sm">Investigation section<select className="mt-1 min-h-11 w-full rounded-md border border-border p-2" value={itemId}
           onChange={(event) => { setItemId(event.target.value); setDraft(existing.find((item) => item.id === event.target.value) ?? empty); }}>
-          {DONE_FOR_YOU_INVESTIGATION_CHECKLIST_ITEMS.filter((item) => item.id !== "reviewed_report").map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}
+          {DONE_FOR_YOU_INVESTIGATION_CHECKLIST_ITEMS.filter((item) => item.id !== "reviewed_report").map((item) => <option key={item.id} value={item.id}>{item.id === "property_checks" ? "Property checks - complete the standard Easy Erf checks and surface conflicts or missing evidence" : item.label}</option>)}
         </select></label>
         <label className="text-sm">Recorded outcome<select className="mt-1 min-h-11 w-full rounded-md border border-border p-2" value={draft.disposition}
           onChange={(event) => { const parsed = investigationAttemptSchema.shape.disposition.parse(event.target.value); setDraft({ ...draft, disposition: parsed }); }}>

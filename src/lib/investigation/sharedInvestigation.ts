@@ -6,6 +6,7 @@ import { parseEvidence } from "@/features/marketEvidence/hooks/useSavedMarketEvi
 import { parseMarketAddressIntelligence } from "@/features/marketEvidence/addressIntelligence";
 import { buildPropertyEvidencePack } from "@/lib/evidence/buildPropertyEvidencePack";
 import { canonicalAreaM2 } from "@/lib/evidence/parcelArea";
+import { isValidParcelRing } from "@/lib/sitePotential/parcelRing";
 import { erfAssetExtractedText, erfAssetHasSearchableExtraction, erfAssetIdentityMatchStatus } from "@/lib/evidence/extractionMetadata";
 import { buildParcelPlanningAssessment } from "@/lib/planning/parcelPlanningAssessment";
 import { derivePlanningEvidenceSignals } from "@/lib/planning/planningEvidenceSignals";
@@ -117,8 +118,7 @@ export function assembleInvestigation(snapshot: InvestigationSnapshot, now = new
   const registry = findMunicipalityPlanningRegistry(parcel.municipality);
   const zone = registry ? findZone(registry, workspaceState.planning.zoneCode) : null;
   const documentZone = zone ? assets.find((asset) => isUsableSubjectZoningDocument(asset, zone)) : null;
-  const ringResult = z.array(z.tuple([z.number().finite(), z.number().finite()])).min(3).safeParse(snapshot.userData.parcelRing);
-  const ring = ringResult.success ? ringResult.data : null;
+  const ring = isValidParcelRing(snapshot.userData.parcelRing) ? snapshot.userData.parcelRing : null;
   const planning = buildParcelPlanningAssessment({
     parcelId: parcel.id, municipality: parcel.municipality ?? null,
     locationHints: [parcel.suburbOrArea, parcel.town, parcel.municipality], erfAreaM2: canonicalAreaM2(parcel.rawProperties),

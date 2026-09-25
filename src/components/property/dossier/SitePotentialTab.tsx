@@ -18,6 +18,7 @@ import { useErfFileVault } from "@/lib/workbench/useErfFileVault";
 import { useSharedInvestigationScope } from "@/lib/investigation/sharedInvestigationContext";
 import { flushSavedInvestigation } from "@/lib/workbench/savedInvestigationProjection";
 import type { ErfWorkspaceState, SitePotentialSnapshot } from "@/lib/workbench/erfWorkspaceState";
+import { useSharedParcelGeometry } from "@/lib/investigation/useSharedParcelGeometry";
 
 export interface SitePotentialTabProps {
   parcel: NormalizedOfficialParcel;
@@ -35,8 +36,15 @@ export interface SitePotentialTabProps {
   };
 }
 
-export function SitePotentialTab({
-  parcel,
+export function SitePotentialTab(props: SitePotentialTabProps) {
+  const { user } = useAuth();
+  const shared = useSharedInvestigationScope(props.parcel.id);
+  const binding = shared ? `${user?.id}:${shared.snapshot.customerId}:${shared.snapshot.orderId}:${shared.snapshot.parcelId}` : null;
+  return <ScopedSitePotentialTab key={binding ?? `${user?.id}:${props.parcel.id}`} {...props} binding={binding} />;
+}
+
+function ScopedSitePotentialTab({
+  parcel: savedParcel,
   parcelRing = null,
   recordedAreaM2 = null,
   workspaceState,
@@ -44,7 +52,11 @@ export function SitePotentialTab({
   onExploreReport,
   onOpenTab,
   guidedReturn,
-}: SitePotentialTabProps) {
+  binding,
+}: SitePotentialTabProps & { binding: string | null }) {
+  const recovery = useSharedParcelGeometry(savedParcel, parcelRing, binding);
+  const parcel = recovery.candidate?.normalizedParcel ?? savedParcel;
+  const effectiveRing = recovery.candidate?.parcelRing ?? parcelRing;
   const { user } = useAuth();
   const userId = user?.id ?? null;
   const shared = useSharedInvestigationScope(parcel.id);
@@ -184,7 +196,9 @@ export function SitePotentialTab({
       <VacantLandBuildEnvelope
         parcelId={parcel.id}
         parcelLabel={parcel.erfNumber ? `Erf ${parcel.erfNumber}` : "this erf"}
-        ring={parcelRing}
+        ring={effectiveRing}
+        recoveredGeometry={recovery.candidate}
+        geometryLoading={recovery.loading}
         recordedAreaM2={recordedAreaM2}
         zoneLabel={planningAssessment.zone?.name ?? null}
         assessment={planningAssessment}

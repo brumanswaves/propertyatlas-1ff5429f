@@ -32,6 +32,8 @@ import { SatelliteParcelMap } from "./SatelliteParcelMap";
 import { BuildEnvelopeDiagram } from "./BuildEnvelopeDiagram";
 import { buildSitePotentialRulePrefill } from "@/lib/sitePotential/planningRuleAdapter";
 import type { ParcelPlanningAssessment } from "@/lib/planning/municipalityPlanningTypes";
+import { isValidParcelRing } from "@/lib/sitePotential/parcelRing";
+import type { RecoveredParcelGeometry } from "@/lib/investigation/sharedParcelGeometry";
 
 export interface VacantLandBuildEnvelopeProps {
   parcelId: string;
@@ -52,6 +54,8 @@ export interface VacantLandBuildEnvelopeProps {
   /** Canonical LPI code, used to match a property-specific pilot record. */
   lpiCode?: string | null;
   onOpenTab?: (tab: string) => void;
+  recoveredGeometry?: RecoveredParcelGeometry | null;
+  geometryLoading?: boolean;
 }
 
 const STATE_TONE: Record<BuildEnvelopeResult["state"], string> = {
@@ -88,7 +92,7 @@ function numberOrNull(value: string): number | null {
 export function VacantLandBuildEnvelope({
   parcelId,
   parcelLabel,
-  ring,
+  ring: suppliedRing,
   recordedAreaM2,
   zoneLabel = null,
   onResultChange,
@@ -97,7 +101,10 @@ export function VacantLandBuildEnvelope({
   documentRuleEvidence = false,
   lpiCode = null,
   onOpenTab,
+  recoveredGeometry = null,
+  geometryLoading = false,
 }: VacantLandBuildEnvelopeProps) {
+  const ring = isValidParcelRing(suppliedRing) ? suppliedRing : null;
   const { user } = useAuth();
   const userId = user?.id ?? null;
   const shared = useSharedInvestigationScope(parcelId);
@@ -219,7 +226,7 @@ export function VacantLandBuildEnvelope({
     if (!shared) return;
     setSaveError(null);
     try {
-      await shared.save(toSupabaseJson({ buildEnvelopeInputs: next }));
+      await shared.save(toSupabaseJson({ ...recoveredGeometry, buildEnvelopeInputs: next }));
       setOverrides(next);
       setUnsaved(false);
     } catch (failure) {
@@ -293,11 +300,11 @@ export function VacantLandBuildEnvelope({
   return (
     <section className="rounded-[1.5rem] border border-[#0D1B2A]/10 bg-white p-6">
       {shared && <div className="mb-4 flex flex-wrap items-center gap-3">
-        <button type="button" disabled={shared.busy || !unsaved} onClick={() => void saveSharedInputs(overrides)}
+        <button type="button" disabled={shared.busy || (!unsaved && !recoveredGeometry)} onClick={() => void saveSharedInputs(overrides)}
           className="inline-flex min-h-11 items-center gap-2 rounded-md border border-border px-3 py-2 text-sm disabled:opacity-50">
           <Save className="h-4 w-4" /> Save site inputs
         </button>
-        <p role="status" className="text-sm">{unsaved ? "Unsaved site inputs" : "Saved customer site inputs"}</p>
+        <p role="status" className="text-sm">{recoveredGeometry ? "Public parcel boundary recovered; save site inputs to retain it in this investigation." : unsaved ? "Unsaved site inputs" : "Saved customer site inputs"}</p>
         {saveError && <p role="alert" className="text-sm text-destructive">{saveError}</p>}
       </div>}
       <header className="flex flex-wrap items-start justify-between gap-3">
@@ -358,7 +365,7 @@ export function VacantLandBuildEnvelope({
       </section>
 
       <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1.45fr)_minmax(0,1fr)]">
-        <SatelliteParcelMap
+        {ring ? <SatelliteParcelMap
           ring={ring}
           result={result}
           onRoadsDetected={setRoads}
@@ -366,7 +373,11 @@ export function VacantLandBuildEnvelope({
           confirmedStreetEdgeIndexes={confirmedStreetEdgeIndexes}
           suggestedStreetEdgeIndex={streetFrontageConfirmed ? null : detection.edgeIndex}
           onEdgeSelect={toggleStreetFrontage}
-        />
+        /> : <div role="status" className="self-start rounded-2xl border border-amber-300 bg-amber-50 p-5 text-sm text-[#0D1B2A]">
+          <h4 className="font-semibold">{geometryLoading ? "Loading the exact official parcel boundary" : "Parcel boundary could not be loaded for this erf."}</h4>
+          <p className="mt-2">Site Potential cannot draw or accept a build envelope until the parcel boundary is available.</p>
+          <p className="mt-2">Build summary values remain working assumptions, not verified frontage, setbacks or municipal approval.</p>
+        </div>}
 
         <div className="rounded-2xl border border-[#0D1B2A]/10 bg-[#F7FBFF] p-4">
           <div className="flex items-center justify-between gap-2">
