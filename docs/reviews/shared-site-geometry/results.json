@@ -1,0 +1,65 @@
+{
+  "synthetic": true,
+  "results": [
+    {
+      "name": "success-desktop",
+      "passed": true,
+      "lookups": 1
+    },
+    {
+      "name": "success-mobile",
+      "passed": true,
+      "lookups": 1
+    },
+    {
+      "name": "wrong",
+      "passed": true,
+      "lookups": 1
+    },
+    {
+      "name": "ambiguous",
+      "passed": true,
+      "lookups": 1
+    },
+    {
+      "name": "malformed",
+      "passed": true,
+      "lookups": 1
+    },
+    {
+      "name": "failure",
+      "passed": true,
+      "lookups": 1
+    },
+    {
+      "name": "timeout",
+      "passed": true,
+      "lookups": 1
+    },
+    {
+      "name": "failure-mobile",
+      "passed": true,
+      "lookups": 1
+    },
+    {
+      "name": "existing-ring",
+      "passed": true,
+      "lookups": 0
+    },
+    {
+      "name": "revision-conflict",
+      "passed": true,
+      "lookups": 1
+    },
+    {
+      "name": "readback-mismatch",
+      "passed": true,
+      "lookups": 1
+    },
+    {
+      "name": "delayed-A-B-A",
+      "passed": true,
+      "lookups": 3
+    }
+  ]
+}

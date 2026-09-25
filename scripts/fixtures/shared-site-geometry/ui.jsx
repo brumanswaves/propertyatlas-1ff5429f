@@ -1,0 +1,11 @@
+export const useOperationsAccess = () => ({ isAdmin: false });
+export const ConfirmPropertyStep = () => null;
+export const AddAddressStep = () => null;
+export const GuidedSgDiagramStep = () => null;
+export const GuidedTitleStep = () => null;
+export const GuidedPropertyChecksStep = () => null;
+export const GuidedZoningStep = () => null;
+export const MarketEvidenceTab = () => null;
+export const StrategyLab = () => null;
+export const SharedInvestigationReport = () => null;
+export const HumanOnlyReviewEditor = () => null;

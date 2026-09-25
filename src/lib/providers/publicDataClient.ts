@@ -217,7 +217,8 @@ async function fetchWithTimeout(url: string, options: RequestInit = {}, timeoutM
   const controller = new AbortController();
   const timeout = window.setTimeout(() => controller.abort(), timeoutMs);
   try {
-    return await fetch(url, { ...options, signal: controller.signal });
+    return await fetch(url, { ...options, signal: options.signal
+      ? AbortSignal.any([options.signal, controller.signal]) : controller.signal });
   } finally {
     window.clearTimeout(timeout);
   }
@@ -598,11 +599,15 @@ export async function loadOfficialPublicLayer(
 
 export async function searchOfficialPublicParcelsByIdentity(
   input: PublicParcelIdentitySearchInput,
+  options: { signal?: AbortSignal; singleAttempt?: boolean } = {},
 ): Promise<PublicDataResult> {
   const layer: PublicLayerId = "csg-parcels";
   const attempts: PublicDataAttempt[] = [];
-  for (const endpoint of PUBLIC_LAYER_CONFIG[layer].endpoints) {
-    for (const format of ["geojson", "json"] as const) {
+  const endpoints = options.singleAttempt ? PUBLIC_LAYER_CONFIG[layer].endpoints.slice(0, 1) : PUBLIC_LAYER_CONFIG[layer].endpoints;
+  const formats = options.singleAttempt ? ["geojson"] as const : ["geojson", "json"] as const;
+  for (const endpoint of endpoints) {
+    for (const format of formats) {
+      if (options.signal?.aborted) throw new DOMException("Geometry lookup cancelled", "AbortError");
       const requestUrl = buildArcGisIdentitySearchUrl(endpoint, input, format);
       if (!requestUrl) {
         return emptyResult(
@@ -615,6 +620,7 @@ export async function searchOfficialPublicParcelsByIdentity(
         const res = await fetchWithTimeout(
           requestUrl,
           {
+            signal: options.signal,
             headers: {
               Accept:
                 format === "geojson" ? "application/geo+json,application/json" : "application/json",

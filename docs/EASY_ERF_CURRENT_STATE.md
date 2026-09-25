@@ -1,5 +1,10 @@
 # Easy Erf Current State
 
+## Shared Site Potential source repair, 2026-09-25
+
+Issue #193 on `codex/193-shared-site-geometry`, based on main `c4e20d3e55b8ac81c48dc798c155219f8c42ae6d`, recovers exact public parcel geometry as read-only candidate context and persists it only with explicit guarded Site Potential save and identity-bound readback. Failed recovery is explicit, legacy status cannot establish acceptance, and the Property checks dropdown label is discoverable. Full local suite (1,786 tests), TypeScript, semantic changed-source lint, normal non-deploying build and 12 isolated browser cases passed. Formatting-enabled lint remains unclean as detailed in the receipt. This is source proof only; no new production inspection or release. [Evidence, screenshots and limitations](reviews/shared-site-geometry/README.md).
+
+
 ## Dashboard metadata source tranche, 2026-09-23
 
 Issue #191 is implemented on `codex/dashboard-metadata`, based on merged PR #190 main `a28db850cf07b30f3192f235af41b79557eefdc8`. Tested source `877ceafc97afa084309133182fd3deb5f3ce4242`. The dashboard now requests explicit display/progress scalar leaves and narrow note metadata; Market detail opens only after deliberate property selection. Missing data remains unknown, pagination is bounded and honest, and account lifetimes reject stale results. Browser drafts are preserved without reading their bodies for list summaries.

@@ -1,5 +1,6 @@
 import type { BuildEnvelopeInputs, BuildEnvelopeResult } from "@/lib/sitePotential/buildEnvelope";
 import type { StoredBuildEnvelopeOverrides } from "@/lib/sitePotential/buildEnvelopeStore";
+import { isValidParcelRing } from "./parcelRing";
 
 export interface BuildEnvelopeAcceptanceState {
   signature: string;
@@ -70,6 +71,7 @@ export function buildEnvelopeAcceptanceState(input: {
 }): BuildEnvelopeAcceptanceState {
   const signature = buildEnvelopeAcceptanceSignature(input.inputs, input.stored);
   const eligible =
+    isValidParcelRing(input.inputs.ring) &&
     input.inputs.boundaryConfirmed &&
     input.stored?.streetFrontageConfirmedByUser === true &&
     (input.result.state === "verified" || input.result.state === "estimated") &&
