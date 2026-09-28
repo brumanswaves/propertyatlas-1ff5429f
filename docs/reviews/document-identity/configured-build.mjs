@@ -23,4 +23,3 @@ const receipt={source:execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'})
 fs.writeFileSync(`${out}/configured-build-receipt.json`,JSON.stringify(receipt,null,2));
 console.log(JSON.stringify(receipt));
 if(r.status!==0||!receipt.configurationUnchanged)process.exitCode=1;
-
