@@ -1,4 +1,3 @@
-
 > build
 > vite build
 
@@ -260,10 +259,10 @@ If this file is not intended to be a route, you can exclude it using one of thes
 Current configuration:
   routeFileIgnorePrefix: "-"
   routeFileIgnorePattern: undefined
-[plugin vite:reporter] 
+[plugin vite:reporter]
 (!)  C:/Users/bruma/.codex/visualizations/2026/06/19/019edf6d-2343-71f1-953b-5f7a498f4e4e/easy-erf-report-decision-brief/node_modules/mapbox-gl/dist/mapbox-gl.js?commonjs-es-import is dynamically imported by C:/Users/bruma/Documents/easy-erf-issue193/src/components/property/sitePotential/SatelliteParcelMap.tsx but also statically imported by C:/Users/bruma/Documents/easy-erf-issue193/src/components/map/MapCanvas.tsx, C:/Users/bruma/Documents/easy-erf-issue193/src/components/property/OfficialParcelPanel.tsx, C:/Users/bruma/Documents/easy-erf-issue193/src/components/property/dossier/ReportParcelSatelliteMap.tsx, dynamic import will not move module into another chunk.
 
-[plugin vite:reporter] 
+[plugin vite:reporter]
 (!) C:/Users/bruma/.codex/visualizations/2026/06/19/019edf6d-2343-71f1-953b-5f7a498f4e4e/easy-erf-report-decision-brief/node_modules/mapbox-gl/dist/mapbox-gl.css is dynamically imported by C:/Users/bruma/Documents/easy-erf-issue193/src/components/property/sitePotential/SatelliteParcelMap.tsx but also statically imported by C:/Users/bruma/Documents/easy-erf-issue193/src/components/map/MapCanvas.tsx, C:/Users/bruma/Documents/easy-erf-issue193/src/components/property/OfficialParcelPanel.tsx, C:/Users/bruma/Documents/easy-erf-issue193/src/components/property/dossier/ReportParcelSatelliteMap.tsx, dynamic import will not move module into another chunk.
 
 
@@ -274,7 +273,7 @@ Current configuration:
 "createRequestHandler", "defineHandlerCallback", "transformPipeableStreamWithRouter" and "transformReadableStreamWithRouter" are imported from external module "@tanstack/router-core/ssr/server" but never used in "../../.codex/visualizations/2026/06/19/019edf6d-2343-71f1-953b-5f7a498f4e4e/easy-erf-report-decision-brief/node_modules/@tanstack/start-server-core/dist/esm/index.js".
 "RawStream" is imported from external module "@tanstack/router-core" but never used in "../../.codex/visualizations/2026/06/19/019edf6d-2343-71f1-953b-5f7a498f4e4e/easy-erf-report-decision-brief/node_modules/@tanstack/start-client-core/dist/esm/index.js".
 "hydrate" and "json" are imported from external module "@tanstack/router-core/ssr/client" but never used in "../../.codex/visualizations/2026/06/19/019edf6d-2343-71f1-953b-5f7a498f4e4e/easy-erf-report-decision-brief/node_modules/@tanstack/start-client-core/dist/esm/index.js".
-[plugin vite:reporter] 
+[plugin vite:reporter]
 (!) C:/Users/bruma/.codex/visualizations/2026/06/19/019edf6d-2343-71f1-953b-5f7a498f4e4e/easy-erf-report-decision-brief/node_modules/mapbox-gl/dist/mapbox-gl.css is dynamically imported by C:/Users/bruma/Documents/easy-erf-issue193/src/components/property/sitePotential/SatelliteParcelMap.tsx but also statically imported by C:/Users/bruma/Documents/easy-erf-issue193/src/components/map/MapCanvas.tsx, C:/Users/bruma/Documents/easy-erf-issue193/src/components/property/OfficialParcelPanel.tsx, C:/Users/bruma/Documents/easy-erf-issue193/src/components/property/dossier/ReportParcelSatelliteMap.tsx, dynamic import will not move module into another chunk.
 
 Unknown input options: platform. Allowed options: cache, context, experimentalCacheExpiry, experimentalLogSideEffects, external, fs, input, jsx, logLevel, makeAbsoluteExternalsRelative, maxParallelFileOps, moduleContext, onLog, onwarn, perf, plugins, preserveEntrySignatures, preserveSymlinks, shimMissingExports, strictDeprecations, treeshake, watch
