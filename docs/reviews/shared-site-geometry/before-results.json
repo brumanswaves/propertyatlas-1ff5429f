@@ -1,0 +1,15 @@
+{
+  "synthetic": true,
+  "results": [
+    {
+      "name": "before-desktop",
+      "passed": true,
+      "lookups": 0
+    },
+    {
+      "name": "before-mobile",
+      "passed": true,
+      "lookups": 0
+    }
+  ]
+}
