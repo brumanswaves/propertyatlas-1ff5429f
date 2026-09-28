@@ -1,0 +1,9 @@
+
+ RUN  v4.1.11 C:/Users/bruma/Documents/easy-erf-issue193
+
+
+ Test Files  1 passed (1)
+      Tests  7 passed (7)
+   Start at  10:14:19
+   Duration  230ms (transform 30ms, setup 0ms, import 47ms, tests 6ms, environment 0ms)
+
