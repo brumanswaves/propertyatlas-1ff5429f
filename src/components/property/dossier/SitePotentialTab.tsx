@@ -39,8 +39,16 @@ export interface SitePotentialTabProps {
 export function SitePotentialTab(props: SitePotentialTabProps) {
   const { user } = useAuth();
   const shared = useSharedInvestigationScope(props.parcel.id);
-  const binding = shared ? `${user?.id}:${shared.snapshot.customerId}:${shared.snapshot.orderId}:${shared.snapshot.parcelId}` : null;
-  return <ScopedSitePotentialTab key={binding ?? `${user?.id}:${props.parcel.id}`} {...props} binding={binding} />;
+  const binding = shared
+    ? `${user?.id}:${shared.snapshot.customerId}:${shared.snapshot.orderId}:${shared.snapshot.parcelId}`
+    : null;
+  return (
+    <ScopedSitePotentialTab
+      key={binding ?? `${user?.id}:${props.parcel.id}`}
+      {...props}
+      binding={binding}
+    />
+  );
 }
 
 function ScopedSitePotentialTab({
@@ -61,13 +69,18 @@ function ScopedSitePotentialTab({
   const userId = user?.id ?? null;
   const shared = useSharedInvestigationScope(parcel.id);
   const isShared = Boolean(shared);
-  const operationScope = useMemo(() => ({ active: true, parcelId: parcel.id, userId }), [parcel.id, userId]);
+  const operationScope = useMemo(
+    () => ({ active: true, parcelId: parcel.id, userId }),
+    [parcel.id, userId],
+  );
   useLayoutEffect(() => {
     operationScope.active = true;
     setSaving(false);
     setSaveError(null);
     setAcceptedEnvelope(false);
-    return () => { operationScope.active = false; };
+    return () => {
+      operationScope.active = false;
+    };
   }, [operationScope]);
   const vault = useErfFileVault(parcel.id);
   const [envelopeResult, setEnvelopeResult] = useState<BuildEnvelopeResult | null>(null);
@@ -76,7 +89,9 @@ function ScopedSitePotentialTab({
   const [saveError, setSaveError] = useState<string | null>(null);
 
   const manualZoneCode = useMemo(
-    () => workspaceState.planning.zoneCode ?? (isShared ? null : readStoredPlanningZone(parcel.id, userId)),
+    () =>
+      workspaceState.planning.zoneCode ??
+      (isShared ? null : readStoredPlanningZone(parcel.id, userId)),
     [isShared, parcel.id, userId, workspaceState.planning.zoneCode],
   );
 
@@ -113,12 +128,9 @@ function ScopedSitePotentialTab({
 
   const documentRuleEvidence = planningAssessment.detection.method === "document_supported";
 
-  const handleEnvelopeResult = useCallback(
-    (result: BuildEnvelopeResult) => {
-      setEnvelopeResult(result);
-    },
-    [],
-  );
+  const handleEnvelopeResult = useCallback((result: BuildEnvelopeResult) => {
+    setEnvelopeResult(result);
+  }, []);
 
   const identityLine = useMemo(() => {
     const erf = parcel.erfNumber != null ? `Erf ${parcel.erfNumber}` : "This erf";
@@ -139,7 +151,12 @@ function ScopedSitePotentialTab({
       if (userId && !isShared) await flushSavedInvestigation(parcel.id, userId);
       if (operationScope.active) guidedReturn?.onContinue();
     } catch (failure) {
-      if (operationScope.active) setSaveError(failure instanceof Error ? failure.message : "Your inputs are retained. Retry saving before continuing.");
+      if (operationScope.active)
+        setSaveError(
+          failure instanceof Error
+            ? failure.message
+            : "Your inputs are retained. Retry saving before continuing.",
+        );
     } finally {
       if (operationScope.active) setSaving(false);
     }
@@ -183,7 +200,9 @@ function ScopedSitePotentialTab({
               ) : (
                 <FileWarning className="h-4 w-4 text-[#FF6A00]" />
               )}
-              {acceptedEnvelope ? "Build envelope accepted" : "Confirm the site inputs and accept the envelope"}
+              {acceptedEnvelope
+                ? "Build envelope accepted"
+                : "Confirm the site inputs and accept the envelope"}
             </div>
             <div className="mt-1 text-[11px] leading-5 text-[#64748B]">
               The envelope remains indicative until the underlying zoning, title conditions,
@@ -210,7 +229,11 @@ function ScopedSitePotentialTab({
       />
 
       <StreetSideBuildEnvelope result={envelopeResult} />
-      {saveError ? <p role="alert" className="text-sm text-red-700">{saveError}</p> : null}
+      {saveError ? (
+        <p role="alert" className="text-sm text-red-700">
+          {saveError}
+        </p>
+      ) : null}
 
       {guidedReturn ? (
         <section className="flex flex-col gap-3 rounded-[1.25rem] border border-[#0D1B2A]/10 bg-white p-4 sm:flex-row sm:items-center sm:justify-between">

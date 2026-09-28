@@ -48,7 +48,9 @@ export function buildEnvelopeAcceptanceSignature(
     boundaryConfirmed: inputs.boundaryConfirmed,
     streetFrontageConfirmedByUser: stored?.streetFrontageConfirmedByUser === true,
     streetEdgeIndex: inputs.streetEdgeIndex,
-    additionalStreetEdgeIndexes: [...(inputs.additionalStreetEdgeIndexes ?? [])].sort((a, b) => a - b),
+    additionalStreetEdgeIndexes: [...(inputs.additionalStreetEdgeIndexes ?? [])].sort(
+      (a, b) => a - b,
+    ),
     ruleSource: inputs.ruleSource,
     zoneLabel: normalizedText(inputs.zoneLabel),
     streetSetbackM: normalizedNumber(inputs.streetSetbackM),

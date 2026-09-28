@@ -118,15 +118,18 @@ export function VacantLandBuildEnvelope({
   const pilot = useMemo(() => findPilotPlanningRecord({ parcelId, lpiCode }), [parcelId, lpiCode]);
 
   /** Only fields the user actually touched. Never seeded from a prefill. */
-  const [overrides, setOverrides] = useState<StoredBuildEnvelopeOverrides>(
-    () => shared ? parseStoredBuildEnvelopeInputs(shared.snapshot.userData.buildEnvelopeInputs) ?? {}
-      : readStoredBuildEnvelopeInputs(parcelId, userId) ?? {},
+  const [overrides, setOverrides] = useState<StoredBuildEnvelopeOverrides>(() =>
+    shared
+      ? (parseStoredBuildEnvelopeInputs(shared.snapshot.userData.buildEnvelopeInputs) ?? {})
+      : (readStoredBuildEnvelopeInputs(parcelId, userId) ?? {}),
   );
 
   useLayoutEffect(() => {
     if (isShared) return;
     const sync = (event?: Event) => {
-      const detail = (event as CustomEvent<{ parcelId?: string; userId?: string | null }> | undefined)?.detail;
+      const detail = (
+        event as CustomEvent<{ parcelId?: string; userId?: string | null }> | undefined
+      )?.detail;
       if (event && (detail?.parcelId !== parcelId || (detail?.userId ?? null) !== userId)) return;
       setOverrides(readStoredBuildEnvelopeInputs(parcelId, userId) ?? {});
     };
@@ -209,14 +212,16 @@ export function VacantLandBuildEnvelope({
 
   const patch = useCallback(
     (next: StoredBuildEnvelopeOverrides) => {
-        const current = isShared ? overrides : readStoredBuildEnvelopeInputs(parcelId, userId) ?? overrides;
-        const merged = { ...current, ...next };
-        if (!Object.prototype.hasOwnProperty.call(next, "acceptedInputSignature")) {
-          delete merged.acceptedInputSignature;
-          delete merged.acceptedAt;
-        }
-        if (!isShared) writeStoredBuildEnvelopeInputs(parcelId, merged, userId);
-        setOverrides(merged);
+      const current = isShared
+        ? overrides
+        : (readStoredBuildEnvelopeInputs(parcelId, userId) ?? overrides);
+      const merged = { ...current, ...next };
+      if (!Object.prototype.hasOwnProperty.call(next, "acceptedInputSignature")) {
+        delete merged.acceptedInputSignature;
+        delete merged.acceptedAt;
+      }
+      if (!isShared) writeStoredBuildEnvelopeInputs(parcelId, merged, userId);
+      setOverrides(merged);
       if (isShared) setUnsaved(true);
     },
     [isShared, overrides, parcelId, userId],
@@ -230,7 +235,9 @@ export function VacantLandBuildEnvelope({
       setOverrides(next);
       setUnsaved(false);
     } catch (failure) {
-      setSaveError(failure instanceof Error ? failure.message : "The site inputs could not be saved.");
+      setSaveError(
+        failure instanceof Error ? failure.message : "The site inputs could not be saved.",
+      );
     }
   }
 
@@ -299,14 +306,30 @@ export function VacantLandBuildEnvelope({
 
   return (
     <section className="rounded-[1.5rem] border border-[#0D1B2A]/10 bg-white p-6">
-      {shared && <div className="mb-4 flex flex-wrap items-center gap-3">
-        <button type="button" disabled={shared.busy || (!unsaved && !recoveredGeometry)} onClick={() => void saveSharedInputs(overrides)}
-          className="inline-flex min-h-11 items-center gap-2 rounded-md border border-border px-3 py-2 text-sm disabled:opacity-50">
-          <Save className="h-4 w-4" /> Save site inputs
-        </button>
-        <p role="status" className="text-sm">{recoveredGeometry ? "Public parcel boundary recovered; save site inputs to retain it in this investigation." : unsaved ? "Unsaved site inputs" : "Saved customer site inputs"}</p>
-        {saveError && <p role="alert" className="text-sm text-destructive">{saveError}</p>}
-      </div>}
+      {shared && (
+        <div className="mb-4 flex flex-wrap items-center gap-3">
+          <button
+            type="button"
+            disabled={shared.busy || (!unsaved && !recoveredGeometry)}
+            onClick={() => void saveSharedInputs(overrides)}
+            className="inline-flex min-h-11 items-center gap-2 rounded-md border border-border px-3 py-2 text-sm disabled:opacity-50"
+          >
+            <Save className="h-4 w-4" /> Save site inputs
+          </button>
+          <p role="status" className="text-sm">
+            {recoveredGeometry
+              ? "Public parcel boundary recovered; save site inputs to retain it in this investigation."
+              : unsaved
+                ? "Unsaved site inputs"
+                : "Saved customer site inputs"}
+          </p>
+          {saveError && (
+            <p role="alert" className="text-sm text-destructive">
+              {saveError}
+            </p>
+          )}
+        </div>
+      )}
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#FF6A00]">
@@ -365,19 +388,36 @@ export function VacantLandBuildEnvelope({
       </section>
 
       <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1.45fr)_minmax(0,1fr)]">
-        {ring ? <SatelliteParcelMap
-          ring={ring}
-          result={result}
-          onRoadsDetected={setRoads}
-          selectableEdges
-          confirmedStreetEdgeIndexes={confirmedStreetEdgeIndexes}
-          suggestedStreetEdgeIndex={streetFrontageConfirmed ? null : detection.edgeIndex}
-          onEdgeSelect={toggleStreetFrontage}
-        /> : <div role="status" className="self-start rounded-2xl border border-amber-300 bg-amber-50 p-5 text-sm text-[#0D1B2A]">
-          <h4 className="font-semibold">{geometryLoading ? "Loading the exact official parcel boundary" : "Parcel boundary could not be loaded for this erf."}</h4>
-          <p className="mt-2">Site Potential cannot draw or accept a build envelope until the parcel boundary is available.</p>
-          <p className="mt-2">Build summary values remain working assumptions, not verified frontage, setbacks or municipal approval.</p>
-        </div>}
+        {ring ? (
+          <SatelliteParcelMap
+            ring={ring}
+            result={result}
+            onRoadsDetected={setRoads}
+            selectableEdges
+            confirmedStreetEdgeIndexes={confirmedStreetEdgeIndexes}
+            suggestedStreetEdgeIndex={streetFrontageConfirmed ? null : detection.edgeIndex}
+            onEdgeSelect={toggleStreetFrontage}
+          />
+        ) : (
+          <div
+            role="status"
+            className="self-start rounded-2xl border border-amber-300 bg-amber-50 p-5 text-sm text-[#0D1B2A]"
+          >
+            <h4 className="font-semibold">
+              {geometryLoading
+                ? "Loading the exact official parcel boundary"
+                : "Parcel boundary could not be loaded for this erf."}
+            </h4>
+            <p className="mt-2">
+              Site Potential cannot draw or accept a build envelope until the parcel boundary is
+              available.
+            </p>
+            <p className="mt-2">
+              Build summary values remain working assumptions, not verified frontage, setbacks or
+              municipal approval.
+            </p>
+          </div>
+        )}
 
         <div className="rounded-2xl border border-[#0D1B2A]/10 bg-[#F7FBFF] p-4">
           <div className="flex items-center justify-between gap-2">
@@ -580,13 +620,16 @@ export function VacantLandBuildEnvelope({
               type="button"
               disabled={!acceptance.eligible}
               onClick={() =>
-                (shared ? void saveSharedInputs({ ...overrides,
-                  acceptedInputSignature: acceptance.signature,
-                  acceptedAt: new Date().toISOString(),
-                }) : patch({
-                  acceptedInputSignature: acceptance.signature,
-                  acceptedAt: new Date().toISOString(),
-                }))
+                shared
+                  ? void saveSharedInputs({
+                      ...overrides,
+                      acceptedInputSignature: acceptance.signature,
+                      acceptedAt: new Date().toISOString(),
+                    })
+                  : patch({
+                      acceptedInputSignature: acceptance.signature,
+                      acceptedAt: new Date().toISOString(),
+                    })
               }
               className="inline-flex min-h-10 shrink-0 items-center gap-2 rounded-full bg-[#FF6A00] px-4 py-2 text-xs font-semibold text-white transition hover:bg-[#FF7D1F] disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500"
             >
@@ -823,7 +866,10 @@ export function VacantLandBuildEnvelope({
       <button
         type="button"
         onClick={() => {
-          if (shared) { void saveSharedInputs({}); return; }
+          if (shared) {
+            void saveSharedInputs({});
+            return;
+          }
           clearStoredBuildEnvelopeInputs(parcelId, userId);
           setOverrides({});
         }}

@@ -5,9 +5,17 @@
  */
 export function isValidParcelRing(value: unknown): value is Array<[number, number]> {
   if (!Array.isArray(value) || value.length < 3 || value.length > 10000) return false;
-  if (!value.every((p) => Array.isArray(p) && p.length === 2 &&
-    p.every((n) => typeof n === "number" && Number.isFinite(n)) &&
-    Math.abs(p[0]) <= 180 && Math.abs(p[1]) <= 90)) return false;
+  if (
+    !value.every(
+      (p) =>
+        Array.isArray(p) &&
+        p.length === 2 &&
+        p.every((n) => typeof n === "number" && Number.isFinite(n)) &&
+        Math.abs(p[0]) <= 180 &&
+        Math.abs(p[1]) <= 90,
+    )
+  )
+    return false;
   const points = value as Array<[number, number]>;
   if (new Set(points.map((p) => p.join(","))).size < 3) return false;
   const [x, y] = points[0];
