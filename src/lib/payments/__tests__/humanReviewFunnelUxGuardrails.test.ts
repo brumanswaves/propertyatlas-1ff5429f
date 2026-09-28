@@ -38,7 +38,9 @@ describe("Done-for-You customer funnel", () => {
     expect(scope).toContain("Confirm the exact parcel and working address");
     expect(scope).toContain("Review cadastral, SG and boundary evidence");
     expect(scope).toContain("Review useful market evidence and comparable context where available");
-    expect(scope).toContain("Complete deterministic Site Potential when the evidence supports a useful envelope");
+    expect(scope).toContain(
+      "Complete deterministic Site Potential when the evidence supports a useful envelope",
+    );
   });
 
   it("explains the done-for-you path on How It Works and keeps Site Potential deterministic", () => {
@@ -77,9 +79,13 @@ describe("Done-for-You founder fulfillment", () => {
     expect(fulfillment).toContain("orderPriority");
     expect(editor).toContain("Standard done-for-you investigation checklist");
     expect(fulfillment).toContain("Open full property investigation");
-    expect(fulfillment).toContain('status === "processing" ? <OrderInvestigationWorkspace');
+    expect(fulfillment).toMatch(
+      /status === "processing"\s*\?\s*\(?\s*<OrderInvestigationWorkspace/,
+    );
     expect(fulfillment).toContain("defaultOpen={false}");
-    expect(fulfillment.indexOf("<OrderInvestigationWorkspace")).toBeLessThan(fulfillment.indexOf("<FounderHumanReviewEditor"));
+    expect(fulfillment.indexOf("<OrderInvestigationWorkspace")).toBeLessThan(
+      fulfillment.indexOf("<FounderHumanReviewEditor"),
+    );
     expect(fulfillment).toContain("Mark this exact report ready");
     expect(fulfillment).toContain("do not attach or redistribute the provider PDF");
   });
