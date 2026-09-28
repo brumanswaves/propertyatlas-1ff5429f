@@ -46,10 +46,7 @@ function FigureKindChip({ kind }: { kind: MarketFigureKind }) {
 }
 
 function sectionShell(extra?: string) {
-  return cn(
-    "report-section border-b border-border py-5 scroll-mt-6",
-    extra,
-  );
+  return cn("report-section border-b border-border py-5 scroll-mt-6", extra);
 }
 
 /* ------------------------------------------------------------------ market */
@@ -313,13 +310,15 @@ export function ReportStrategySection({
       ) : (
         <div className="mt-4 rounded-2xl border border-[#FF6A00]/25 bg-[#FFF7ED] p-5">
           <p className="text-sm leading-6 text-[#0D1B2A]/75">{model.emptyMessage}</p>
-          {onOpenStrategy && <button
-            type="button"
-            onClick={onOpenStrategy}
-            className="report-no-print mt-3 inline-flex min-h-9 items-center gap-2 rounded-full bg-[#0D1B2A] px-4 py-2 text-xs font-semibold text-white hover:bg-[#142941]"
-          >
-            Open Strategy <ArrowRight className="h-3.5 w-3.5" />
-          </button>}
+          {onOpenStrategy && (
+            <button
+              type="button"
+              onClick={onOpenStrategy}
+              className="report-no-print mt-3 inline-flex min-h-9 items-center gap-2 rounded-full bg-[#0D1B2A] px-4 py-2 text-xs font-semibold text-white hover:bg-[#142941]"
+            >
+              Open Strategy <ArrowRight className="h-3.5 w-3.5" />
+            </button>
+          )}
         </div>
       )}
 
@@ -445,13 +444,15 @@ export function ReportSitePotentialSection({
       )}
 
       <div className="report-no-print mt-4 flex flex-wrap gap-2">
-        {onOpenSitePotential && <button
-          type="button"
-          onClick={onOpenSitePotential}
-          className="inline-flex min-h-9 items-center gap-2 rounded-full bg-[#0D1B2A] px-4 py-2 text-xs font-semibold text-white hover:bg-[#142941]"
-        >
-          Open Site Potential <ArrowRight className="h-3.5 w-3.5" />
-        </button>}
+        {onOpenSitePotential && (
+          <button
+            type="button"
+            onClick={onOpenSitePotential}
+            className="inline-flex min-h-9 items-center gap-2 rounded-full bg-[#0D1B2A] px-4 py-2 text-xs font-semibold text-white hover:bg-[#142941]"
+          >
+            Open Site Potential <ArrowRight className="h-3.5 w-3.5" />
+          </button>
+        )}
         {onOpenSourceFile && (
           <button
             type="button"
@@ -473,6 +474,7 @@ export function ReportSitePotentialSection({
 /* ---------------------------------------------------------------- appendix */
 
 const READ_STATE_TONE: Record<EvidenceAppendixRow["readState"], string> = {
+  user_attached: "bg-[#FEF3C7] text-[#92400E]",
   searchable_matched: "bg-[#DCFCE7] text-[#166534]",
   parent_plan_context: "bg-[#DBEAFE] text-[#1E40AF]",
   pending: "bg-[#E2E8F0] text-[#334155]",

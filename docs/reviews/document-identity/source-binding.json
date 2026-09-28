@@ -1,0 +1,35 @@
+{
+  "implementation": "b395c55dd810ae4a954a5af441c0192e2b1c69be",
+  "base": "3fb1d7ea284e792d5ddf05c0d4b96fca12230353",
+  "srcTree": "08d14fd5138071bd99425c1b5fc842441a1c569d",
+  "files": {
+    "src/components/property/dossier/ReportBodySections.tsx": "b8259f013f2ea0df10566fbf7ae6f5fa800b2800",
+    "src/components/property/investigation/GuidedTitleStep.tsx": "2408c76ae3cf5f9e6320e3b1b18cb6286b0e2a17",
+    "src/lib/evidence/__tests__/documentIdentitySurfaces.test.tsx": "125cef2796df96580d13de5d647323721052ef25",
+    "src/lib/evidence/buildPropertyEvidencePack.ts": "e4d28432ee23d637da36a11f7a91cdbc93530799",
+    "src/lib/evidence/extractionMetadata.ts": "0af98b937716d77f281d1670b6aabb1eb0a1dc11",
+    "src/lib/evidence/propertyEvidenceTypes.ts": "e2e8ffef51eb60c59c4f56a71bb6ab509a9e623a",
+    "src/lib/investigation/guidedTaskRegistry.ts": "2bcca73b7f9c0ed527b66573fe25a80a299d2166",
+    "src/lib/investigation/propertyInvestigation.ts": "af67b2219da3788f65df20e3647c4b368617639c",
+    "src/lib/reports/buildReportViewModel.ts": "ae8ba0f0f4d2fdcd6ec396cf03b970e943d8a33c",
+    "src/lib/reports/evidenceAppendix.ts": "4d3fc091ebe077514b6d64dd466929767b09da62",
+    "src/lib/reports/reportFindings.ts": "00e29af21c612db2e6e79b42cdd7083d67a1e8f7",
+    "src/lib/workbench/__tests__/erfAssetExtraction.test.ts": "91ef11960f4512bf4eed1d4125762e6c351cbedb"
+  },
+  "fullSuite": {
+    "files": 174,
+    "tests": 1802,
+    "exitCode": 0
+  },
+  "affectedSuite": {
+    "files": 35,
+    "tests": 482,
+    "exitCode": 0
+  },
+  "newCanonicalAndSSRTests": 16,
+  "lintPrettierEnabled": 0,
+  "typecheck": 0,
+  "whitespace": 0,
+  "liveActions": 0,
+  "geometrySaveAllowance": "1/1 previously consumed; revision 59 -> 60; not repeated"
+}

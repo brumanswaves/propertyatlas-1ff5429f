@@ -1,0 +1,12 @@
+src/components/property/dossier/ReportBodySections.tsx 123ms (unchanged)
+src/components/property/investigation/GuidedTitleStep.tsx 80ms (unchanged)
+src/lib/evidence/buildPropertyEvidencePack.ts 189ms (unchanged)
+src/lib/evidence/extractionMetadata.ts 13ms (unchanged)
+src/lib/evidence/propertyEvidenceTypes.ts 11ms (unchanged)
+src/lib/investigation/guidedTaskRegistry.ts 18ms (unchanged)
+src/lib/investigation/propertyInvestigation.ts 52ms (unchanged)
+src/lib/reports/buildReportViewModel.ts 91ms
+src/lib/reports/evidenceAppendix.ts 17ms (unchanged)
+src/lib/reports/reportFindings.ts 71ms
+src/lib/workbench/__tests__/erfAssetExtraction.test.ts 21ms (unchanged)
+src/lib/evidence/__tests__/documentIdentitySurfaces.test.tsx 16ms (unchanged)

@@ -1,0 +1,322 @@
+> build
+> vite build
+
+vite v7.3.6 building client environment for production...
+transforming...
+✓ 2338 modules transformed.
+rendering chunks...
+computing gzip size...
+.output/public/assets/sgPreview.worker-BJCrIS66.js                110.73 kB
+.output/public/assets/index-DgAWR2vv.css                           48.82 kB │ gzip:     5.78 kB
+.output/public/assets/styles-Ca4HhEa0.css                         210.45 kB │ gzip:    32.60 kB
+.output/public/assets/investigator-pxZfWWzw.js                      0.07 kB │ gzip:     0.09 kB
+.output/public/assets/clock-3-KJXcnf4g.js                           0.17 kB │ gzip:     0.16 kB
+.output/public/assets/arrow-up-right-BNx-RfgR.js                    0.17 kB │ gzip:     0.16 kB
+.output/public/assets/user-round-aKwSHFtX.js                        0.18 kB │ gzip:     0.17 kB
+.output/public/assets/download-DJO5gA-Z.js                          0.23 kB │ gzip:     0.19 kB
+.output/public/assets/circle-dollar-sign-DDXOw8u-.js                0.24 kB │ gzip:     0.20 kB
+.output/public/assets/database-CBY68QLS.js                          0.24 kB │ gzip:     0.20 kB
+.output/public/assets/circle-question-mark-BvXZIe1N.js              0.24 kB │ gzip:     0.21 kB
+.output/public/assets/git-compare-fHka_dyX.js                       0.28 kB │ gzip:     0.21 kB
+.output/public/assets/house-BQB587aj.js                             0.28 kB │ gzip:     0.22 kB
+.output/public/assets/clipboard-check-qEi4jXLC.js                   0.30 kB │ gzip:     0.23 kB
+.output/public/assets/user-plus-Dkp_ChYf.js                         0.31 kB │ gzip:     0.23 kB
+.output/public/assets/badge-check-BPekW9io.js                       0.31 kB │ gzip:     0.21 kB
+.output/public/assets/hard-hat-DQYHgVoM.js                          0.32 kB │ gzip:     0.23 kB
+.output/public/assets/message-circle-question-mark-DgJYp6d-.js      0.36 kB │ gzip:     0.26 kB
+.output/public/assets/building-2-DfurOIQ6.js                        0.38 kB │ gzip:     0.24 kB
+.output/public/assets/layers-Dl4UBjMh.js                            0.42 kB │ gzip:     0.24 kB
+.output/public/assets/sonner-x9e0VEGT.js                            0.50 kB │ gzip:     0.26 kB
+.output/public/assets/calculator-Cs78j18-.js                        0.53 kB │ gzip:     0.28 kB
+.output/public/assets/notebook-pen-C1bTF0qY.js                      0.66 kB │ gzip:     0.37 kB
+.output/public/assets/users-YHkLHooV.js                             0.68 kB │ gzip:     0.38 kB
+.output/public/assets/StaffDashboardLinks-IoxAn-BE.js               0.74 kB │ gzip:     0.43 kB
+.output/public/assets/LegalPage-DBKaqW6_.js                         1.68 kB │ gzip:     0.67 kB
+.output/public/assets/reports-1QIXsfW5.js                           1.79 kB │ gzip:     0.87 kB
+.output/public/assets/for-homeowners-CA2XuifD.js                    1.91 kB │ gzip:     0.94 kB
+.output/public/assets/CustomerWorkspaceShell-DV60TXkh.js            1.97 kB │ gzip:     0.78 kB
+.output/public/assets/why-DMWZqtQ9.js                               2.13 kB │ gzip:     1.07 kB
+.output/public/assets/subscriptions-CyI_Zuxj.js                     2.43 kB │ gzip:     1.20 kB
+.output/public/assets/features-CqnhwO9T.js                          2.48 kB │ gzip:     1.14 kB
+.output/public/assets/for-investors-BX0dt92J.js                     2.51 kB │ gzip:     1.19 kB
+.output/public/assets/for-developers-neNDqQ29.js                    2.55 kB │ gzip:     1.19 kB
+.output/public/assets/partnerships-C--NzDD3.js                      2.88 kB │ gzip:     1.43 kB
+.output/public/assets/terms-BmxvVybm.js                             3.02 kB │ gzip:     1.28 kB
+.output/public/assets/privacy-DUgIq2nQ.js                           3.10 kB │ gzip:     1.29 kB
+.output/public/assets/account.password-CvvuUBEy.js                  3.29 kB │ gzip:     1.45 kB
+.output/public/assets/disclaimer-Bh_RYrSG.js                        3.31 kB │ gzip:     1.35 kB
+.output/public/assets/contact-DmLaaOGw.js                           3.46 kB │ gzip:     1.60 kB
+.output/public/assets/roadmap-cJExErXi.js                           3.49 kB │ gzip:     1.68 kB
+.output/public/assets/about-D051mPTn.js                             3.93 kB │ gzip:     1.69 kB
+.output/public/assets/MarketingPage-UpLwRcHF.js                     4.42 kB │ gzip:     1.23 kB
+.output/public/assets/data-sources-lByhKSIB.js                      4.59 kB │ gzip:     1.93 kB
+.output/public/assets/faq-ZeYV7vSp.js                               4.60 kB │ gzip:     2.19 kB
+.output/public/assets/admin.readiness-BSEu2uf_.js                   8.69 kB │ gzip:     3.07 kB
+.output/public/assets/admin_.launch-readiness-DRGsn6Jp.js           9.65 kB │ gzip:     3.06 kB
+.output/public/assets/how-it-works-DX-ocOt8.js                      9.84 kB │ gzip:     3.73 kB
+.output/public/assets/auth-BTMlZhSA.js                             10.43 kB │ gzip:     4.21 kB
+.output/public/assets/admin_.entitlements-DF8jBbuJ.js              12.22 kB │ gzip:     3.72 kB
+.output/public/assets/registry-Bm7MFtoJ.js                         12.59 kB │ gzip:     4.88 kB
+.output/public/assets/profile-Bb8GkjlS.js                          13.17 kB │ gzip:     4.63 kB
+.output/public/assets/admin.public-data-debug-CUJ-NC-l.js          18.13 kB │ gzip:     5.20 kB
+.output/public/assets/dashboard-DLNHK0BE.js                        19.18 kB │ gzip:     6.06 kB
+.output/public/assets/admin-CmsQHh9Q.js                            20.32 kB │ gzip:     5.67 kB
+.output/public/assets/admin_.users-LWVDli-f.js                     24.60 kB │ gzip:     7.09 kB
+.output/public/assets/pricing-CnnMh5Wh.js                          24.66 kB │ gzip:     7.00 kB
+.output/public/assets/orders-C8D9fEOH.js                           28.95 kB │ gzip:     8.94 kB
+.output/public/assets/index-D3lSsOe0.js                           547.95 kB │ gzip:   146.43 kB
+.output/public/assets/index-Baa6gHg3.js                         3,575.13 kB │ gzip: 1,008.08 kB
+✓ built in 34.57s
+vite v7.3.6 building ssr environment for production...
+transforming...
+✓ 432 modules transformed.
+rendering chunks...
+node_modules/.nitro/vite/services/ssr/assets/sgPreview.worker-BJCrIS66.js              110.73 kB
+node_modules/.nitro/vite/services/ssr/assets/router-DgAWR2vv.css                        48.82 kB
+node_modules/.nitro/vite/services/ssr/assets/styles-Ca4HhEa0.css                       210.45 kB
+node_modules/.nitro/vite/services/ssr/assets/empty-plugin-adapters-BFgPZ6_d.js           0.13 kB
+node_modules/.nitro/vite/services/ssr/assets/investigator-BiURjz2Z.js                    0.60 kB
+node_modules/.nitro/vite/services/ssr/assets/client-_8GrngnR.js                          0.66 kB
+node_modules/.nitro/vite/services/ssr/assets/sonner-DeNSN9-c.js                          0.72 kB
+node_modules/.nitro/vite/services/ssr/assets/StaffDashboardLinks-BnFlb_H3.js             0.81 kB
+node_modules/.nitro/vite/services/ssr/assets/start-CwZqoCLk.js                           2.14 kB
+node_modules/.nitro/vite/services/ssr/assets/LegalPage-aondGolt.js                       2.37 kB
+node_modules/.nitro/vite/services/ssr/assets/reports-Bugsk16_.js                         2.67 kB
+node_modules/.nitro/vite/services/ssr/assets/why-LSsDnLeO.js                             2.82 kB
+node_modules/.nitro/vite/services/ssr/assets/for-homeowners-D8YZVyjD.js                  2.83 kB
+node_modules/.nitro/vite/services/ssr/assets/CustomerWorkspaceShell-BkdnXigw.js          3.06 kB
+node_modules/.nitro/vite/services/ssr/assets/partnerships-Rc5OHNcg.js                    3.23 kB
+node_modules/.nitro/vite/services/ssr/assets/roadmap-B6DKvpF3.js                         3.34 kB
+node_modules/.nitro/vite/services/ssr/index.js                                           3.34 kB
+node_modules/.nitro/vite/services/ssr/assets/subscriptions-oq_zyW3d.js                   3.36 kB
+node_modules/.nitro/vite/services/ssr/assets/features-CPwSAOJY.js                        3.45 kB
+node_modules/.nitro/vite/services/ssr/assets/for-investors-DXrJ20AR.js                   3.48 kB
+node_modules/.nitro/vite/services/ssr/assets/for-developers-CcvKFClu.js                  3.55 kB
+node_modules/.nitro/vite/services/ssr/assets/contact-DQ4Y1FUP.js                         3.80 kB
+node_modules/.nitro/vite/services/ssr/assets/terms-Dmc_Qmg9.js                           4.30 kB
+node_modules/.nitro/vite/services/ssr/assets/privacy-BetKk2vZ.js                         4.31 kB
+node_modules/.nitro/vite/services/ssr/assets/disclaimer-DTC4S5DI.js                      4.64 kB
+node_modules/.nitro/vite/services/ssr/assets/about-Bp2RgSlb.js                           4.86 kB
+node_modules/.nitro/vite/services/ssr/assets/faq-C0kWcQjd.js                             5.53 kB
+node_modules/.nitro/vite/services/ssr/assets/data-sources-CnM0ZYVB.js                    5.84 kB
+node_modules/.nitro/vite/services/ssr/assets/account.password-2NRTIQ1Q.js                6.08 kB
+node_modules/.nitro/vite/services/ssr/assets/MarketingPage-CSIuz5rH.js                   6.27 kB
+node_modules/.nitro/vite/services/ssr/assets/_tanstack-start-manifest_v-CpB4ZhvL.js      9.33 kB
+node_modules/.nitro/vite/services/ssr/assets/auth-Ddv8g_sS.js                           11.74 kB
+node_modules/.nitro/vite/services/ssr/assets/admin.readiness-DdJjI-AT.js                12.26 kB
+node_modules/.nitro/vite/services/ssr/assets/how-it-works-BlcvKWqp.js                   12.33 kB
+node_modules/.nitro/vite/services/ssr/assets/admin_.launch-readiness-D9sDhdfm.js        13.94 kB
+node_modules/.nitro/vite/services/ssr/assets/admin_.entitlements-C0sJHouQ.js            18.24 kB
+node_modules/.nitro/vite/services/ssr/assets/profile-Cw4_ExuK.js                        19.86 kB
+node_modules/.nitro/vite/services/ssr/assets/registry-4kBhZMsX.js                       21.42 kB
+node_modules/.nitro/vite/services/ssr/assets/admin.public-data-debug-B9-zQ6jQ.js        27.41 kB
+node_modules/.nitro/vite/services/ssr/assets/admin-04KOn34z.js                          29.99 kB
+node_modules/.nitro/vite/services/ssr/assets/dashboard-BMmmkmnx.js                      30.48 kB
+node_modules/.nitro/vite/services/ssr/assets/pricing-CeT5QYl3.js                        36.28 kB
+node_modules/.nitro/vite/services/ssr/assets/admin_.users-gpmAxRKp.js                   37.69 kB
+node_modules/.nitro/vite/services/ssr/assets/orders-DvfyU-Cr.js                         45.11 kB
+node_modules/.nitro/vite/services/ssr/assets/server-1P8YS0x9.js                         58.47 kB
+node_modules/.nitro/vite/services/ssr/assets/index-DkIKbL8q.js                         868.19 kB
+node_modules/.nitro/vite/services/ssr/assets/router-Ce-yN1EN.js                      1,733.92 kB
+✓ built in 16.46s
+
+[nitro] o Building [Nitro] (preset: cloudflare-module, compatibility: 2026-09-23)
+[nitro] √ Generated public .output/public
+vite v7.3.6 building nitro environment for production...
+transforming...
+✓ 2109 modules transformed.
+rendering chunks...
+.output/server/_libs/unstorage.mjs                                         0.00 kB
+.output/server/_libs/use-sync-external-store.mjs                           0.00 kB
+.output/server/_libs/detect-node-es.mjs                                    0.00 kB
+.output/server/_libs/croner.mjs                                            0.00 kB
+.output/server/_libs/ufo.mjs                                               0.00 kB
+.output/server/_libs/ohash.mjs                                             0.00 kB
+.output/server/_libs/ocache.mjs                                            0.00 kB
+.output/server/_libs/tanstack__store.mjs                                   0.00 kB
+.output/server/_libs/tanstack__react-store.mjs                             0.02 kB
+.output/server/_libs/crossws.mjs                                           0.03 kB
+.output/server/_ssr/empty-plugin-adapters-BFgPZ6_d.mjs                     0.13 kB
+.output/server/_libs/get-nonce.mjs                                         0.16 kB
+.output/server/_libs/@radix-ui/react-use-layout-effect+[...].mjs           0.17 kB
+.output/server/_libs/srvx.mjs                                              0.20 kB
+.output/server/_libs/rou3.mjs                                              0.40 kB
+.output/server/_libs/@radix-ui/react-use-callback-ref+[...].mjs            0.51 kB
+.output/server/_libs/clsx.mjs                                              0.51 kB
+.output/server/_chunks/ssr-renderer.mjs                                    0.53 kB
+.output/server/_ssr/client-_8GrngnR.mjs                                    0.68 kB
+.output/server/_libs/radix-ui__react-id.mjs                                0.69 kB
+.output/server/_ssr/sonner-DeNSN9-c.mjs                                    0.77 kB
+.output/server/_libs/radix-ui__react-label.mjs                             0.86 kB
+.output/server/_ssr/StaffDashboardLinks-BnFlb_H3.mjs                       0.92 kB
+.output/server/_libs/radix-ui__react-portal.mjs                            0.99 kB
+.output/server/_libs/@radix-ui/react-use-effect-event+[...].mjs            1.04 kB
+.output/server/_libs/radix-ui__react-compose-refs.mjs                      1.17 kB
+.output/server/_libs/hookable.mjs                                          1.19 kB
+.output/server/_libs/radix-ui__react-primitive.mjs                         1.32 kB
+.output/server/_libs/radix-ui__react-focus-guards.mjs                      1.41 kB
+.output/server/_libs/cookie-es.mjs                                         1.46 kB
+.output/server/_libs/react-style-singleton.mjs                             1.67 kB
+.output/server/_libs/use-callback-ref.mjs                                  1.75 kB
+.output/server/_libs/radix-ui__primitive.mjs                               1.86 kB
+.output/server/_libs/tslib.mjs                                             2.08 kB
+.output/server/_libs/class-variance-authority.mjs                          2.14 kB
+.output/server/_ssr/investigator-BiURjz2Z.mjs                              2.46 kB
+.output/server/_ssr/start-CwZqoCLk.mjs                                     2.60 kB
+.output/server/_libs/use-sidecar.mjs                                       2.66 kB
+.output/server/_ssr/LegalPage-aondGolt.mjs                                 2.69 kB
+.output/server/_libs/isbot.mjs                                             2.83 kB
+.output/server/_libs/seroval-plugins.mjs                                   2.96 kB
+.output/server/_ssr/index.mjs                                              3.34 kB
+.output/server/_ssr/CustomerWorkspaceShell-BkdnXigw.mjs                    3.40 kB
+.output/server/_libs/@radix-ui/react-use-controllable-state+[...].mjs      3.76 kB
+.output/server/_libs/react-remove-scroll-bar.mjs                           3.96 kB
+.output/server/_libs/aria-hidden.mjs                                       4.06 kB
+.output/server/_libs/radix-ui__react-context.mjs                           4.30 kB
+.output/server/_ssr/reports-Bugsk16_.mjs                                   4.72 kB
+.output/server/_ssr/why-LSsDnLeO.mjs                                       4.93 kB
+.output/server/_ssr/for-homeowners-D8YZVyjD.mjs                            4.93 kB
+.output/server/_libs/tanstack__react-query.mjs                             5.18 kB
+.output/server/_ssr/partnerships-Rc5OHNcg.mjs                              5.26 kB
+.output/server/_ssr/roadmap-B6DKvpF3.mjs                                   5.46 kB
+.output/server/_ssr/subscriptions-oq_zyW3d.mjs                             5.47 kB
+.output/server/_ssr/features-CPwSAOJY.mjs                                  5.64 kB
+.output/server/_ssr/for-investors-DXrJ20AR.mjs                             5.67 kB
+.output/server/_libs/radix-ui__react-alert-dialog.mjs                      5.69 kB
+.output/server/_ssr/for-developers-CcvKFClu.mjs                            5.74 kB
+.output/server/_ssr/contact-DQ4Y1FUP.mjs                                   5.99 kB
+.output/server/_libs/tanstack__history.mjs                                 5.99 kB
+.output/server/_libs/radix-ui__react-slot.mjs                              6.21 kB
+.output/server/_libs/lovable.dev__cloud-auth-js.mjs                        6.35 kB
+.output/server/_libs/radix-ui__react-presence.mjs                          6.56 kB
+.output/server/_ssr/privacy-BetKk2vZ.mjs                                   6.58 kB
+.output/server/_ssr/terms-Dmc_Qmg9.mjs                                     6.63 kB
+.output/server/_libs/unenv.mjs                                             6.66 kB
+.output/server/_ssr/MarketingPage-CSIuz5rH.mjs                             6.95 kB
+.output/server/_ssr/disclaimer-DTC4S5DI.mjs                                7.00 kB
+.output/server/_ssr/about-Bp2RgSlb.mjs                                     7.19 kB
+.output/server/_ssr/faq-C0kWcQjd.mjs                                       7.57 kB
+.output/server/_ssr/data-sources-CnM0ZYVB.mjs                              8.11 kB
+.output/server/_ssr/account.password-2NRTIQ1Q.mjs                          8.38 kB
+.output/server/_libs/radix-ui__react-focus-scope.mjs                       9.27 kB
+.output/server/_tanstack-start-manifest_v-CpB4ZhvL.mjs                     9.33 kB
+.output/server/_libs/h3-v2.mjs                                            10.00 kB
+.output/server/_libs/supabase__functions-js.mjs                           12.43 kB
+.output/server/_libs/radix-ui__react-dialog.mjs                           13.28 kB
+.output/server/_libs/react-remove-scroll.mjs                              13.39 kB
+.output/server/_libs/@radix-ui/react-dismissable-layer+[...].mjs          14.28 kB
+.output/server/_ssr/auth-Ddv8g_sS.mjs                                     14.58 kB
+.output/server/_ssr/admin.readiness-DdJjI-AT.mjs                          14.96 kB
+.output/server/_ssr/how-it-works-BlcvKWqp.mjs                             15.17 kB
+.output/server/_libs/iceberg-js.mjs                                       15.70 kB
+.output/server/_ssr/admin_.launch-readiness-D9sDhdfm.mjs                  17.40 kB
+.output/server/_libs/h3.mjs                                               17.51 kB
+.output/server/_libs/react.mjs                                            20.90 kB
+.output/server/_ssr/registry-4kBhZMsX.mjs                                 21.42 kB
+.output/server/_ssr/admin_.entitlements-C0sJHouQ.mjs                      22.07 kB
+.output/server/_ssr/profile-Cw4_ExuK.mjs                                  23.60 kB
+.output/server/index.mjs                                                  28.26 kB
+.output/server/_ssr/admin.public-data-debug-B9-zQ6jQ.mjs                  31.97 kB
+.output/server/_ssr/dashboard-BMmmkmnx.mjs                                34.33 kB
+.output/server/_libs/supabase__supabase-js.mjs                            34.64 kB
+.output/server/_ssr/admin-04KOn34z.mjs                                    35.43 kB
+.output/server/_ssr/pricing-CeT5QYl3.mjs                                  41.16 kB
+.output/server/_libs/tanstack__react-router.mjs                           42.45 kB
+.output/server/_ssr/admin_.users-gpmAxRKp.mjs                             43.46 kB
+.output/server/_ssr/orders-DvfyU-Cr.mjs                                   50.33 kB
+.output/server/_libs/lucide-react.mjs                                     51.07 kB
+.output/server/_libs/supabase__phoenix.mjs                                55.82 kB
+.output/server/_libs/sonner.mjs                                           57.97 kB
+.output/server/_ssr/server-1P8YS0x9.mjs                                   58.07 kB
+.output/server/_libs/supabase__realtime-js.mjs                            81.86 kB
+.output/server/_libs/seroval.mjs                                          95.02 kB
+.output/server/_libs/tailwind-merge.mjs                                   99.74 kB
+.output/server/_libs/tanstack__query-core.mjs                            101.17 kB
+.output/server/_libs/supabase__storage-js.mjs                            109.47 kB
+.output/server/_libs/zod.mjs                                             112.85 kB
+.output/server/_libs/supabase__postgrest-js.mjs                          137.95 kB
+.output/server/_libs/tanstack__router-core.mjs                           171.63 kB
+.output/server/_libs/supabase__auth-js.mjs                               318.63 kB
+.output/server/_libs/react-dom.mjs                                       538.39 kB
+.output/server/_ssr/index-DkIKbL8q.mjs                                   918.01 kB
+.output/server/_ssr/router-Ce-yN1EN.mjs                                1,784.25 kB
+.output/server/_libs/mapbox-gl.mjs                                     2,703.14 kB
+✓ built in 26.68s
+[nitro] i Using auto generated worker name: tanstack-start-ts
+i Generated .output/server/wrangler.json
+i Generated .wrangler/deploy/config.json
+i Generated .output/public/_headers
+i Generated .output/nitro.json
+
+[nitro] √ You can preview this build using npx vite preview
+[nitro] √ You can deploy this build using npx nitro deploy --prebuilt
+Warning: Route file "C:/Users/bruma/Documents/easy-erf-issue193/src/routes/api/__tests__/addressSuggestions.test.ts" does not export a Route. This file will not be included in the route tree.
+
+If this file is not intended to be a route, you can exclude it using one of these options:
+  1. Rename the file to "C:\Users\bruma\Documents\easy-erf-issue193\src\routes\api\__tests__\-addressSuggestions.test.ts" (prefix with "-")
+  2. Use 'routeFileIgnorePattern' in your config to match this file
+
+Current configuration:
+  routeFileIgnorePrefix: "-"
+  routeFileIgnorePattern: undefined
+[plugin vite:reporter]
+(!)  C:/Users/bruma/.codex/visualizations/2026/06/19/019edf6d-2343-71f1-953b-5f7a498f4e4e/easy-erf-report-decision-brief/node_modules/mapbox-gl/dist/mapbox-gl.js?commonjs-es-import is dynamically imported by C:/Users/bruma/Documents/easy-erf-issue193/src/components/property/sitePotential/SatelliteParcelMap.tsx but also statically imported by C:/Users/bruma/Documents/easy-erf-issue193/src/components/map/MapCanvas.tsx, C:/Users/bruma/Documents/easy-erf-issue193/src/components/property/OfficialParcelPanel.tsx, C:/Users/bruma/Documents/easy-erf-issue193/src/components/property/dossier/ReportParcelSatelliteMap.tsx, dynamic import will not move module into another chunk.
+
+[plugin vite:reporter]
+(!) C:/Users/bruma/.codex/visualizations/2026/06/19/019edf6d-2343-71f1-953b-5f7a498f4e4e/easy-erf-report-decision-brief/node_modules/mapbox-gl/dist/mapbox-gl.css is dynamically imported by C:/Users/bruma/Documents/easy-erf-issue193/src/components/property/sitePotential/SatelliteParcelMap.tsx but also statically imported by C:/Users/bruma/Documents/easy-erf-issue193/src/components/map/MapCanvas.tsx, C:/Users/bruma/Documents/easy-erf-issue193/src/components/property/OfficialParcelPanel.tsx, C:/Users/bruma/Documents/easy-erf-issue193/src/components/property/dossier/ReportParcelSatelliteMap.tsx, dynamic import will not move module into another chunk.
+
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+"createRequestHandler", "defineHandlerCallback", "transformPipeableStreamWithRouter" and "transformReadableStreamWithRouter" are imported from external module "@tanstack/router-core/ssr/server" but never used in "../../.codex/visualizations/2026/06/19/019edf6d-2343-71f1-953b-5f7a498f4e4e/easy-erf-report-decision-brief/node_modules/@tanstack/start-server-core/dist/esm/index.js".
+"RawStream" is imported from external module "@tanstack/router-core" but never used in "../../.codex/visualizations/2026/06/19/019edf6d-2343-71f1-953b-5f7a498f4e4e/easy-erf-report-decision-brief/node_modules/@tanstack/start-client-core/dist/esm/index.js".
+"hydrate" and "json" are imported from external module "@tanstack/router-core/ssr/client" but never used in "../../.codex/visualizations/2026/06/19/019edf6d-2343-71f1-953b-5f7a498f4e4e/easy-erf-report-decision-brief/node_modules/@tanstack/start-client-core/dist/esm/index.js".
+[plugin vite:reporter]
+(!) C:/Users/bruma/.codex/visualizations/2026/06/19/019edf6d-2343-71f1-953b-5f7a498f4e4e/easy-erf-report-decision-brief/node_modules/mapbox-gl/dist/mapbox-gl.css is dynamically imported by C:/Users/bruma/Documents/easy-erf-issue193/src/components/property/sitePotential/SatelliteParcelMap.tsx but also statically imported by C:/Users/bruma/Documents/easy-erf-issue193/src/components/map/MapCanvas.tsx, C:/Users/bruma/Documents/easy-erf-issue193/src/components/property/OfficialParcelPanel.tsx, C:/Users/bruma/Documents/easy-erf-issue193/src/components/property/dossier/ReportParcelSatelliteMap.tsx, dynamic import will not move module into another chunk.
+
+Unknown input options: platform. Allowed options: cache, context, experimentalCacheExpiry, experimentalLogSideEffects, external, fs, input, jsx, logLevel, makeAbsoluteExternalsRelative, maxParallelFileOps, moduleContext, onLog, onwarn, perf, plugins, preserveEntrySignatures, preserveSymlinks, shimMissingExports, strictDeprecations, treeshake, watch
+../../.codex/visualizations/2026/06/19/019edf6d-2343-71f1-953b-5f7a498f4e4e/easy-erf-report-decision-brief/node_modules/@tanstack/react-router/dist/esm/index.js (1:0): Module level directives cause errors when bundled, "use client" in "../../.codex/visualizations/2026/06/19/019edf6d-2343-71f1-953b-5f7a498f4e4e/easy-erf-report-decision-brief/node_modules/@tanstack/react-router/dist/esm/index.js" was ignored.
+../../.codex/visualizations/2026/06/19/019edf6d-2343-71f1-953b-5f7a498f4e4e/easy-erf-report-decision-brief/node_modules/@tanstack/react-router/dist/esm/ClientOnly.js (1:0): Module level directives cause errors when bundled, "use client" in "../../.codex/visualizations/2026/06/19/019edf6d-2343-71f1-953b-5f7a498f4e4e/easy-erf-report-decision-brief/node_modules/@tanstack/react-router/dist/esm/ClientOnly.js" was ignored.
+../../.codex/visualizations/2026/06/19/019edf6d-2343-71f1-953b-5f7a498f4e4e/easy-erf-report-decision-brief/node_modules/@tanstack/react-router/dist/esm/utils.js (1:0): Module level directives cause errors when bundled, "use client" in "../../.codex/visualizations/2026/06/19/019edf6d-2343-71f1-953b-5f7a498f4e4e/easy-erf-report-decision-brief/node_modules/@tanstack/react-router/dist/esm/utils.js" was ignored.
+../../.codex/visualizations/2026/06/19/019edf6d-2343-71f1-953b-5f7a498f4e4e/easy-erf-report-decision-brief/node_modules/@tanstack/react-router/dist/esm/useNavigate.js (1:0): Module level directives cause errors when bundled, "use client" in "../../.codex/visualizations/2026/06/19/019edf6d-2343-71f1-953b-5f7a498f4e4e/easy-erf-report-decision-brief/node_modules/@tanstack/react-router/dist/esm/useNavigate.js" was ignored.
+../../.codex/visualizations/2026/06/19/019edf6d-2343-71f1-953b-5f7a498f4e4e/easy-erf-report-decision-brief/node_modules/@tanstack/react-router/dist/esm/RouterProvider.js (1:0): Module level directives cause errors when bundled, "use client" in "../../.codex/visualizations/2026/06/19/019edf6d-2343-71f1-953b-5f7a498f4e4e/easy-erf-report-decision-brief/node_modules/@tanstack/react-router/dist/esm/RouterProvider.js" was ignored.
+../../.codex/visualizations/2026/06/19/019edf6d-2343-71f1-953b-5f7a498f4e4e/easy-erf-report-decision-brief/node_modules/@tanstack/react-router/dist/esm/useBlocker.js (1:0): Module level directives cause errors when bundled, "use client" in "../../.codex/visualizations/2026/06/19/019edf6d-2343-71f1-953b-5f7a498f4e4e/easy-erf-report-decision-brief/node_modules/@tanstack/react-router/dist/esm/useBlocker.js" was ignored.
+../../.codex/visualizations/2026/06/19/019edf6d-2343-71f1-953b-5f7a498f4e4e/easy-erf-report-decision-brief/node_modules/@tanstack/react-router/dist/esm/useRouterState.js (1:0): Module level directives cause errors when bundled, "use client" in "../../.codex/visualizations/2026/06/19/019edf6d-2343-71f1-953b-5f7a498f4e4e/easy-erf-report-decision-brief/node_modules/@tanstack/react-router/dist/esm/useRouterState.js" was ignored.
+../../.codex/visualizations/2026/06/19/019edf6d-2343-71f1-953b-5f7a498f4e4e/easy-erf-report-decision-brief/node_modules/@tanstack/react-router/dist/esm/useLocation.js (1:0): Module level directives cause errors when bundled, "use client" in "../../.codex/visualizations/2026/06/19/019edf6d-2343-71f1-953b-5f7a498f4e4e/easy-erf-report-decision-brief/node_modules/@tanstack/react-router/dist/esm/useLocation.js" was ignored.
+../../.codex/visualizations/2026/06/19/019edf6d-2343-71f1-953b-5f7a498f4e4e/easy-erf-report-decision-brief/node_modules/@tanstack/react-router/dist/esm/HeadContent.js (1:0): Module level directives cause errors when bundled, "use client" in "../../.codex/visualizations/2026/06/19/019edf6d-2343-71f1-953b-5f7a498f4e4e/easy-erf-report-decision-brief/node_modules/@tanstack/react-router/dist/esm/HeadContent.js" was ignored.
+../../.codex/visualizations/2026/06/19/019edf6d-2343-71f1-953b-5f7a498f4e4e/easy-erf-report-decision-brief/node_modules/@tanstack/react-router/dist/esm/Match.js (1:0): Module level directives cause errors when bundled, "use client" in "../../.codex/visualizations/2026/06/19/019edf6d-2343-71f1-953b-5f7a498f4e4e/easy-erf-report-decision-brief/node_modules/@tanstack/react-router/dist/esm/Match.js" was ignored.
+../../.codex/visualizations/2026/06/19/019edf6d-2343-71f1-953b-5f7a498f4e4e/easy-erf-report-decision-brief/node_modules/@tanstack/react-router/dist/esm/useRouter.js (1:0): Module level directives cause errors when bundled, "use client" in "../../.codex/visualizations/2026/06/19/019edf6d-2343-71f1-953b-5f7a498f4e4e/easy-erf-report-decision-brief/node_modules/@tanstack/react-router/dist/esm/useRouter.js" was ignored.
+../../.codex/visualizations/2026/06/19/019edf6d-2343-71f1-953b-5f7a498f4e4e/easy-erf-report-decision-brief/node_modules/@tanstack/react-router/dist/esm/CatchBoundary.js (1:0): Module level directives cause errors when bundled, "use client" in "../../.codex/visualizations/2026/06/19/019edf6d-2343-71f1-953b-5f7a498f4e4e/easy-erf-report-decision-brief/node_modules/@tanstack/react-router/dist/esm/CatchBoundary.js" was ignored.
+../../.codex/visualizations/2026/06/19/019edf6d-2343-71f1-953b-5f7a498f4e4e/easy-erf-report-decision-brief/node_modules/@tanstack/react-router/dist/esm/useMatch.js (1:0): Module level directives cause errors when bundled, "use client" in "../../.codex/visualizations/2026/06/19/019edf6d-2343-71f1-953b-5f7a498f4e4e/easy-erf-report-decision-brief/node_modules/@tanstack/react-router/dist/esm/useMatch.js" was ignored.
+../../.codex/visualizations/2026/06/19/019edf6d-2343-71f1-953b-5f7a498f4e4e/easy-erf-report-decision-brief/node_modules/@tanstack/react-router/dist/esm/Matches.js (1:0): Module level directives cause errors when bundled, "use client" in "../../.codex/visualizations/2026/06/19/019edf6d-2343-71f1-953b-5f7a498f4e4e/easy-erf-report-decision-brief/node_modules/@tanstack/react-router/dist/esm/Matches.js" was ignored.
+../../.codex/visualizations/2026/06/19/019edf6d-2343-71f1-953b-5f7a498f4e4e/easy-erf-report-decision-brief/node_modules/@tanstack/react-router/dist/esm/Asset.js (1:0): Module level directives cause errors when bundled, "use client" in "../../.codex/visualizations/2026/06/19/019edf6d-2343-71f1-953b-5f7a498f4e4e/easy-erf-report-decision-brief/node_modules/@tanstack/react-router/dist/esm/Asset.js" was ignored.
+../../.codex/visualizations/2026/06/19/019edf6d-2343-71f1-953b-5f7a498f4e4e/easy-erf-report-decision-brief/node_modules/@tanstack/react-router/dist/esm/link.js (1:0): Module level directives cause errors when bundled, "use client" in "../../.codex/visualizations/2026/06/19/019edf6d-2343-71f1-953b-5f7a498f4e4e/easy-erf-report-decision-brief/node_modules/@tanstack/react-router/dist/esm/link.js" was ignored.
+../../.codex/visualizations/2026/06/19/019edf6d-2343-71f1-953b-5f7a498f4e4e/easy-erf-report-decision-brief/node_modules/@tanstack/react-router/dist/esm/routerContext.js (1:0): Module level directives cause errors when bundled, "use client" in "../../.codex/visualizations/2026/06/19/019edf6d-2343-71f1-953b-5f7a498f4e4e/easy-erf-report-decision-brief/node_modules/@tanstack/react-router/dist/esm/routerContext.js" was ignored.
+../../.codex/visualizations/2026/06/19/019edf6d-2343-71f1-953b-5f7a498f4e4e/easy-erf-report-decision-brief/node_modules/@radix-ui/react-label/dist/index.mjs (1:0): Module level directives cause errors when bundled, "use client" in "../../.codex/visualizations/2026/06/19/019edf6d-2343-71f1-953b-5f7a498f4e4e/easy-erf-report-decision-brief/node_modules/@radix-ui/react-label/dist/index.mjs" was ignored.
+../../.codex/visualizations/2026/06/19/019edf6d-2343-71f1-953b-5f7a498f4e4e/easy-erf-report-decision-brief/node_modules/@radix-ui/react-alert-dialog/dist/index.mjs (1:0): Module level directives cause errors when bundled, "use client" in "../../.codex/visualizations/2026/06/19/019edf6d-2343-71f1-953b-5f7a498f4e4e/easy-erf-report-decision-brief/node_modules/@radix-ui/react-alert-dialog/dist/index.mjs" was ignored.
+../../.codex/visualizations/2026/06/19/019edf6d-2343-71f1-953b-5f7a498f4e4e/easy-erf-report-decision-brief/node_modules/sonner/dist/index.mjs (1:0): Module level directives cause errors when bundled, "use client" in "../../.codex/visualizations/2026/06/19/019edf6d-2343-71f1-953b-5f7a498f4e4e/easy-erf-report-decision-brief/node_modules/sonner/dist/index.mjs" was ignored.
+../../.codex/visualizations/2026/06/19/019edf6d-2343-71f1-953b-5f7a498f4e4e/easy-erf-report-decision-brief/node_modules/@tanstack/react-router/dist/esm/matchContext.js (1:0): Module level directives cause errors when bundled, "use client" in "../../.codex/visualizations/2026/06/19/019edf6d-2343-71f1-953b-5f7a498f4e4e/easy-erf-report-decision-brief/node_modules/@tanstack/react-router/dist/esm/matchContext.js" was ignored.
+../../.codex/visualizations/2026/06/19/019edf6d-2343-71f1-953b-5f7a498f4e4e/easy-erf-report-decision-brief/node_modules/@tanstack/react-router/dist/esm/Transitioner.js (1:0): Module level directives cause errors when bundled, "use client" in "../../.codex/visualizations/2026/06/19/019edf6d-2343-71f1-953b-5f7a498f4e4e/easy-erf-report-decision-brief/node_modules/@tanstack/react-router/dist/esm/Transitioner.js" was ignored.
+../../.codex/visualizations/2026/06/19/019edf6d-2343-71f1-953b-5f7a498f4e4e/easy-erf-report-decision-brief/node_modules/@tanstack/react-query/build/modern/QueryErrorResetBoundary.js (1:0): Module level directives cause errors when bundled, "use client" in "../../.codex/visualizations/2026/06/19/019edf6d-2343-71f1-953b-5f7a498f4e4e/easy-erf-report-decision-brief/node_modules/@tanstack/react-query/build/modern/QueryErrorResetBoundary.js" was ignored.
+../../.codex/visualizations/2026/06/19/019edf6d-2343-71f1-953b-5f7a498f4e4e/easy-erf-report-decision-brief/node_modules/@tanstack/react-query/build/modern/useIsFetching.js (1:0): Module level directives cause errors when bundled, "use client" in "../../.codex/visualizations/2026/06/19/019edf6d-2343-71f1-953b-5f7a498f4e4e/easy-erf-report-decision-brief/node_modules/@tanstack/react-query/build/modern/useIsFetching.js" was ignored.
+../../.codex/visualizations/2026/06/19/019edf6d-2343-71f1-953b-5f7a498f4e4e/easy-erf-report-decision-brief/node_modules/@tanstack/react-query/build/modern/QueryClientProvider.js (1:0): Module level directives cause errors when bundled, "use client" in "../../.codex/visualizations/2026/06/19/019edf6d-2343-71f1-953b-5f7a498f4e4e/easy-erf-report-decision-brief/node_modules/@tanstack/react-query/build/modern/QueryClientProvider.js" was ignored.
+../../.codex/visualizations/2026/06/19/019edf6d-2343-71f1-953b-5f7a498f4e4e/easy-erf-report-decision-brief/node_modules/@tanstack/react-query/build/modern/HydrationBoundary.js (1:0): Module level directives cause errors when bundled, "use client" in "../../.codex/visualizations/2026/06/19/019edf6d-2343-71f1-953b-5f7a498f4e4e/easy-erf-report-decision-brief/node_modules/@tanstack/react-query/build/modern/HydrationBoundary.js" was ignored.
+../../.codex/visualizations/2026/06/19/019edf6d-2343-71f1-953b-5f7a498f4e4e/easy-erf-report-decision-brief/node_modules/@tanstack/react-query/build/modern/IsRestoringProvider.js (1:0): Module level directives cause errors when bundled, "use client" in "../../.codex/visualizations/2026/06/19/019edf6d-2343-71f1-953b-5f7a498f4e4e/easy-erf-report-decision-brief/node_modules/@tanstack/react-query/build/modern/IsRestoringProvider.js" was ignored.
+../../.codex/visualizations/2026/06/19/019edf6d-2343-71f1-953b-5f7a498f4e4e/easy-erf-report-decision-brief/node_modules/@tanstack/react-query/build/modern/useQuery.js (1:0): Module level directives cause errors when bundled, "use client" in "../../.codex/visualizations/2026/06/19/019edf6d-2343-71f1-953b-5f7a498f4e4e/easy-erf-report-decision-brief/node_modules/@tanstack/react-query/build/modern/useQuery.js" was ignored.
+../../.codex/visualizations/2026/06/19/019edf6d-2343-71f1-953b-5f7a498f4e4e/easy-erf-report-decision-brief/node_modules/@tanstack/react-query/build/modern/useQueries.js (1:0): Module level directives cause errors when bundled, "use client" in "../../.codex/visualizations/2026/06/19/019edf6d-2343-71f1-953b-5f7a498f4e4e/easy-erf-report-decision-brief/node_modules/@tanstack/react-query/build/modern/useQueries.js" was ignored.
+../../.codex/visualizations/2026/06/19/019edf6d-2343-71f1-953b-5f7a498f4e4e/easy-erf-report-decision-brief/node_modules/@tanstack/react-query/build/modern/useMutation.js (1:0): Module level directives cause errors when bundled, "use client" in "../../.codex/visualizations/2026/06/19/019edf6d-2343-71f1-953b-5f7a498f4e4e/easy-erf-report-decision-brief/node_modules/@tanstack/react-query/build/modern/useMutation.js" was ignored.
+../../.codex/visualizations/2026/06/19/019edf6d-2343-71f1-953b-5f7a498f4e4e/easy-erf-report-decision-brief/node_modules/@tanstack/react-query/build/modern/useInfiniteQuery.js (1:0): Module level directives cause errors when bundled, "use client" in "../../.codex/visualizations/2026/06/19/019edf6d-2343-71f1-953b-5f7a498f4e4e/easy-erf-report-decision-brief/node_modules/@tanstack/react-query/build/modern/useInfiniteQuery.js" was ignored.
+../../.codex/visualizations/2026/06/19/019edf6d-2343-71f1-953b-5f7a498f4e4e/easy-erf-report-decision-brief/node_modules/@tanstack/react-query/build/modern/useMutationState.js (1:0): Module level directives cause errors when bundled, "use client" in "../../.codex/visualizations/2026/06/19/019edf6d-2343-71f1-953b-5f7a498f4e4e/easy-erf-report-decision-brief/node_modules/@tanstack/react-query/build/modern/useMutationState.js" was ignored.
+../../.codex/visualizations/2026/06/19/019edf6d-2343-71f1-953b-5f7a498f4e4e/easy-erf-report-decision-brief/node_modules/@tanstack/react-query/build/modern/useSuspenseQuery.js (1:0): Module level directives cause errors when bundled, "use client" in "../../.codex/visualizations/2026/06/19/019edf6d-2343-71f1-953b-5f7a498f4e4e/easy-erf-report-decision-brief/node_modules/@tanstack/react-query/build/modern/useSuspenseQuery.js" was ignored.
+../../.codex/visualizations/2026/06/19/019edf6d-2343-71f1-953b-5f7a498f4e4e/easy-erf-report-decision-brief/node_modules/@tanstack/react-query/build/modern/useSuspenseInfiniteQuery.js (1:0): Module level directives cause errors when bundled, "use client" in "../../.codex/visualizations/2026/06/19/019edf6d-2343-71f1-953b-5f7a498f4e4e/easy-erf-report-decision-brief/node_modules/@tanstack/react-query/build/modern/useSuspenseInfiniteQuery.js" was ignored.
+../../.codex/visualizations/2026/06/19/019edf6d-2343-71f1-953b-5f7a498f4e4e/easy-erf-report-decision-brief/node_modules/@tanstack/react-query/build/modern/useSuspenseQueries.js (1:0): Module level directives cause errors when bundled, "use client" in "../../.codex/visualizations/2026/06/19/019edf6d-2343-71f1-953b-5f7a498f4e4e/easy-erf-report-decision-brief/node_modules/@tanstack/react-query/build/modern/useSuspenseQueries.js" was ignored.
+../../.codex/visualizations/2026/06/19/019edf6d-2343-71f1-953b-5f7a498f4e4e/easy-erf-report-decision-brief/node_modules/@radix-ui/react-dialog/dist/index.mjs (1:0): Module level directives cause errors when bundled, "use client" in "../../.codex/visualizations/2026/06/19/019edf6d-2343-71f1-953b-5f7a498f4e4e/easy-erf-report-decision-brief/node_modules/@radix-ui/react-dialog/dist/index.mjs" was ignored.
+../../.codex/visualizations/2026/06/19/019edf6d-2343-71f1-953b-5f7a498f4e4e/easy-erf-report-decision-brief/node_modules/@tanstack/react-query/build/modern/errorBoundaryUtils.js (1:0): Module level directives cause errors when bundled, "use client" in "../../.codex/visualizations/2026/06/19/019edf6d-2343-71f1-953b-5f7a498f4e4e/easy-erf-report-decision-brief/node_modules/@tanstack/react-query/build/modern/errorBoundaryUtils.js" was ignored.
+../../.codex/visualizations/2026/06/19/019edf6d-2343-71f1-953b-5f7a498f4e4e/easy-erf-report-decision-brief/node_modules/@tanstack/react-query/build/modern/useBaseQuery.js (1:0): Module level directives cause errors when bundled, "use client" in "../../.codex/visualizations/2026/06/19/019edf6d-2343-71f1-953b-5f7a498f4e4e/easy-erf-report-decision-brief/node_modules/@tanstack/react-query/build/modern/useBaseQuery.js" was ignored.
+../../.codex/visualizations/2026/06/19/019edf6d-2343-71f1-953b-5f7a498f4e4e/easy-erf-report-decision-brief/node_modules/@radix-ui/react-portal/dist/index.mjs (1:0): Module level directives cause errors when bundled, "use client" in "../../.codex/visualizations/2026/06/19/019edf6d-2343-71f1-953b-5f7a498f4e4e/easy-erf-report-decision-brief/node_modules/@radix-ui/react-portal/dist/index.mjs" was ignored.
+../../.codex/visualizations/2026/06/19/019edf6d-2343-71f1-953b-5f7a498f4e4e/easy-erf-report-decision-brief/node_modules/@radix-ui/react-dismissable-layer/dist/index.mjs (1:0): Module level directives cause errors when bundled, "use client" in "../../.codex/visualizations/2026/06/19/019edf6d-2343-71f1-953b-5f7a498f4e4e/easy-erf-report-decision-brief/node_modules/@radix-ui/react-dismissable-layer/dist/index.mjs" was ignored.
+../../.codex/visualizations/2026/06/19/019edf6d-2343-71f1-953b-5f7a498f4e4e/easy-erf-report-decision-brief/node_modules/@radix-ui/react-focus-scope/dist/index.mjs (1:0): Module level directives cause errors when bundled, "use client" in "../../.codex/visualizations/2026/06/19/019edf6d-2343-71f1-953b-5f7a498f4e4e/easy-erf-report-decision-brief/node_modules/@radix-ui/react-focus-scope/dist/index.mjs" was ignored.
+../../.codex/visualizations/2026/06/19/019edf6d-2343-71f1-953b-5f7a498f4e4e/easy-erf-report-decision-brief/node_modules/@radix-ui/react-focus-guards/dist/index.mjs (1:0): Module level directives cause errors when bundled, "use client" in "../../.codex/visualizations/2026/06/19/019edf6d-2343-71f1-953b-5f7a498f4e4e/easy-erf-report-decision-brief/node_modules/@radix-ui/react-focus-guards/dist/index.mjs" was ignored.
+../../.codex/visualizations/2026/06/19/019edf6d-2343-71f1-953b-5f7a498f4e4e/easy-erf-report-decision-brief/node_modules/@radix-ui/react-presence/dist/index.mjs (1:0): Module level directives cause errors when bundled, "use client" in "../../.codex/visualizations/2026/06/19/019edf6d-2343-71f1-953b-5f7a498f4e4e/easy-erf-report-decision-brief/node_modules/@radix-ui/react-presence/dist/index.mjs" was ignored.

@@ -121,8 +121,12 @@ describe("erf asset extraction client", () => {
 
   it("targets document categories only", () => {
     expect(isExtractableErfAsset(asset)).toBe(true);
-    expect(isExtractableErfAsset({ asset_category: "site_photo", mime_type: "image/png" })).toBe(false);
-    expect(isExtractableErfAsset({ asset_category: "paid_report", mime_type: "text/csv" })).toBe(false);
+    expect(isExtractableErfAsset({ asset_category: "site_photo", mime_type: "image/png" })).toBe(
+      false,
+    );
+    expect(isExtractableErfAsset({ asset_category: "paid_report", mime_type: "text/csv" })).toBe(
+      false,
+    );
   });
 
   it("reports status and a human label from metadata", () => {
@@ -130,7 +134,11 @@ describe("erf asset extraction client", () => {
     expect(erfAssetExtractionLabel({ metadata: {} })).toBe("Not read yet");
     expect(
       erfAssetExtractionLabel({
-        metadata: { extractionStatus: "ready", identityMatchStatus: "matched", extractedClaims: [validClaim] },
+        metadata: {
+          extractionStatus: "ready",
+          identityMatchStatus: "matched",
+          extractedClaims: [validClaim],
+        },
       }),
     ).toBe("Report searchable");
     expect(
@@ -145,14 +153,22 @@ describe("erf asset extraction client", () => {
         "title",
       ),
     ).toBe("Title document searchable");
-    expect(erfAssetExtractionLabel({ metadata: { identityMatchStatus: "mismatch" } })).toBe("Wrong property report");
-    expect(erfAssetExtractionLabel({ metadata: { identityMatchStatus: "unverified" } })).toBe(
-      "Report read successfully - needs confirmation",
+    expect(erfAssetExtractionLabel({ metadata: { identityMatchStatus: "mismatch" } })).toBe(
+      "Wrong property report",
     );
-    expect(erfAssetExtractionLabel({ metadata: { extractionStatus: "processing" } })).toBe("Extracting report...");
-    expect(erfAssetExtractionLabel({ metadata: { extractionStatus: "failed", extractionError: "Timed out." } })).toBe(
-      "Timed out.",
+    expect(
+      erfAssetExtractionLabel({
+        metadata: { identityMatchStatus: "unverified", extractionStatus: "ready" },
+      }),
+    ).toBe("Report read successfully - needs confirmation");
+    expect(erfAssetExtractionLabel({ metadata: { extractionStatus: "processing" } })).toBe(
+      "Extracting report...",
     );
+    expect(
+      erfAssetExtractionLabel({
+        metadata: { extractionStatus: "failed", extractionError: "Timed out." },
+      }),
+    ).toBe("Timed out.");
   });
 
   it("never calls the network without an expected parcel id", async () => {
@@ -178,8 +194,11 @@ describe("erf asset extraction client", () => {
   });
 
   it("sends the user access token and returns the claim count", async () => {
-    const fetchImpl = vi.fn(async (_url: string, _init?: RequestInit) =>
-      new Response(JSON.stringify({ success: true, extractionStatus: "ready", claimCount: 7 }), { status: 200 }),
+    const fetchImpl = vi.fn(
+      async (_url: string, _init?: RequestInit) =>
+        new Response(JSON.stringify({ success: true, extractionStatus: "ready", claimCount: 7 }), {
+          status: 200,
+        }),
     );
     const result = await extractErfAsset(
       "6a8a1f2c-0000-4000-8000-000000000000",
@@ -201,17 +220,29 @@ describe("erf asset extraction client", () => {
   });
 
   it("surfaces the server failure message", async () => {
-    const fetchImpl = vi.fn(async () =>
-      new Response(JSON.stringify({ success: false, code: "TIMEOUT", error: "Reading this document timed out." }), {
-        status: 200,
-      }),
+    const fetchImpl = vi.fn(
+      async () =>
+        new Response(
+          JSON.stringify({
+            success: false,
+            code: "TIMEOUT",
+            error: "Reading this document timed out.",
+          }),
+          {
+            status: 200,
+          },
+        ),
     );
     const result = await extractErfAsset(
       "6a8a1f2c-0000-4000-8000-000000000000",
       { expectedParcelId: "csg:lpi:C03400140000157000000" },
       { fetchImpl: fetchImpl as unknown as typeof fetch, accessToken: "user-token" },
     );
-    expect(result).toMatchObject({ success: false, code: "TIMEOUT", error: "Reading this document timed out." });
+    expect(result).toMatchObject({
+      success: false,
+      code: "TIMEOUT",
+      error: "Reading this document timed out.",
+    });
   });
 
   it("preserves uncertainty when a reader invocation fails without acknowledgement", async () => {
@@ -237,10 +268,14 @@ describe("erf asset extraction client", () => {
   });
 
   it("does not expose an untyped infrastructure error from a failed worker", async () => {
-    const fetchImpl = vi.fn(async () =>
-      new Response(JSON.stringify({ code: "WORKER_ERROR", message: "Function exited due to an error" }), {
-        status: 500,
-      }),
+    const fetchImpl = vi.fn(
+      async () =>
+        new Response(
+          JSON.stringify({ code: "WORKER_ERROR", message: "Function exited due to an error" }),
+          {
+            status: 500,
+          },
+        ),
     );
     const result = await extractErfAsset(
       "6a8a1f2c-0000-4000-8000-000000000000",

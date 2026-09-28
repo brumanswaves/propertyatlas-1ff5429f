@@ -1,0 +1,11 @@
+warning: in the working copy of 'src/components/property/dossier/ReportBodySections.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/components/property/investigation/GuidedTitleStep.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/lib/evidence/buildPropertyEvidencePack.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/lib/evidence/extractionMetadata.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/lib/evidence/propertyEvidenceTypes.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/lib/investigation/guidedTaskRegistry.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/lib/investigation/propertyInvestigation.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/lib/reports/buildReportViewModel.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/lib/reports/evidenceAppendix.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/lib/reports/reportFindings.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/lib/workbench/__tests__/erfAssetExtraction.test.ts', LF will be replaced by CRLF the next time Git touches it

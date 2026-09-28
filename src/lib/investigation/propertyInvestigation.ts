@@ -28,7 +28,6 @@ import type {
   PropertyInvestigation,
 } from "./types";
 
-
 /**
  * A contradiction that the evidence layer already recorded. The investigation
  * never derives a conflict itself — it only surfaces recorded ones.
@@ -65,17 +64,16 @@ function isLive(asset: ErfAsset) {
 }
 
 function isSubjectSupported(asset: ErfAsset) {
-  return (
-    erfAssetIdentityMatchStatus(asset) === "matched" ||
-    erfAssetIdentityUserConfirmed(asset)
-  );
+  return erfAssetIdentityMatchStatus(asset) === "matched" || erfAssetIdentityUserConfirmed(asset);
 }
 
 export function deriveInvestigationFacts(
   input: BuildPropertyInvestigationInput,
 ): InvestigationFacts {
   const { parcel, workspaceState } = input;
-  const assets = (input.assets ?? []).filter(isLive);
+  const assets = (input.assets ?? []).filter(
+    (asset) => isLive(asset) && asset.parcel_id === parcel.id,
+  );
   const savedEvidence = input.savedEvidence ?? [];
   const planning = input.planning ?? null;
 
@@ -115,15 +113,14 @@ export function deriveInvestigationFacts(
     hasAreaEvidence: canonicalAreaM2(parcel.rawProperties) != null,
     sgDiagramSearchable: usableSubjectSgDiagrams.length > 0,
     sgDiagramParentLineageOnly:
-      hasReadableParentLineageSgDiagram &&
-      usableSubjectSgDiagrams.length === 0,
+      hasReadableParentLineageSgDiagram && usableSubjectSgDiagrams.length === 0,
     sgDiagramCount: sgDiagrams.length,
     usableSubjectSgDiagramCount: usableSubjectSgDiagrams.length,
     zoningConfirmedByDocument:
       detectionMethod === "document_supported" || detectionMethod === "official_polygon",
     zoningUserConfirmed: Boolean(
       planning?.userConfirmedZoneCode &&
-        planning?.userConfirmedZoneCode === planning?.detection.zoneCode,
+      planning?.userConfirmedZoneCode === planning?.detection.zoneCode,
     ),
     zoningRegistryPublished: Boolean(planning?.registryMatched),
     zoningWorkingAssumption:
@@ -134,6 +131,9 @@ export function deriveInvestigationFacts(
     paidReportSearchable: paidReports.some(
       (asset) => erfAssetHasSearchableExtraction(asset) && isSubjectSupported(asset),
     ),
+    paidReportsAllMatched: paidReports
+      .filter((asset) => erfAssetHasSearchableExtraction(asset) && isSubjectSupported(asset))
+      .every((asset) => erfAssetIdentityMatchStatus(asset) === "matched"),
     paidReportCount: paidReports.length,
     marketEvidenceCount: savedEvidence.length,
     marketAddressSaved: Boolean(workspaceState.marketAddressSaved || input.marketAddressLine),
@@ -205,22 +205,26 @@ function buildStages(
       ? "complete"
       : facts.zoningUserConfirmed
         ? "in_progress"
-      : facts.zoningWorkingAssumption
-        ? "in_progress"
-        : facts.zoningRegistryPublished
-          ? "waiting"
-          : "unavailable",
+        : facts.zoningWorkingAssumption
+          ? "in_progress"
+          : facts.zoningRegistryPublished
+            ? "waiting"
+            : "unavailable",
     facts.zoningConfirmedByDocument
       ? "The zoning for this erf is supported by a document on file."
       : facts.zoningUserConfirmed
         ? "You confirmed a working zoning conclusion. Municipal proof is still not on file."
-      : facts.zoningWorkingAssumption
-        ? "A zone is selected as a working assumption. It is not confirmed with the municipality."
-        : facts.zoningRegistryPublished
-          ? "Published planning rules exist for this municipality, but the zoning of this erf is not confirmed."
-          : "Easy Erf does not yet hold a published planning rule set for this municipality.",
+        : facts.zoningWorkingAssumption
+          ? "A zone is selected as a working assumption. It is not confirmed with the municipality."
+          : facts.zoningRegistryPublished
+            ? "Published planning rules exist for this municipality, but the zoning of this erf is not confirmed."
+            : "Easy Erf does not yet hold a published planning rule set for this municipality.",
     facts.zoningConfirmedByDocument ? 1 : facts.zoningUserConfirmed ? 1 : 0,
-    facts.zoningConfirmedByDocument ? "supported" : facts.zoningUserConfirmed ? "indicative" : "unconfirmed",
+    facts.zoningConfirmedByDocument
+      ? "supported"
+      : facts.zoningUserConfirmed
+        ? "indicative"
+        : "unconfirmed",
     "zoning-build",
   );
 
@@ -243,11 +247,7 @@ function buildStages(
   const site = stageOf(
     "site_potential",
     "Site potential",
-    facts.siteSkipped
-      ? "complete"
-      : facts.sitePotentialAccepted
-        ? "complete"
-        : "waiting",
+    facts.siteSkipped ? "complete" : facts.sitePotentialAccepted ? "complete" : "waiting",
     facts.siteSkipped
       ? "You skipped Site Potential for this erf."
       : facts.sitePotentialAccepted
@@ -383,8 +383,12 @@ function buildFindings(
     findings.push({
       id: "finding-paid-report",
       stageId: "constraints",
-      title: "Identity-matched property report on file",
-      body: "A purchased report was read and matched to this erf. Its values are used where the report supports them.",
+      title: facts.paidReportsAllMatched
+        ? "Identity-matched property report on file"
+        : "Property report attached by user",
+      body: facts.paidReportsAllMatched
+        ? "A purchased report was read and matched to this erf. Its values are used where the report supports them; this is not a title deed or certified ownership."
+        : "Readable property-report evidence includes a user-attached document. Document identity has not been independently matched for that document. Any separately matched document does not upgrade this user-supported evidence.",
       status: "supported",
       sourceLabel: "Uploaded property report",
       targetTab: "reports",
@@ -507,7 +511,9 @@ function buildMessages(
     messages.push({
       id: "msg-paid-report",
       kind: "supported",
-      text: "I read an identity-matched property report and can use its ownership context.",
+      text: facts.paidReportsAllMatched
+        ? "I read an identity-matched property report and can use its ownership context, not certify ownership."
+        : "I can use readable user-attached property-report context. Document identity has not been independently matched for that evidence.",
       targetTab: "reports",
     });
   }
@@ -653,15 +659,16 @@ export function buildInvestigationJourney(
 export function buildPropertyInvestigation(
   input: BuildPropertyInvestigationInput,
 ): PropertyInvestigation {
-
   const facts = deriveInvestigationFacts(input);
   const stages = buildStages(facts, input.parcel);
   const contradictions = input.contradictions ?? [];
   const definition = selectNextGuidedTask(facts, input.skippedTaskIds ?? []);
   const nextTask = definition ? toGuidedEvidenceTask(definition, facts) : null;
   const nextAction = buildCanonicalNextAction(facts, input.skippedTaskIds ?? []);
-  const journey = buildInvestigationJourney(stages, nextTask?.stageId ?? nextAction?.stageId ?? null);
-
+  const journey = buildInvestigationJourney(
+    stages,
+    nextTask?.stageId ?? nextAction?.stageId ?? null,
+  );
 
   const progress = stages.reduce((total, stage) => {
     if (stage.status === "complete") return total + STAGE_WEIGHT;
