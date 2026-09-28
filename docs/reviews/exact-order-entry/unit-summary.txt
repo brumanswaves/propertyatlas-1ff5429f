@@ -1,0 +1,6 @@
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+ FAIL  src/lib/payments/__tests__/humanReviewFunnelUxGuardrails.test.ts > Done-for-You founder fulfillment > prioritizes open work and tells the founder to complete the standard investigation first
+ Test Files  1 failed | 172 passed (173)
+      Tests  1 failed | 1785 passed (1786)
+   Start at  10:13:18
+   Duration  14.92s (transform 27.46s, setup 0ms, import 55.28s, tests 13.80s, environment 39ms)
