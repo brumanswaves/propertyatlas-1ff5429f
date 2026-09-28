@@ -1,0 +1,29 @@
+PASS SSR hydration exact link and focused refresh/readback never read queue
+PASS invalid target #order-bad
+PASS invalid target #order-
+PASS invalid target #unrecognized
+PASS unresolved hook and explicit retry do not read queue
+PASS overview and deliberate back use correct queue true
+PASS overview and deliberate back use correct queue false
+PASS late queue success cannot hide exact detail
+PASS late queue failure cannot hide exact detail
+PASS queue error remains honest but selected order is independent
+PASS unauthorized exact detail fails closed without fallback
+PASS failed read retry recovers exact investigation true
+PASS failed read retry recovers exact investigation false
+PASS successful empty read is distinct and overview remains deliberate
+PASS retry failure stays unavailable with no automatic retry
+PASS failed revalidation removes actionable old detail and retry restores it
+PASS pending retry order change ignores stale success
+PASS pending retry order change ignores stale failure
+PASS pending retry account change ignores stale success
+PASS pending retry account change ignores stale failure
+PASS pending retry role change ignores stale success
+PASS pending retry role change ignores stale failure
+PASS logout during retry ignores late success
+PASS logout during retry ignores late failure
+PASS A B A discards earlier matching response
+PASS account A B A rejects stale lifetime
+PASS role A B A rejects stale lifetime
+PASS auth loading and logout expose no stale detail
+PASS remount exact link stays detail only

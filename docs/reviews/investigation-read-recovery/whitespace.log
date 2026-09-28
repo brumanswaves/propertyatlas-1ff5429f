@@ -1,0 +1,4 @@
+warning: in the working copy of 'src/lib/humanReview/__tests__/exact-order/mocks.jsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/lib/humanReview/__tests__/exact-order/verify.mjs', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/lib/humanReview/useFounderOrderData.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/routes/admin_.fulfillment.tsx', LF will be replaced by CRLF the next time Git touches it

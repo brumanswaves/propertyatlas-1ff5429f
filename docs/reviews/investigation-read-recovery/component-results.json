@@ -1,0 +1,118 @@
+[
+  {
+    "name": "SSR hydration exact link and focused refresh/readback never read queue",
+    "pass": true
+  },
+  {
+    "name": "invalid target #order-bad",
+    "pass": true
+  },
+  {
+    "name": "invalid target #order-",
+    "pass": true
+  },
+  {
+    "name": "invalid target #unrecognized",
+    "pass": true
+  },
+  {
+    "name": "unresolved hook and explicit retry do not read queue",
+    "pass": true
+  },
+  {
+    "name": "overview and deliberate back use correct queue true",
+    "pass": true
+  },
+  {
+    "name": "overview and deliberate back use correct queue false",
+    "pass": true
+  },
+  {
+    "name": "late queue success cannot hide exact detail",
+    "pass": true
+  },
+  {
+    "name": "late queue failure cannot hide exact detail",
+    "pass": true
+  },
+  {
+    "name": "queue error remains honest but selected order is independent",
+    "pass": true
+  },
+  {
+    "name": "unauthorized exact detail fails closed without fallback",
+    "pass": true
+  },
+  {
+    "name": "failed read retry recovers exact investigation true",
+    "pass": true
+  },
+  {
+    "name": "failed read retry recovers exact investigation false",
+    "pass": true
+  },
+  {
+    "name": "successful empty read is distinct and overview remains deliberate",
+    "pass": true
+  },
+  {
+    "name": "retry failure stays unavailable with no automatic retry",
+    "pass": true
+  },
+  {
+    "name": "failed revalidation removes actionable old detail and retry restores it",
+    "pass": true
+  },
+  {
+    "name": "pending retry order change ignores stale success",
+    "pass": true
+  },
+  {
+    "name": "pending retry order change ignores stale failure",
+    "pass": true
+  },
+  {
+    "name": "pending retry account change ignores stale success",
+    "pass": true
+  },
+  {
+    "name": "pending retry account change ignores stale failure",
+    "pass": true
+  },
+  {
+    "name": "pending retry role change ignores stale success",
+    "pass": true
+  },
+  {
+    "name": "pending retry role change ignores stale failure",
+    "pass": true
+  },
+  {
+    "name": "logout during retry ignores late success",
+    "pass": true
+  },
+  {
+    "name": "logout during retry ignores late failure",
+    "pass": true
+  },
+  {
+    "name": "A B A discards earlier matching response",
+    "pass": true
+  },
+  {
+    "name": "account A B A rejects stale lifetime",
+    "pass": true
+  },
+  {
+    "name": "role A B A rejects stale lifetime",
+    "pass": true
+  },
+  {
+    "name": "auth loading and logout expose no stale detail",
+    "pass": true
+  },
+  {
+    "name": "remount exact link stays detail only",
+    "pass": true
+  }
+]

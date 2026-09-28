@@ -89,10 +89,8 @@ function FounderFulfillmentQueue() {
   const { isAdmin } = useOperationsAccess();
   const [busyOrderId, setBusyOrderId] = useState<string | null>(null);
   const [focusedOrderId, setFocusedOrderId] = useState<string | null | undefined>(undefined);
-  const { orders, loading, queueError, focusedOrder, detailLoading, refresh } = useFounderOrderData(
-    focusedOrderId,
-    !isAdmin,
-  );
+  const { orders, loading, queueError, focusedOrder, detailLoading, detailError, refresh } =
+    useFounderOrderData(focusedOrderId, !isAdmin);
   const mutationInFlight = useRef(false);
   const [deliveryNotice, setDeliveryNotice] = useState<{ orderId: string; message: string } | null>(
     null,
@@ -306,6 +304,7 @@ function FounderFulfillmentQueue() {
               deliveryNotice?.orderId === focusedOrderId ? deliveryNotice.message : null
             }
             loading={detailLoading}
+            error={detailError}
             busy={Boolean(focusedOrder && busyOrderId === focusedOrder.id)}
             onExit={exitFocus}
             onTransition={transition}
@@ -590,6 +589,7 @@ function FocusedOrderWorkbench({
   order,
   deliveryNotice,
   loading,
+  error,
   busy,
   onExit,
   onTransition,
@@ -599,6 +599,7 @@ function FocusedOrderWorkbench({
   order: ReportOrder | null;
   deliveryNotice: string | null;
   loading: boolean;
+  error: boolean;
   busy: boolean;
   onExit: () => void;
   onTransition: (
@@ -625,11 +626,20 @@ function FocusedOrderWorkbench({
           <AlertCircle className="mt-0.5 h-5 w-5 text-rose-700" />
           <div>
             <h1 className="text-lg font-semibold text-[#0D1B2A]">
-              The requested order was not found
+              {error ? "Could not load this investigation" : "No accessible investigation found"}
             </h1>
             <p className="mt-1 text-sm text-rose-900">
               No other order has been opened or made actionable.
             </p>
+            {error && (
+              <button
+                type="button"
+                onClick={() => void onRefresh()}
+                className="mr-3 mt-4 rounded-full bg-[#0D1B2A] px-4 py-2 text-xs font-semibold text-white"
+              >
+                Retry this investigation
+              </button>
+            )}
             <button
               type="button"
               onClick={onExit}
