@@ -85,6 +85,9 @@ function surfaces(assets: ErfAsset[], parcel = evidenceParcel()) {
     evidencePack: pack,
   });
   return {
+    pack,
+    risks: report.risks,
+    recommendations: report.recommendations,
     guided: renderToStaticMarkup(
       <GuidedTitleStep parcel={parcel} onContinue={vi.fn()} onOpenPaidReports={vi.fn()} />,
     ),
@@ -202,4 +205,77 @@ describe("document identity provenance across Guided and report consumers", () =
     expect(surfaces([]).report.owners).toHaveLength(0);
     expect(surfaces([a]).ownership.headline).toContain("user-attached");
   });
+});
+
+describe("registered extent warning provenance", () => {
+  const extent = (identity: string, extraction = "ready", confirmed = true) =>
+    asset(identity, extraction, confirmed, {
+      id: "extent-document",
+      metadata: {
+        extractedClaims: [
+          {
+            domain: "identity",
+            key: "registeredExtent",
+            label: "Registered extent",
+            value: "600 m2",
+            numericValue: 600,
+            scope: "subject",
+            page: 2,
+          },
+        ],
+      },
+    });
+  const warningId = "official-area-vs-registered-extent";
+  it.each(["ready", "partial"])(
+    "keeps %s user-attached extent unverified in canonical risks and recommendations",
+    (status) => {
+      const assets = [extent("unverified", status)];
+      const before = JSON.stringify(assets);
+      const s = surfaces(assets);
+      const warning = s.pack.contradictions.find((item) => item.id === warningId)!;
+      expect(warning.displayedValues).toEqual([
+        "Official cadastral area: 900 m2",
+        "Registered extent: 600 m2",
+      ]);
+      expect(warning.explanation).toContain("identity has not been independently matched");
+      expect(warning.explanation).not.toContain("a matched document");
+      expect(warning.sourceIds.length).toBe(2);
+      const claim = s.pack.claims.find((item) => item.key === "registeredExtent")!;
+      expect(claim.status).toBe("supported");
+      expect(claim.confidence).toBe("unverified");
+      expect(warning.sourceIds).toEqual(expect.arrayContaining(claim.sourceIds));
+      expect(s.risks.find((item) => item.id === warningId)?.why).toBe(warning.explanation);
+      expect(s.recommendations.find((item) => item.id === `rec-${warningId}`)?.detail).toBe(
+        warning.explanation,
+      );
+      expect(warning.nextAction).toContain("land surveyor or conveyancer");
+      expect(JSON.stringify(assets)).toBe(before);
+    },
+  );
+  it.each([false, true])(
+    "does not borrow identity from an unrelated matched document, reversed=%s",
+    (reverse) => {
+      const assets = [asset("matched", "ready", false), extent("unverified")];
+      const s = surfaces(reverse ? assets.reverse() : assets);
+      expect(s.risks.find((item) => item.id === warningId)?.why).toContain(
+        "identity has not been independently matched",
+      );
+      expect(s.recommendations.find((item) => item.id === `rec-${warningId}`)?.detail).toContain(
+        "identity has not been independently matched",
+      );
+    },
+  );
+  it("keeps genuine extent identity matching distinct from other unverified documents", () => {
+    const s = surfaces([asset(), extent("matched", "ready", false)]);
+    expect(s.risks.find((item) => item.id === warningId)?.why).toContain(
+      "extent document is identity-matched",
+    );
+  });
+  it.each(["mismatch", "parent_lineage_match"])(
+    "does not promote %s extent into a subject discrepancy",
+    (identity) => {
+      const s = surfaces([extent(identity)]);
+      expect(s.pack.contradictions.find((item) => item.id === warningId)).toBeUndefined();
+    },
+  );
 });

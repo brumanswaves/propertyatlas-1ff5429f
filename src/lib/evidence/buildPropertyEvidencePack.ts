@@ -1527,7 +1527,7 @@ function addContradictions(
   );
 
   const officialArea = firstClaimNumber(pack.claims, "identity", "areaM2", true);
-  // Official cadastral area vs a registered/deed extent read from a matched
+  // Official cadastral area vs a registered/deed extent read from an uploaded
   // document. Both values are canonical and must both survive: this is
   // recorded as a contradiction for the user to reconcile, and neither claim
   // is marked conflicting, so neither value is ever suppressed or overwritten.
@@ -1536,12 +1536,25 @@ function addContradictions(
     const extentDelta = Math.abs(officialArea - registeredExtent);
     if (extentDelta / Math.max(officialArea, registeredExtent) > 0.005) {
       const areaClaim = findClaim(pack, "identity", "areaM2");
-      const extentClaim = findClaim(pack, "identity", "registeredExtent");
+      const extentClaim = pack.claims.find(
+        (claim) =>
+          claim.domain === "identity" &&
+          claim.key === "registeredExtent" &&
+          (claim.status === "supported" || claim.status === "conflicting"),
+      );
+      const extentSources =
+        extentClaim?.sourceIds.map((id) => pack.sources.find((source) => source.id === id)) ?? [];
+      const extentIdentityMatched =
+        extentSources.length > 0 &&
+        extentSources.every((source) => source?.asset?.identityMatchStatus === "matched");
+      const extentDisclosure = extentIdentityMatched
+        ? "The extent document is identity-matched."
+        : "The extent document's identity has not been independently matched.";
       addContradiction(pack, {
         id: "official-area-vs-registered-extent",
         title: "Official cadastral area and registered extent differ",
         severity: "medium",
-        explanation: `The official cadastral record states ${officialArea} m2 while a matched document states a registered extent of ${registeredExtent} m2. Easy Erf keeps both values and does not choose between them.`,
+        explanation: `The official cadastral record states ${officialArea} m2 while an uploaded document states a registered extent of ${registeredExtent} m2. ${extentDisclosure} Easy Erf keeps both values and does not choose between them.`,
         claimIds: compact([areaClaim?.id, extentClaim?.id]),
         sourceIds: unique(
           compact([...(areaClaim?.sourceIds ?? []), ...(extentClaim?.sourceIds ?? [])]),
