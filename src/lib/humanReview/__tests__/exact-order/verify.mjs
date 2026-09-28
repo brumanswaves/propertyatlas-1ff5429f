@@ -45,8 +45,10 @@ async function run(name, hash, fn, options = {}) {
       requests: [],
       pending: [],
       errors: [],
+      mutations: [],
       ...options,
     };
+    localStorage.setItem("synthetic-scoped-draft:actor-a:order-a", "preserve draft");
   }, options);
   try {
     await p.goto(
@@ -55,6 +57,11 @@ async function run(name, hash, fn, options = {}) {
     await p.waitForFunction(() => Boolean(window.fixture.render));
     await fn(p);
     assert.deepEqual(errors, []);
+    assert.deepEqual(await p.evaluate(() => window.fixture.mutations), []);
+    assert.equal(
+      await p.evaluate(() => localStorage.getItem("synthetic-scoped-draft:actor-a:order-a")),
+      "preserve draft",
+    );
     results.push({ name, pass: true });
     console.log("PASS", name);
   } catch (e) {
@@ -81,7 +88,7 @@ async function settle(p, index, value, error = false) {
   await p.evaluate(
     ({ index, value, error }) => {
       const r = window.fixture.requests[index];
-      error ? r.reject(new Error("denied")) : r.resolve(value);
+      error ? r.reject(new Error(typeof error === "string" ? error : "denied")) : r.resolve(value);
     },
     { index, value, error },
   );
@@ -182,9 +189,179 @@ try {
   await run("unauthorized exact detail fails closed without fallback", "#order-" + A, async (p) => {
     await waitRequests(p, 1);
     await settle(p, 0, null, true);
-    await p.getByText("The requested order was not found", { exact: true }).waitFor();
+    await p.getByText("Could not load this investigation", { exact: true }).waitFor();
+    assert.equal(
+      await p.getByText("No accessible investigation found", { exact: true }).count(),
+      0,
+    );
+    assert.equal((await p.locator("body").innerText()).includes("denied"), false);
     assert.equal(await queueCount(p), 0);
   });
+  for (const admin of [true, false])
+    await run(
+      "failed read retry recovers exact investigation " + admin,
+      "#order-" + A,
+      async (p) => {
+        await waitRequests(p, 1);
+        await settle(p, 0, null, "private backend diagnostics");
+        await p
+          .getByRole("heading", { name: "Could not load this investigation", exact: true })
+          .waitFor();
+        assert.equal(
+          (await p.locator("body").innerText()).includes("private backend diagnostics"),
+          false,
+        );
+        assert.equal(
+          await p.getByText("Synthetic post-save readback " + A, { exact: true }).count(),
+          0,
+        );
+        await p
+          .getByRole("button", { name: "Retry this investigation", exact: true })
+          .evaluate((button) => {
+            button.click();
+            button.click();
+            button.click();
+          });
+        await waitRequests(p, 2);
+        assert.equal(await p.evaluate(() => window.fixture.requests.length), 2);
+        await p.getByText("Loading the exact order…", { exact: true }).waitFor();
+        assert.equal(
+          await p.getByRole("button", { name: "Retry this investigation", exact: true }).count(),
+          0,
+        );
+        assert.equal(
+          await p.getByText("Could not load this investigation", { exact: true }).count(),
+          0,
+        );
+        assert.equal(await p.evaluate(() => location.hash), "#order-" + A);
+        await settle(p, 1, order(A, "RECOVERED"));
+        await p.getByText("RECOVERED", { exact: true }).waitFor();
+        assert.deepEqual(
+          await p.evaluate(() =>
+            window.fixture.requests.map((r) => ({ id: r.id, assigned: r.assigned })),
+          ),
+          [
+            { id: A, assigned: !admin },
+            { id: A, assigned: !admin },
+          ],
+        );
+        assert.equal(await queueCount(p), 0);
+      },
+      { admin },
+    );
+  await run(
+    "successful empty read is distinct and overview remains deliberate",
+    "#order-" + A,
+    async (p) => {
+      await waitRequests(p, 1);
+      await settle(p, 0, null);
+      await p
+        .getByRole("heading", { name: "No accessible investigation found", exact: true })
+        .waitFor();
+      assert.equal(
+        await p.getByRole("button", { name: "Retry this investigation", exact: true }).count(),
+        0,
+      );
+      assert.equal(await queueCount(p), 0);
+      assert.deepEqual(await p.evaluate(() => window.fixture.errors), []);
+      await p.getByRole("button", { name: "Return to queue", exact: true }).click();
+      await waitRequests(p, 2);
+      assert.equal(await queueCount(p), 1);
+      await settle(p, 1, []);
+    },
+  );
+  await run("retry failure stays unavailable with no automatic retry", "#order-" + A, async (p) => {
+    await waitRequests(p, 1);
+    await settle(p, 0, null, true);
+    await p.getByRole("button", { name: "Retry this investigation", exact: true }).click();
+    await waitRequests(p, 2);
+    await settle(p, 1, null, true);
+    await p
+      .getByRole("heading", { name: "Could not load this investigation", exact: true })
+      .waitFor();
+    await change(p, {});
+    assert.equal(await p.evaluate(() => window.fixture.requests.length), 2);
+    assert.equal(await queueCount(p), 0);
+    assert.equal(
+      await p.getByText("Synthetic post-save readback " + A, { exact: true }).count(),
+      0,
+    );
+    await p.getByRole("button", { name: "Retry this investigation", exact: true }).click();
+    await waitRequests(p, 3);
+    await settle(p, 2, null);
+    await p
+      .getByRole("heading", { name: "No accessible investigation found", exact: true })
+      .waitFor();
+  });
+  await run(
+    "failed revalidation removes actionable old detail and retry restores it",
+    "#order-" + A,
+    async (p) => {
+      await waitRequests(p, 1);
+      await settle(p, 0, order(A, "OLD_DETAIL"));
+      await p.getByText("Synthetic post-save readback " + A, { exact: true }).click();
+      await waitRequests(p, 2);
+      assert.equal(await p.getByText("OLD_DETAIL", { exact: true }).count(), 0);
+      await settle(p, 1, null, true);
+      assert.equal(
+        await p.getByText("Synthetic post-save readback " + A, { exact: true }).count(),
+        0,
+      );
+      await p.getByRole("button", { name: "Retry this investigation", exact: true }).click();
+      await waitRequests(p, 3);
+      await settle(p, 2, order(A, "FRESH_DETAIL"));
+      await p.getByText("FRESH_DETAIL", { exact: true }).waitFor();
+      assert.equal(await queueCount(p), 0);
+      assert.deepEqual(await p.evaluate(() => window.fixture.requests.map((r) => r.id)), [A, A, A]);
+    },
+  );
+  for (const kind of ["order", "account", "role"])
+    for (const fail of [false, true])
+      await run(
+        "pending retry " + kind + " change ignores stale " + (fail ? "failure" : "success"),
+        "#order-" + A,
+        async (p) => {
+          await waitRequests(p, 1);
+          await settle(p, 0, null, true);
+          await p.getByRole("button", { name: "Retry this investigation", exact: true }).click();
+          await waitRequests(p, 2);
+          if (kind === "order") await hash(p, B);
+          else await change(p, kind === "account" ? { user: "actor-b" } : { admin: false });
+          await waitRequests(p, 3);
+          assert.equal(await p.evaluate(() => window.fixture.requests[1].signal.aborted), true);
+          await settle(p, 2, order(kind === "order" ? B : A, "CURRENT_SCOPE"));
+          await settle(p, 1, order(A, "STALE_SCOPE"), fail);
+          await p.getByText("CURRENT_SCOPE", { exact: true }).waitFor();
+          assert.equal(await p.getByText("STALE_SCOPE", { exact: true }).count(), 0);
+          assert.equal(
+            await p.getByText("Could not load this investigation", { exact: true }).count(),
+            0,
+          );
+          assert.equal(await p.evaluate(() => window.fixture.errors.length), 1);
+          assert.equal(await queueCount(p), 0);
+        },
+      );
+  for (const fail of [false, true])
+    await run(
+      "logout during retry ignores late " + (fail ? "failure" : "success"),
+      "#order-" + A,
+      async (p) => {
+        await waitRequests(p, 1);
+        await settle(p, 0, null, true);
+        await p.getByRole("button", { name: "Retry this investigation", exact: true }).click();
+        await waitRequests(p, 2);
+        await change(p, { user: null });
+        await settle(p, 1, order(A, "PRIVATE_AFTER_LOGOUT"), fail);
+        assert.equal(await p.getByText("PRIVATE_AFTER_LOGOUT", { exact: true }).count(), 0);
+        assert.equal(
+          await p.getByRole("button", { name: "Retry this investigation", exact: true }).count(),
+          0,
+        );
+        assert.equal(await p.evaluate(() => window.fixture.errors.length), 1);
+        assert.equal(await p.evaluate(() => window.fixture.requests.length), 2);
+        assert.equal(await queueCount(p), 0);
+      },
+    );
   await run("A B A discards earlier matching response", "#order-" + A, async (p) => {
     await waitRequests(p, 1);
     await hash(p, B);
@@ -233,11 +410,9 @@ try {
     assert.equal(await queueCount(p), 0);
   });
 } finally {
-  fs.mkdirSync("artifacts/exact-order", { recursive: true });
-  fs.writeFileSync(
-    "artifacts/exact-order/component-results.json",
-    JSON.stringify(results, null, 2),
-  );
+  const output = process.env.EASY_ERF_FIXTURE_OUTPUT ?? "artifacts/exact-order";
+  fs.mkdirSync(output, { recursive: true });
+  fs.writeFileSync(output + "/component-results.json", JSON.stringify(results, null, 2));
   await browser.close();
   await server.close();
 }

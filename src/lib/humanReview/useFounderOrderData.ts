@@ -30,10 +30,12 @@ export function useFounderOrderData(selectedId: string | null | undefined, assig
   const [detail, setDetail] = useState<{
     lifetime: typeof lifetime;
     loading: boolean;
+    error: boolean;
     order: FounderOrderDetail | null;
   } | null>(null);
   const queueRequest = useRef<AbortController | null>(null);
   const detailRequest = useRef<AbortController | null>(null);
+  const pendingDetailLifetime = useRef<typeof lifetime | null>(null);
   const mounted = useRef(false);
   const exact = typeof selectedId === "string" && isFullFounderOrderId(selectedId);
 
@@ -75,10 +77,14 @@ export function useFounderOrderData(selectedId: string | null | undefined, assig
       typeof selectedId !== "string"
     )
       return;
+    // Coalesce repeated clicks/callbacks before React renders the pending state.
+    if (pendingDetailLifetime.current === lifetime && !detailRequest.current?.signal.aborted)
+      return;
     detailRequest.current?.abort();
     const request = new AbortController();
     detailRequest.current = request;
-    setDetail({ lifetime, loading: true, order: null });
+    pendingDetailLifetime.current = lifetime;
+    setDetail({ lifetime, loading: true, error: false, order: null });
     const active = () =>
       mounted.current &&
       current.current === lifetime &&
@@ -86,11 +92,13 @@ export function useFounderOrderData(selectedId: string | null | undefined, assig
       detailRequest.current === request;
     try {
       const order = await readFounderOrder(supabase, selectedId, request.signal, assignedOnly);
-      if (active()) setDetail({ lifetime, loading: false, order });
+      if (active()) setDetail({ lifetime, loading: false, error: false, order });
     } catch {
       if (!active()) return;
-      setDetail({ lifetime, loading: false, order: null });
+      setDetail({ lifetime, loading: false, error: true, order: null });
       toast.error("Could not load this exact investigation. No other order was opened.");
+    } finally {
+      if (detailRequest.current === request) pendingDetailLifetime.current = null;
     }
   }, [lifetime, authLoading, userId, exact, selectedId, assignedOnly]);
 
@@ -132,6 +140,7 @@ export function useFounderOrderData(selectedId: string | null | undefined, assig
       (authLoading || Boolean(userId && (!currentQueue || currentQueue.loading))),
     queueError: currentQueue?.error ?? false,
     focusedOrder,
+    detailError: currentDetail?.error ?? false,
     detailLoading:
       exact && (authLoading || Boolean(userId && (!currentDetail || currentDetail.loading))),
     refresh,

@@ -14,6 +14,10 @@ export const OrderInvestigationWorkspace = ({ orderId, onApproved }) => (
 export const createFileRoute = () => (x) => x;
 export const Link = ({ children }) => <span>{children}</span>;
 export const toast = { error: (message) => window.fixture.errors.push(message), success: () => {} };
+function mutation(kind) {
+  window.fixture.mutations.push(kind);
+  throw new Error("Unexpected mutation in read-only fixture");
+}
 export function request(kind, id, signal) {
   const f = window.fixture;
   return new Promise((resolve, reject) => {
@@ -23,7 +27,17 @@ export function request(kind, id, signal) {
   });
 }
 export const supabase = {
+  functions: { invoke: () => mutation("function") },
+  storage: { from: () => mutation("storage") },
   rpc(name, args) {
+    if (
+      ![
+        "list_easy_erf_founder_queue",
+        "list_assigned_investigation_queue",
+        "read_assigned_investigation_header",
+      ].includes(name)
+    )
+      return mutation(name);
     return {
       abortSignal(signal) {
         return request(name, args?.p_order_id ?? null, signal).then((data) => ({
@@ -36,6 +50,10 @@ export const supabase = {
   from(table) {
     const filters = {};
     return {
+      insert: () => mutation("insert"),
+      update: () => mutation("update"),
+      delete: () => mutation("delete"),
+      upsert: () => mutation("upsert"),
       select() {
         return this;
       },
