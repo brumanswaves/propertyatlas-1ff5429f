@@ -1,9 +1,6 @@
 import { canonicalAreaM2, formatAreaM2Value } from "@/lib/evidence/parcelArea";
 import type { NormalizedOfficialParcel } from "@/lib/parcels/officialParcelId";
-import type {
-  ErfWorkspaceState,
-  ErfStrategyScenario,
-} from "@/lib/workbench/erfWorkspaceState";
+import type { ErfWorkspaceState, ErfStrategyScenario } from "@/lib/workbench/erfWorkspaceState";
 import type {
   MarketAddressIntelligence,
   SavedMarketEvidence,
@@ -23,6 +20,7 @@ import type {
 } from "@/lib/evidence/propertyEvidenceTypes";
 import { buildPublicResearchSources } from "@/lib/research/publicSourceRegistry";
 import {
+  ownershipDocumentProvenance,
   claimNumericValue,
   deedExtentClaim,
   isActualUploadedOwnershipSource,
@@ -46,14 +44,7 @@ export type EvidenceBadge =
   | "missing";
 
 export interface ReadinessCategory {
-  id:
-    | "identity"
-    | "planning"
-    | "ownership"
-    | "market"
-    | "risk"
-    | "strategy"
-    | "documents";
+  id: "identity" | "planning" | "ownership" | "market" | "risk" | "strategy" | "documents";
   label: string;
   state: ReadinessState;
   explanation: string;
@@ -81,8 +72,6 @@ export const REPORT_SECTIONS: ReportSectionMeta[] = [
   { id: "risk", label: "Risk & Actions", anchorId: "report-risk" },
   { id: "documents", label: "Evidence Appendix", anchorId: "report-documents" },
 ];
-
-
 
 export interface RiskItem {
   id: string;
@@ -140,23 +129,19 @@ export interface OwnershipDetail {
 }
 
 export type OwnershipEvidenceState =
-  | "supported"
-  | "uploaded_not_searchable"
-  | "wrong_property"
-  | "missing";
+  "supported" | "uploaded_not_searchable" | "wrong_property" | "missing";
 
 export interface OwnershipView {
   hasUploadedReport: boolean;
   uploadedReportNames: string[];
   isVerified: false; // Easy Erf never certifies ownership.
-  /** Supported owner/share values read from an identity-matched document. */
+  /** Supported owner/share values with their individual document provenance. */
   owners: OwnershipDetail[];
   /** Title deed values when a deed document supports them. */
   titleDeed: OwnershipDetail[];
   state: OwnershipEvidenceState;
   message: string;
 }
-
 
 export interface PlanningField {
   label: string;
@@ -258,7 +243,8 @@ function pickConfirmedAddress(address: MarketAddressIntelligence | null): Addres
 function parcelDisplayName(parcel: NormalizedOfficialParcel, marketAddr: AddressCandidate | null) {
   if (marketAddr?.formattedAddress) return marketAddr.formattedAddress;
   if (parcel.erfNumber != null) {
-    const portionSuffix = parcel.portion != null && String(parcel.portion) !== "0" ? ` / ${parcel.portion}` : "";
+    const portionSuffix =
+      parcel.portion != null && String(parcel.portion) !== "0" ? ` / ${parcel.portion}` : "";
     return `Erf ${parcel.erfNumber}${portionSuffix}`;
   }
   return "Selected parcel";
@@ -275,7 +261,8 @@ function buildIdentity(
 ): PropertyIdentityDisplay {
   const officialParts: string[] = [];
   if (parcel.erfNumber != null) officialParts.push(`Erf ${parcel.erfNumber}`);
-  if (parcel.portion != null && String(parcel.portion) !== "0") officialParts.push(`Portion ${parcel.portion}`);
+  if (parcel.portion != null && String(parcel.portion) !== "0")
+    officialParts.push(`Portion ${parcel.portion}`);
   if (parcel.municipality) officialParts.push(parcel.municipality);
   if (parcel.province) officialParts.push(parcel.province);
   const officialLine = officialParts.length ? officialParts.join(" / ") : null;
@@ -283,11 +270,11 @@ function buildIdentity(
   const marketAddressLine = marketAddr?.formattedAddress ?? null;
   const mismatch = Boolean(
     marketAddr &&
-      officialLine &&
-      // simple heuristic: municipality mismatch when both defined
-      parcel.municipality &&
-      marketAddr.municipality &&
-      normalize(parcel.municipality) !== normalize(marketAddr.municipality),
+    officialLine &&
+    // simple heuristic: municipality mismatch when both defined
+    parcel.municipality &&
+    marketAddr.municipality &&
+    normalize(parcel.municipality) !== normalize(marketAddr.municipality),
   );
 
   return {
@@ -330,9 +317,7 @@ function buildIdentityFromPack(
   const portion = identityClaim("portion")?.value ?? parcel.portion ?? null;
   const municipality = stringOrNull(identityClaim("municipality")?.value ?? parcel.municipality);
   const province = stringOrNull(identityClaim("province")?.value ?? parcel.province);
-  const suburbOrArea = stringOrNull(
-    identityClaim("suburbOrArea")?.value ?? parcel.suburbOrArea,
-  );
+  const suburbOrArea = stringOrNull(identityClaim("suburbOrArea")?.value ?? parcel.suburbOrArea);
   const town = stringOrNull(identityClaim("town")?.value ?? parcel.town);
   const marketAddressLine = stringOrNull(addressClaim("marketAddress")?.value);
   const officialParts: string[] = [];
@@ -352,7 +337,9 @@ function buildIdentityFromPack(
     officialLine: officialParts.length ? officialParts.join(" / ") : null,
     marketAddressLine,
     addressAndOfficialMismatch: pack.contradictions.some(
-      (item) => item.id === "market-address-municipality-mismatch" || item.id === "market-address-province-mismatch",
+      (item) =>
+        item.id === "market-address-municipality-mismatch" ||
+        item.id === "market-address-province-mismatch",
     ),
     suburbOrArea,
     town,
@@ -420,7 +407,10 @@ function buildPlanning(parcel: NormalizedOfficialParcel): PlanningField[] {
   ];
 }
 
-function buildPlanningFromPack(pack: PropertyEvidencePack, parcel: NormalizedOfficialParcel): PlanningField[] {
+function buildPlanningFromPack(
+  pack: PropertyEvidencePack,
+  parcel: NormalizedOfficialParcel,
+): PlanningField[] {
   const area = supportedClaim(pack, "identity", "areaM2");
   const field = (key: string, label: string): PlanningField => {
     const claim = reportPlanningClaim(pack, key);
@@ -434,9 +424,13 @@ function buildPlanningFromPack(pack: PropertyEvidencePack, parcel: NormalizedOff
     field("zoning", "Zoning"),
     {
       label: "Erf size (m²)",
-      value: formatAreaM2Value(numberOrNull(area?.normalizedValue ?? area?.value) ?? parcelAreaM2(parcel)),
+      value: formatAreaM2Value(
+        numberOrNull(area?.normalizedValue ?? area?.value) ?? parcelAreaM2(parcel),
+      ),
       badge:
-        formatAreaM2Value(numberOrNull(area?.normalizedValue ?? area?.value) ?? parcelAreaM2(parcel)) != null
+        formatAreaM2Value(
+          numberOrNull(area?.normalizedValue ?? area?.value) ?? parcelAreaM2(parcel),
+        ) != null
           ? area
             ? badgeForClaim(area)
             : "official"
@@ -451,7 +445,6 @@ function buildPlanningFromPack(pack: PropertyEvidencePack, parcel: NormalizedOff
     field("noBuildArea", "No-build / reserve"),
     { label: "Density", value: null, badge: "missing" },
     field("permittedUses", "Permitted uses"),
-
   ];
 }
 
@@ -500,7 +493,11 @@ function buildMarket(evidence: SavedMarketEvidence[]): MarketView {
 const OWNERSHIP_DISPLAY_KEYS = ["registeredOwner", "ownerType", "ownershipShare", "coOwners"];
 const DEED_DISPLAY_KEYS = ["titleDeedNumber", "registrationDate", "conditionsOfTitle"];
 
-function ownershipDetails(pack: PropertyEvidencePack, domain: EvidenceDomain, keys: string[]): OwnershipDetail[] {
+function ownershipDetails(
+  pack: PropertyEvidencePack,
+  domain: EvidenceDomain,
+  keys: string[],
+): OwnershipDetail[] {
   return pack.claims
     .filter(
       (claim) =>
@@ -511,7 +508,9 @@ function ownershipDetails(pack: PropertyEvidencePack, domain: EvidenceDomain, ke
     )
     .map((claim) => ({
       label: claim.label,
-      value: redactPersonalIdentifiers(String(claim.value ?? "")),
+      value:
+        redactPersonalIdentifiers(String(claim.value ?? "")) +
+        ` (${ownershipDocumentProvenance(pack, claim)})`,
       sourceIds: claim.sourceIds,
       pageNumbers: claim.locators
         .map((locator) => locator.pageNumber)
@@ -520,7 +519,9 @@ function ownershipDetails(pack: PropertyEvidencePack, domain: EvidenceDomain, ke
     .filter((detail) => detail.value.length > 0);
 }
 
-function buildRegisteredExtent(pack: PropertyEvidencePack): PropertyIdentityDisplay["registeredExtent"] {
+function buildRegisteredExtent(
+  pack: PropertyEvidencePack,
+): PropertyIdentityDisplay["registeredExtent"] {
   const claim = deedExtentClaim(pack);
   if (!claim) return null;
   return {
@@ -530,11 +531,16 @@ function buildRegisteredExtent(pack: PropertyEvidencePack): PropertyIdentityDisp
   };
 }
 
-function buildOwnershipFromPack(pack: PropertyEvidencePack, fallbackAssets: ErfAsset[]): OwnershipView {
+function buildOwnershipFromPack(
+  pack: PropertyEvidencePack,
+  fallbackAssets: ErfAsset[],
+): OwnershipView {
   const uploaded = pack.sources.filter(isActualUploadedOwnershipSource);
   const owners = ownershipDetails(pack, "ownership", OWNERSHIP_DISPLAY_KEYS);
   const titleDeed = ownershipDetails(pack, "deeds", DEED_DISPLAY_KEYS);
-  const wrongProperty = pack.contradictions.some((item) => item.id.startsWith("document-property-mismatch-"));
+  const wrongProperty = pack.contradictions.some((item) =>
+    item.id.startsWith("document-property-mismatch-"),
+  );
   const state: OwnershipEvidenceState = owners.length
     ? "supported"
     : wrongProperty
@@ -544,7 +550,7 @@ function buildOwnershipFromPack(pack: PropertyEvidencePack, fallbackAssets: ErfA
         : "missing";
   const message =
     state === "supported"
-      ? "Owner details below were read from a document matched to this erf. Easy Erf does not certify ownership — a conveyancer must confirm it before any legal reliance."
+      ? "Owner details below retain their individual source provenance. User attachment does not establish an independent identity match, and a separately matched source does not upgrade it. Easy Erf does not certify ownership; a conveyancer must confirm it before legal reliance."
       : state === "wrong_property"
         ? "An uploaded ownership report describes a different property, so none of its contents are used. Upload the correct report for this erf."
         : state === "uploaded_not_searchable"
@@ -564,8 +570,10 @@ function buildOwnershipFromPack(pack: PropertyEvidencePack, fallbackAssets: ErfA
   };
 }
 
-
-function buildMarketFromPack(pack: PropertyEvidencePack, fallbackEvidence: SavedMarketEvidence[]): MarketView {
+function buildMarketFromPack(
+  pack: PropertyEvidencePack,
+  fallbackEvidence: SavedMarketEvidence[],
+): MarketView {
   const marketIds = new Set(
     pack.sources
       .filter((source) => source.kind === "market_listing")
@@ -663,7 +671,9 @@ function buildDocumentsFromPack(
   workspaceState: ErfWorkspaceState,
   savedEvidence: SavedMarketEvidence[],
 ): DocumentsView {
-  const assetSources = pack.sources.filter((source) => source.kind === "uploaded_document" || source.kind === "uploaded_image");
+  const assetSources = pack.sources.filter(
+    (source) => source.kind === "uploaded_document" || source.kind === "uploaded_image",
+  );
   const assets = assetSources.flatMap((source) => (source.asset ? [source.asset] : []));
   const supportedDomains = new Set(
     pack.domains
@@ -676,7 +686,9 @@ function buildDocumentsFromPack(
   const filled = buckets.filter(Boolean).length;
   return {
     assetCount: assets.length,
-    savedEvidenceCount: pack.sources.filter((source) => source.kind === "market_listing").length || savedEvidence.length,
+    savedEvidenceCount:
+      pack.sources.filter((source) => source.kind === "market_listing").length ||
+      savedEvidence.length,
     sgDiagramCount: assets.filter((asset) => asset.category === "sg_diagram").length,
     uploadedReportCount: assets.filter((asset) => asset.category === "paid_report").length,
     completenessPercent:
@@ -707,18 +719,39 @@ function buildReadinessCategories(
 
   const planningVals = buildPlanning(input.parcel).filter((p) => p.value);
   const planningState: ReadinessState =
-    planningVals.length >= 5 ? "confirmed" : planningVals.length >= 2 ? "partial" : planningVals.length ? "partial" : "missing";
+    planningVals.length >= 5
+      ? "confirmed"
+      : planningVals.length >= 2
+        ? "partial"
+        : planningVals.length
+          ? "partial"
+          : "missing";
 
   const ownershipState: ReadinessState = ownership.hasUploadedReport ? "partial" : "missing";
 
   const marketState: ReadinessState =
-    market.includedCount >= 3 ? "confirmed" : market.evidenceCount > 0 || ws.marketAddressSaved ? "partial" : "missing";
+    market.includedCount >= 3
+      ? "confirmed"
+      : market.evidenceCount > 0 || ws.marketAddressSaved
+        ? "partial"
+        : "missing";
 
-  const strategyState: ReadinessState =
-    ws.chosenScenarioId ? "confirmed" : ws.strategyScenarioCount > 0 ? "partial" : ws.calculatorStarted ? "not_reviewed" : "missing";
+  const strategyState: ReadinessState = ws.chosenScenarioId
+    ? "confirmed"
+    : ws.strategyScenarioCount > 0
+      ? "partial"
+      : ws.calculatorStarted
+        ? "not_reviewed"
+        : "missing";
 
   const documentsState: ReadinessState =
-    docs.completenessPercent >= 80 ? "confirmed" : docs.completenessPercent >= 40 ? "partial" : docs.completenessPercent > 0 ? "not_reviewed" : "missing";
+    docs.completenessPercent >= 80
+      ? "confirmed"
+      : docs.completenessPercent >= 40
+        ? "partial"
+        : docs.completenessPercent > 0
+          ? "not_reviewed"
+          : "missing";
 
   // Risk review = user has actively reviewed sources and identity
   const riskState: ReadinessState =
@@ -729,18 +762,61 @@ function buildReadinessCategories(
         : "not_reviewed";
 
   return [
-    { id: "identity", label: "Identity", state: identityState, explanation: "Confirmed when the user has checked official parcel identity and marked it correct." },
-    { id: "planning", label: "Planning", state: planningState, explanation: "Confirmed when zoning, size and at least three planning controls are populated from official sources." },
-    { id: "ownership", label: "Ownership", state: ownershipState, explanation: "Never confirmed automatically. Requires a Lightstone, WinDeed or title-deed document you have uploaded." },
-    { id: "market", label: "Market", state: marketState, explanation: "Confirmed when at least three included comparables are saved for this erf." },
-    { id: "risk", label: "Risk review", state: riskState, explanation: "Confirmed when identity is checked and at least two official sources have been reviewed." },
-    { id: "strategy", label: "Strategy", state: strategyState, explanation: "Confirmed when a Strategy Lab scenario has been chosen." },
-    { id: "documents", label: "Documents", state: documentsState, explanation: "Percentage of evidence buckets that contain at least one saved input." },
+    {
+      id: "identity",
+      label: "Identity",
+      state: identityState,
+      explanation:
+        "Confirmed when the user has checked official parcel identity and marked it correct.",
+    },
+    {
+      id: "planning",
+      label: "Planning",
+      state: planningState,
+      explanation:
+        "Confirmed when zoning, size and at least three planning controls are populated from official sources.",
+    },
+    {
+      id: "ownership",
+      label: "Ownership",
+      state: ownershipState,
+      explanation:
+        "Never confirmed automatically. Requires a Lightstone, WinDeed or title-deed document you have uploaded.",
+    },
+    {
+      id: "market",
+      label: "Market",
+      state: marketState,
+      explanation: "Confirmed when at least three included comparables are saved for this erf.",
+    },
+    {
+      id: "risk",
+      label: "Risk review",
+      state: riskState,
+      explanation:
+        "Confirmed when identity is checked and at least two official sources have been reviewed.",
+    },
+    {
+      id: "strategy",
+      label: "Strategy",
+      state: strategyState,
+      explanation: "Confirmed when a Strategy Lab scenario has been chosen.",
+    },
+    {
+      id: "documents",
+      label: "Documents",
+      state: documentsState,
+      explanation: "Percentage of evidence buckets that contain at least one saved input.",
+    },
   ];
 }
 
 function buildReadinessCategoriesFromPack(pack: PropertyEvidencePack): ReadinessCategory[] {
-  const categories: Array<{ id: ReadinessCategory["id"]; label: string; domains: EvidenceDomain[] }> = [
+  const categories: Array<{
+    id: ReadinessCategory["id"];
+    label: string;
+    domains: EvidenceDomain[];
+  }> = [
     { id: "identity", label: "Identity", domains: ["identity", "address"] },
     { id: "planning", label: "Planning", domains: ["planning", "environment", "infrastructure"] },
     { id: "ownership", label: "Ownership", domains: ["ownership", "deeds", "transfers"] },
@@ -769,14 +845,21 @@ function buildReadinessCategoriesFromPack(pack: PropertyEvidencePack): Readiness
 
 function readinessFromDomainStates(states: EvidenceDomainState[]): ReadinessState {
   if (states.includes("conflicting")) return "partial";
-  if (states.every((state) => state === "supported" || state === "not_applicable")) return "confirmed";
+  if (states.every((state) => state === "supported" || state === "not_applicable"))
+    return "confirmed";
   if (states.includes("supported") || states.includes("partial")) return "partial";
   if (states.includes("missing")) return "missing";
   if (states.includes("not_reviewed")) return "not_reviewed";
   return "missing";
 }
 
-function buildRisks(input: BuildReportInput, market: MarketView, ownership: OwnershipView, identity: PropertyIdentityDisplay, pack?: PropertyEvidencePack): RiskItem[] {
+function buildRisks(
+  input: BuildReportInput,
+  market: MarketView,
+  ownership: OwnershipView,
+  identity: PropertyIdentityDisplay,
+  pack?: PropertyEvidencePack,
+): RiskItem[] {
   if (pack) return buildRisksFromPack(pack);
   const ws = input.workspaceState;
   const risks: RiskItem[] = [];
@@ -1031,7 +1114,11 @@ export function buildReportViewModel(input: BuildReportInput): ReportViewModel {
   const planning = buildPlanningFromPack(evidencePack, input.parcel);
   const market = buildMarketFromPack(evidencePack, input.savedEvidence);
   const site = buildSiteFromPack(input.workspaceState, Boolean(input.sitePotentialAccepted));
-  const strategy = buildStrategyFromPack(evidencePack, input.chosenScenario, input.strategyScenarios);
+  const strategy = buildStrategyFromPack(
+    evidencePack,
+    input.chosenScenario,
+    input.strategyScenarios,
+  );
   const documents = buildDocumentsFromPack(evidencePack, input.workspaceState, input.savedEvidence);
   const categories = buildReadinessCategories(input, market, documents, ownership, evidencePack);
   const risks = buildRisks(input, market, ownership, identity, evidencePack);
@@ -1058,8 +1145,20 @@ export function buildReportViewModel(input: BuildReportInput): ReportViewModel {
   };
 }
 
-function supportedClaim(pack: PropertyEvidencePack, domain: EvidenceDomain, key: string): EvidenceClaim | null {
-  return pack.claims.find((claim) => claim.domain === domain && claim.key === key && claim.status === "supported" && !claim.excluded) ?? null;
+function supportedClaim(
+  pack: PropertyEvidencePack,
+  domain: EvidenceDomain,
+  key: string,
+): EvidenceClaim | null {
+  return (
+    pack.claims.find(
+      (claim) =>
+        claim.domain === domain &&
+        claim.key === key &&
+        claim.status === "supported" &&
+        !claim.excluded,
+    ) ?? null
+  );
 }
 
 /**
@@ -1086,19 +1185,28 @@ function reportPlanningClaim(pack: PropertyEvidencePack, key: string): EvidenceC
   );
 }
 
-function firstSupportedOrObservedClaim(pack: PropertyEvidencePack, domain: EvidenceDomain, key: string): EvidenceClaim | null {
-  return pack.claims.find(
-    (claim) =>
-      claim.domain === domain &&
-      claim.key === key &&
-      !claim.excluded &&
-      (claim.status === "supported" || claim.status === "conflicting" || claim.status === "not_reviewed"),
-  ) ?? null;
+function firstSupportedOrObservedClaim(
+  pack: PropertyEvidencePack,
+  domain: EvidenceDomain,
+  key: string,
+): EvidenceClaim | null {
+  return (
+    pack.claims.find(
+      (claim) =>
+        claim.domain === domain &&
+        claim.key === key &&
+        !claim.excluded &&
+        (claim.status === "supported" ||
+          claim.status === "conflicting" ||
+          claim.status === "not_reviewed"),
+    ) ?? null
+  );
 }
 
 function displayClaimValue(claim: EvidenceClaim | null): string | null {
   if (!claim || claim.value == null || claim.value === "") return null;
-  const value = typeof claim.value === "number" ? claim.value.toLocaleString() : String(claim.value);
+  const value =
+    typeof claim.value === "number" ? claim.value.toLocaleString() : String(claim.value);
   return claim.unit ? `${value}` : value;
 }
 
@@ -1109,7 +1217,8 @@ function stringOrNull(value: unknown): string | null {
 }
 
 function numberOrNull(value: unknown): number | null {
-  const parsed = typeof value === "number" ? value : Number(String(value ?? "").replace(/[^\d.-]/g, ""));
+  const parsed =
+    typeof value === "number" ? value : Number(String(value ?? "").replace(/[^\d.-]/g, ""));
   return Number.isFinite(parsed) ? parsed : null;
 }
 

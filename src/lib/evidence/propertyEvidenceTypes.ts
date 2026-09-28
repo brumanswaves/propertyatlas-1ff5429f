@@ -5,11 +5,7 @@ import type {
   ErfStrategyWorkspace,
   ErfWorkspaceState,
 } from "@/lib/workbench/erfWorkspaceState";
-import type {
-  ErfAsset,
-  ErfAssetCategory,
-  ErfAssetStatus,
-} from "@/lib/workbench/erfFileVault";
+import type { ErfAsset, ErfAssetCategory, ErfAssetStatus } from "@/lib/workbench/erfFileVault";
 import type {
   MarketAddressIntelligence,
   SavedMarketEvidence,
@@ -59,12 +55,7 @@ export type EvidenceAuthorityType =
   | "system";
 
 export type EvidenceSourceQuality =
-  | "direct"
-  | "strong"
-  | "reference"
-  | "untrusted_content"
-  | "generated_search"
-  | "unavailable";
+  "direct" | "strong" | "reference" | "untrusted_content" | "generated_search" | "unavailable";
 
 export type EvidenceSourceStatus =
   | "not_opened"
@@ -107,6 +98,8 @@ export interface EvidenceSourceReference {
 }
 
 export interface EvidenceAssetMetadata {
+  /** Read-only projection of canonical extraction identity, never a new persisted state. */
+  identityMatchStatus?: "matched" | "mismatch" | "unverified" | "parent_lineage_match" | null;
   category: ErfAssetCategory;
   assetType: string;
   mimeType: string;
@@ -127,20 +120,10 @@ export interface EvidenceStrategyMetadata {
 }
 
 export type EvidenceClaimNature =
-  | "fact"
-  | "observation"
-  | "assumption"
-  | "calculation"
-  | "interpretation"
-  | "unknown";
+  "fact" | "observation" | "assumption" | "calculation" | "interpretation" | "unknown";
 
 export type EvidenceStatus =
-  | "supported"
-  | "partial"
-  | "conflicting"
-  | "missing"
-  | "excluded"
-  | "not_reviewed";
+  "supported" | "partial" | "conflicting" | "missing" | "excluded" | "not_reviewed";
 
 export type EvidenceConfidence = "high" | "medium" | "low" | "unverified";
 
@@ -168,12 +151,7 @@ export interface EvidenceClaim {
 }
 
 export type EvidenceDomainState =
-  | "supported"
-  | "partial"
-  | "missing"
-  | "conflicting"
-  | "not_reviewed"
-  | "not_applicable";
+  "supported" | "partial" | "missing" | "conflicting" | "not_reviewed" | "not_applicable";
 
 export interface EvidenceDomainSummary {
   domain: EvidenceDomain;

@@ -17,6 +17,19 @@ import type {
   PropertyEvidencePack,
 } from "@/lib/evidence/propertyEvidenceTypes";
 
+/** Describe each claim from its own canonical source metadata, including mixed reports. */
+export function ownershipDocumentProvenance(pack: PropertyEvidencePack, claim: EvidenceClaim) {
+  const sources = claim.sourceIds.map((id) => pack.sources.find((source) => source.id === id));
+  if (sources.length && sources.every((source) => source?.asset?.identityMatchStatus === "matched"))
+    return "identity-matched source";
+  if (
+    claim.userConfirmed &&
+    sources.some((source) => source?.asset?.identityMatchStatus === "unverified")
+  )
+    return "user-attached; document identity not independently matched";
+  return "document identity not established";
+}
+
 export type ReportFindingStatus =
   | "verified"
   | "supported"
@@ -123,23 +136,31 @@ const PLANNING_CONTROL_KEYS = [
 
 /** Owner identity/registration numbers must never reach the report. */
 export function redactPersonalIdentifiers(value: string): string {
-  return value
-    .replace(/\b\d{6}\s?\d{4}\s?\d{2}\s?\d{1}\b/g, "[redacted]")
-    .replace(/\b\d{13}\b/g, "[redacted]")
-    .replace(/\b(?:19|20)\d{2}\s?\/\s?\d{4,7}\s?\/\s?\d{2}\b/g, "[redacted]")
-    .replace(/\b(?:id|identity|registration|reg)\.?\s*(?:no\.?|number)?\s*[:#]?\s*[\dA-Z/-]{6,}/gi, "[redacted]")
-    // South African phone numbers, written locally or in +27 form.
-    .replace(/(?:\+27|\b0)\s?\d{2}[\s-]?\d{3}[\s-]?\d{4}\b/g, "[redacted]")
-    .replace(/\b[\w.+-]+@[\w-]+\.[\w.-]+\b/g, "[redacted]")
-    .trim();
+  return (
+    value
+      .replace(/\b\d{6}\s?\d{4}\s?\d{2}\s?\d{1}\b/g, "[redacted]")
+      .replace(/\b\d{13}\b/g, "[redacted]")
+      .replace(/\b(?:19|20)\d{2}\s?\/\s?\d{4,7}\s?\/\s?\d{2}\b/g, "[redacted]")
+      .replace(
+        /\b(?:id|identity|registration|reg)\.?\s*(?:no\.?|number)?\s*[:#]?\s*[\dA-Z/-]{6,}/gi,
+        "[redacted]",
+      )
+      // South African phone numbers, written locally or in +27 form.
+      .replace(/(?:\+27|\b0)\s?\d{2}[\s-]?\d{3}[\s-]?\d{4}\b/g, "[redacted]")
+      .replace(/\b[\w.+-]+@[\w-]+\.[\w.-]+\b/g, "[redacted]")
+      .trim()
+  );
 }
-
 
 function liveClaims(pack: PropertyEvidencePack): EvidenceClaim[] {
   return pack.claims.filter((claim) => !claim.excluded && claim.parcelId === pack.parcelId);
 }
 
-function claimsFor(pack: PropertyEvidencePack, domain: EvidenceDomain, keys?: string[]): EvidenceClaim[] {
+function claimsFor(
+  pack: PropertyEvidencePack,
+  domain: EvidenceDomain,
+  keys?: string[],
+): EvidenceClaim[] {
   return liveClaims(pack).filter(
     (claim) => claim.domain === domain && (!keys || keys.includes(claim.key)),
   );
@@ -226,9 +247,7 @@ export function isActualUploadedOwnershipSource(source: EvidenceSourceReference)
   if (source.asset?.category === "paid_report" || source.asset?.category === "title_deed") {
     return true;
   }
-  return /lightstone|windeed|title deed|deeds report/i.test(
-    `${source.label} ${source.fileName}`,
-  );
+  return /lightstone|windeed|title deed|deeds report/i.test(`${source.label} ${source.fileName}`);
 }
 
 /**
@@ -254,9 +273,7 @@ function hasMatchedPaidDocumentSupport(
   const ids = new Set(claims.flatMap((claim) => claim.sourceIds));
   return pack.sources.some(
     (source) =>
-      ids.has(source.id) &&
-      source.authorityType === "paid_provider" &&
-      source.status === "ready",
+      ids.has(source.id) && source.authorityType === "paid_provider" && source.status === "ready",
   );
 }
 
@@ -296,7 +313,6 @@ function distinctSources(sources: PropertyEvidencePack["sources"]) {
   });
 }
 
-
 export function claimNumericValue(claim: EvidenceClaim | null | undefined): number | null {
   if (!claim) return null;
   const raw = claim.normalizedValue ?? claim.value;
@@ -320,7 +336,10 @@ export function deedExtentClaim(pack: PropertyEvidencePack): EvidenceClaim | nul
   );
 }
 
-interface FindingSeed extends Omit<ReportFinding, "parcelId" | "actionIds" | "gapIds" | "contradictionIds"> {
+interface FindingSeed extends Omit<
+  ReportFinding,
+  "parcelId" | "actionIds" | "gapIds" | "contradictionIds"
+> {
   gapIds?: string[];
   contradictionIds?: string[];
 }
@@ -351,11 +370,14 @@ export function buildReportFindings(pack: PropertyEvidencePack): ReportFinding[]
   const gapsWherePrefix = (prefix: string) => pack.gaps.filter((gap) => gap.id.startsWith(prefix));
 
   // 1. Parcel identity ------------------------------------------------------
-  const identityClaims = supported(claimsFor(pack, "identity", ["erfNumber", "lpi", "parcelKey", "portion"]));
+  const identityClaims = supported(
+    claimsFor(pack, "identity", ["erfNumber", "lpi", "parcelKey", "portion"]),
+  );
   const identityFromOfficialParcel = hasOfficialParcelIdentitySource(pack, identityClaims);
   const identityConfirmed =
     identityFromOfficialParcel && identityClaims.some((claim) => claim.userConfirmed);
-  const identityGap = gapById("identity-not-confirmed") ?? gapsWherePrefix("identity-").at(0) ?? null;
+  const identityGap =
+    gapById("identity-not-confirmed") ?? gapsWherePrefix("identity-").at(0) ?? null;
   add({
     id: "finding-identity-parcel",
     category: "identity",
@@ -399,7 +421,9 @@ export function buildReportFindings(pack: PropertyEvidencePack): ReportFinding[]
   });
 
   // 2. Address / parcel conflict -------------------------------------------
-  const addressConflicts = pack.contradictions.filter((item) => item.id.startsWith("market-address-"));
+  const addressConflicts = pack.contradictions.filter((item) =>
+    item.id.startsWith("market-address-"),
+  );
   if (addressConflicts.length) {
     add({
       id: "finding-address-conflict",
@@ -472,11 +496,14 @@ export function buildReportFindings(pack: PropertyEvidencePack): ReportFinding[]
         "Both figures are kept. A conveyancer or land surveyor must confirm which extent applies before it is used in pricing or planning.",
       confidence: "low",
       claimIds: uniq([...areaDiscrepancy.claimIds, officialArea!.id, deedExtent!.id]),
-      sourceIds: uniq([...areaDiscrepancy.sourceIds, ...officialArea!.sourceIds, ...deedExtent!.sourceIds]),
+      sourceIds: uniq([
+        ...areaDiscrepancy.sourceIds,
+        ...officialArea!.sourceIds,
+        ...deedExtent!.sourceIds,
+      ]),
       contradictionIds: [areaDiscrepancy.id],
     });
   }
-
 
   // 6. Ownership ------------------------------------------------------------
   const ownershipClaims = supported(claimsFor(pack, "ownership", OWNERSHIP_CLAIM_KEYS));
@@ -488,12 +515,23 @@ export function buildReportFindings(pack: PropertyEvidencePack): ReportFinding[]
       category: "legal",
       status: "supported",
       severity: "information",
-      headline: "Ownership details read from an identity-matched report",
+      headline: ownershipClaims.some(
+        (claim) => ownershipDocumentProvenance(pack, claim) !== "identity-matched source",
+      )
+        ? ownershipClaims.some((claim) =>
+            ownershipDocumentProvenance(pack, claim).startsWith("user-attached"),
+          )
+          ? "Ownership details from user-attached evidence"
+          : "Ownership details with document identity not established"
+        : "Ownership details read from an identity-matched report",
       whatWeFound: ownershipClaims
-        .map((claim) => `${claim.label}: ${redactPersonalIdentifiers(String(claim.value ?? ""))}`)
+        .map(
+          (claim) =>
+            `${claim.label}: ${redactPersonalIdentifiers(String(claim.value ?? ""))} (${ownershipDocumentProvenance(pack, claim)})`,
+        )
         .join(" · "),
       whatItMeans:
-        "These values were read from a document matched to this erf. Easy Erf does not certify ownership; a conveyancer must confirm it before any legal reliance.",
+        "Each value retains its own document provenance. A matched source does not upgrade a separate user-attached source. Easy Erf does not certify ownership; a conveyancer must confirm it before any legal reliance.",
       confidence: weakestConfidence(ownershipClaims),
       claimIds: ownershipClaims.map((claim) => claim.id),
       sourceIds: sourceIdsOf(ownershipClaims),
@@ -522,7 +560,9 @@ export function buildReportFindings(pack: PropertyEvidencePack): ReportFinding[]
   }
 
   // 7. Title deed -----------------------------------------------------------
-  const deedClaims = supported(claimsFor(pack, "deeds", ["titleDeedNumber", "registrationDate", "conditionsOfTitle"]));
+  const deedClaims = supported(
+    claimsFor(pack, "deeds", ["titleDeedNumber", "registrationDate", "conditionsOfTitle"]),
+  );
   const deedGap = gapById("no-title-deed-or-paid-report");
   add({
     id: "finding-title-deed",
@@ -662,7 +702,6 @@ export function buildReportFindings(pack: PropertyEvidencePack): ReportFinding[]
     sourceIds: uniq([...sourceIdsOf(buildingClaims), ...buildingPlanSources.map((s) => s.id)]),
     gapIds: buildingGaps.map((gap) => gap.id),
     contradictionIds: buildingContradictions.map((item) => item.id),
-
   });
 
   // 9. Zoning / planning completeness --------------------------------------
@@ -758,7 +797,10 @@ export function buildReportFindings(pack: PropertyEvidencePack): ReportFinding[]
       ? `${marketSources.length} distinct market evidence item(s)`
       : "No market evidence saved",
     whatWeFound: marketSources.length
-      ? marketSources.map((source) => source.label).slice(0, 4).join(" · ")
+      ? marketSources
+          .map((source) => source.label)
+          .slice(0, 4)
+          .join(" · ")
       : "No listing or comparable has been saved against this erf.",
     whatItMeans:
       "Asking prices are not sold prices. Saved listings indicate the asking market only and are never a formal valuation.",
@@ -767,7 +809,6 @@ export function buildReportFindings(pack: PropertyEvidencePack): ReportFinding[]
     sourceIds: marketSourcesAll.map((source) => source.id),
     gapIds: marketGaps.map((gap) => gap.id),
   });
-
 
   // 11. Selected strategy ---------------------------------------------------
   const strategyClaims = claimsFor(pack, "strategy").filter((claim) => claim.status !== "missing");
@@ -779,7 +820,10 @@ export function buildReportFindings(pack: PropertyEvidencePack): ReportFinding[]
     severity: "low",
     headline: strategyClaims.length ? "Strategy assumptions saved" : "No strategy scenario saved",
     whatWeFound: strategyClaims.length
-      ? strategyClaims.slice(0, 4).map((claim) => `${claim.label}: ${claim.value}`).join(" · ")
+      ? strategyClaims
+          .slice(0, 4)
+          .map((claim) => `${claim.label}: ${claim.value}`)
+          .join(" · ")
       : "No Strategy Lab scenario has been saved for this erf.",
     whatItMeans:
       "Strategy figures are your own assumptions and calculations. They are not valuations, quotes or feasibility approvals.",
@@ -801,7 +845,10 @@ export function buildReportFindings(pack: PropertyEvidencePack): ReportFinding[]
       ? "Site Potential context recorded"
       : "No accepted Site Potential build envelope recorded",
     whatWeFound: siteClaims.length
-      ? siteClaims.slice(0, 3).map((claim) => claim.label).join(" · ")
+      ? siteClaims
+          .slice(0, 3)
+          .map((claim) => claim.label)
+          .join(" · ")
       : "Confirm the parcel and street-facing boundaries before accepting an indicative build envelope.",
     whatItMeans:
       "Site Potential is an indicative deterministic build envelope. It is not an architectural plan, approval or proof of buildability.",
@@ -825,10 +872,13 @@ export function buildReportFindings(pack: PropertyEvidencePack): ReportFinding[]
       ? `${documentSources.length} document(s) in the Erf File Vault`
       : "No documents uploaded",
     whatWeFound: documentSources.length
-      ? documentSources.slice(0, 4).map((source) => source.fileName ?? source.label).join(" · ")
+      ? documentSources
+          .slice(0, 4)
+          .map((source) => source.fileName ?? source.label)
+          .join(" · ")
       : "No SG diagram, deed or paid report has been uploaded for this erf.",
     whatItMeans:
-      "Only documents that are readable and matched to this erf become evidence. Storage alone does not verify anything.",
+      "Readable matched documents and explicitly user-attached working evidence retain different identity provenance. Parent documents remain context only; mismatched documents are excluded. Storage alone does not verify anything.",
     confidence: "unverified",
     claimIds: [],
     sourceIds: documentSources.map((source) => source.id),
@@ -899,10 +949,16 @@ export function buildReportActions(
   for (const contradiction of pack.contradictions as EvidenceContradiction[]) {
     seeds.push({
       key: `action-${contradiction.id}`,
-      rank: severityRank({ blocking: contradiction.severity === "high", importance: contradiction.severity }),
+      rank: severityRank({
+        blocking: contradiction.severity === "high",
+        importance: contradiction.severity,
+      }),
       title: contradiction.nextAction,
       reason: contradiction.explanation,
-      completionCriteria: completionCriteriaFor({ title: contradiction.title, nextAction: contradiction.nextAction }),
+      completionCriteria: completionCriteriaFor({
+        title: contradiction.title,
+        nextAction: contradiction.nextAction,
+      }),
       targetTab: contradiction.targetTab ?? "research",
       professionalType: professionalForContradiction(contradiction),
 
@@ -949,7 +1005,10 @@ export function buildReportActions(
 }
 
 /** Links actions back onto their findings without mutating the inputs. */
-export function linkFindingActions(findings: ReportFinding[], actions: ReportAction[]): ReportFinding[] {
+export function linkFindingActions(
+  findings: ReportFinding[],
+  actions: ReportAction[],
+): ReportFinding[] {
   return findings.map((finding) => ({
     ...finding,
     actionIds: actions
@@ -963,5 +1022,7 @@ export function linkFindingActions(findings: ReportFinding[], actions: ReportAct
 }
 
 export function nextBestAction(actions: ReportAction[]): ReportAction | null {
-  return actions.find((action) => action.status === "open" || action.status === "in_progress") ?? null;
+  return (
+    actions.find((action) => action.status === "open" || action.status === "in_progress") ?? null
+  );
 }

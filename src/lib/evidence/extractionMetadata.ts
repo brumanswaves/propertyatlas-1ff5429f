@@ -12,7 +12,11 @@ import {
   type ErfIdentityMatchStatus,
 } from "../../../supabase/functions/_shared/erfExtractionContract";
 
-type MetadataBearer = { metadata?: Record<string, unknown> | null; parcel_id?: string | null };
+type MetadataBearer = {
+  status?: string;
+  metadata?: Record<string, unknown> | null;
+  parcel_id?: string | null;
+};
 
 /** Categories whose contents are worth reading into evidence. */
 export const EXTRACTABLE_CATEGORIES = new Set([
@@ -40,7 +44,10 @@ function meta(asset: MetadataBearer): Record<string, unknown> {
 
 /** True when this asset is a document Easy Erf should try to read. */
 export function isExtractableErfAsset(asset: { asset_category: string; mime_type: string }) {
-  return EXTRACTABLE_CATEGORIES.has(asset.asset_category) && isSupportedExtractionMimeType(asset.mime_type);
+  return (
+    EXTRACTABLE_CATEGORIES.has(asset.asset_category) &&
+    isSupportedExtractionMimeType(asset.mime_type)
+  );
 }
 
 export function erfAssetExtractionStatus(asset: MetadataBearer): ErfExtractionStatus {
@@ -52,7 +59,10 @@ export function erfAssetExtractionStatus(asset: MetadataBearer): ErfExtractionSt
 
 export function erfAssetIdentityMatchStatus(asset: MetadataBearer): ErfIdentityMatchStatus | null {
   const value = meta(asset).identityMatchStatus ?? meta(asset).identity_match_status;
-  return value === "matched" || value === "mismatch" || value === "unverified" || value === "parent_lineage_match"
+  return value === "matched" ||
+    value === "mismatch" ||
+    value === "unverified" ||
+    value === "parent_lineage_match"
     ? value
     : null;
 }
@@ -71,7 +81,8 @@ export function erfAssetDocumentLineage(asset: MetadataBearer): {
   const value = meta(asset).documentLineage ?? meta(asset).document_lineage;
   if (!value || typeof value !== "object") return null;
   const raw = value as Record<string, unknown>;
-  const text = (key: string) => (typeof raw[key] === "string" && raw[key] ? (raw[key] as string) : null);
+  const text = (key: string) =>
+    typeof raw[key] === "string" && raw[key] ? (raw[key] as string) : null;
   return {
     parentErfNumber: text("parentErfNumber"),
     generalPlanReference: text("generalPlanReference"),
@@ -130,6 +141,7 @@ export function erfAssetCanConfirmIdentity(asset: MetadataBearer) {
  * never become a fact about the subject erf.
  */
 export function erfAssetHasSearchableExtraction(asset: MetadataBearer) {
+  if (["archived", "deleted", "failed"].includes(asset.status ?? "")) return false;
   const identity = erfAssetIdentityMatchStatus(asset);
   const extraction = erfAssetExtractionStatus(asset);
   return (
@@ -149,13 +161,17 @@ export function erfAssetExtractionLabel(
   asset: MetadataBearer,
   variant: "report" | "diagram" | "title" = "report",
 ) {
-  const noun = variant === "diagram" ? "diagram" : variant === "title" ? "title document" : "report";
-  const Noun = variant === "diagram" ? "Diagram" : variant === "title" ? "Title document" : "Report";
+  const noun =
+    variant === "diagram" ? "diagram" : variant === "title" ? "title document" : "report";
+  const Noun =
+    variant === "diagram" ? "Diagram" : variant === "title" ? "Title document" : "Report";
   const status = erfAssetExtractionStatus(asset);
-  if (status === "failed") return erfAssetExtractionError(asset) ?? "Extraction failed";
   const identity = erfAssetIdentityMatchStatus(asset);
   if (identity === "mismatch") return `Wrong property ${noun}`;
-  if (identity === "unverified") {
+  if (["archived", "deleted", "failed"].includes(asset.status ?? ""))
+    return `${Noun} unavailable - ${asset.status}`;
+  if (status === "failed") return erfAssetExtractionError(asset) ?? "Extraction failed";
+  if (identity === "unverified" && (status === "ready" || status === "partial")) {
     return erfAssetIdentityUserConfirmed(asset)
       ? `${Noun} readable - attached by user`
       : `${Noun} read successfully - needs confirmation`;
@@ -168,9 +184,11 @@ export function erfAssetExtractionLabel(
   }
   switch (status) {
     case "ready":
-      return `${Noun} searchable`;
+      return identity === "matched" ? `${Noun} searchable` : `${Noun} read - identity not checked`;
     case "partial":
-      return variant === "diagram" ? "No readable diagram text" : "Read — no structured values found";
+      return variant === "diagram"
+        ? "No readable diagram text"
+        : "Read — no structured values found";
     case "processing":
       return `Extracting ${noun}...`;
     case "queued":

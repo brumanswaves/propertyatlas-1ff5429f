@@ -71,7 +71,9 @@ interface MutablePack {
   timeline: EvidenceTimelineEvent[];
 }
 
-export function buildPropertyEvidencePack(input: BuildPropertyEvidencePackInput): PropertyEvidencePack {
+export function buildPropertyEvidencePack(
+  input: BuildPropertyEvidencePackInput,
+): PropertyEvidencePack {
   const parcelId = input.parcel.id;
   const now = input.now ?? new Date();
   const builtAt = now.toISOString();
@@ -96,7 +98,12 @@ export function buildPropertyEvidencePack(input: BuildPropertyEvidencePackInput)
     ...strategyWorkspace.scenarios,
     ...(input.strategyScenarios ?? []),
   ].filter(uniqueScenario(parcelId));
-  const chosenScenario = selectChosenScenario(parcelId, input.chosenScenario, strategyWorkspace, strategyScenarios);
+  const chosenScenario = selectChosenScenario(
+    parcelId,
+    input.chosenScenario,
+    strategyWorkspace,
+    strategyScenarios,
+  );
   const selectedSiteDesign =
     input.selectedSiteDesign?.parcel_id === parcelId ? input.selectedSiteDesign : null;
 
@@ -126,14 +133,25 @@ export function buildPropertyEvidencePack(input: BuildPropertyEvidencePackInput)
   addCrossParcelRejections(pack, input, systemSourceId);
   addContradictions(pack, input, savedMarketEvidence);
   addGaps(pack, input, assets, savedMarketEvidence, strategyWorkspace, chosenScenario);
-  addTimeline(pack, input, assets, savedMarketEvidence, strategyWorkspace, chosenScenario, selectedSiteDesign, builtAt);
+  addTimeline(
+    pack,
+    input,
+    assets,
+    savedMarketEvidence,
+    strategyWorkspace,
+    chosenScenario,
+    selectedSiteDesign,
+    builtAt,
+  );
 
   pack.sources.sort((a, b) => a.id.localeCompare(b.id));
   pack.claims.sort((a, b) => a.id.localeCompare(b.id));
   pack.contradictions.sort((a, b) => a.id.localeCompare(b.id));
   pack.gaps.sort((a, b) => a.id.localeCompare(b.id));
   pack.timeline = dedupeTimeline(pack.timeline).sort(
-    (a, b) => new Date(a.occurredAt).getTime() - new Date(b.occurredAt).getTime() || a.id.localeCompare(b.id),
+    (a, b) =>
+      new Date(a.occurredAt).getTime() - new Date(b.occurredAt).getTime() ||
+      a.id.localeCompare(b.id),
   );
 
   const domains = buildDomainSummaries(pack);
@@ -148,7 +166,8 @@ export function buildPropertyEvidencePack(input: BuildPropertyEvidencePackInput)
     assumptionCount: pack.claims.filter((claim) => claim.nature === "assumption").length,
     calculationCount: pack.claims.filter((claim) => claim.nature === "calculation").length,
     interpretationCount: pack.claims.filter((claim) => claim.nature === "interpretation").length,
-    missingCount: pack.claims.filter((claim) => claim.status === "missing").length + pack.gaps.length,
+    missingCount:
+      pack.claims.filter((claim) => claim.status === "missing").length + pack.gaps.length,
     contradictionCount: pack.contradictions.length,
   };
   const withoutFingerprint = {
@@ -186,7 +205,8 @@ function addOfficialParcelEvidence(
     id: parcelSourceId,
     parcelId: parcel.id,
     kind: isOfficialParcel ? "official_parcel" : "user_confirmation",
-    label: parcel.sourceLabel || (isOfficialParcel ? "Official parcel record" : "Manual parcel record"),
+    label:
+      parcel.sourceLabel || (isOfficialParcel ? "Official parcel record" : "Manual parcel record"),
     authorityType: isOfficialParcel ? "official" : "user_supplied",
     sourceQuality: isOfficialParcel ? "direct" : "reference",
     status: "ready",
@@ -196,7 +216,14 @@ function addOfficialParcelEvidence(
     fragments: [],
   });
 
-  const parcelClaim = (key: string, label: string, value: unknown, fieldPath: string, domain: EvidenceDomain = "identity", unit?: string) => {
+  const parcelClaim = (
+    key: string,
+    label: string,
+    value: unknown,
+    fieldPath: string,
+    domain: EvidenceDomain = "identity",
+    unit?: string,
+  ) => {
     if (value == null || String(value).trim() === "") return;
     addClaim(pack, {
       id: claimId(domain, key, fieldPath),
@@ -242,9 +269,8 @@ function addOfficialParcelEvidence(
 
   const raw = parcel.rawProperties ?? {};
   const verifiedExtent = selectVerifiedRegisteredExtent(input.assets ?? [], parcel.id);
-  const resolvedArea = isOfficialParcel || verifiedExtent
-    ? resolveParcelArea(raw, { verifiedExtent })
-    : null;
+  const resolvedArea =
+    isOfficialParcel || verifiedExtent ? resolveParcelArea(raw, { verifiedExtent }) : null;
   if (resolvedArea) {
     addClaim(pack, {
       id: claimId("identity", "areaM2", resolvedArea.sourceKey),
@@ -258,13 +284,14 @@ function addOfficialParcelEvidence(
       nature: "fact",
       status: "supported",
       confidence: resolvedArea.confidence,
-      confidenceReason: resolvedArea.sourceKind === "verified_extent"
-        ? "Registered extent read from an identity-matched uploaded deed, SG diagram or paid report."
-        : resolvedArea.approximate
-        ? (resolvedArea.warning ?? SHAPE_AREA_WARNING)
-        : resolvedArea.sourceKind === "csg_geom_area"
-          ? "Official cadastral area published directly by the CSG parcel record (GEOM_AREA, square metres)."
-          : "Explicit square-metre area supplied by the official parcel record.",
+      confidenceReason:
+        resolvedArea.sourceKind === "verified_extent"
+          ? "Registered extent read from an identity-matched uploaded deed, SG diagram or paid report."
+          : resolvedArea.approximate
+            ? (resolvedArea.warning ?? SHAPE_AREA_WARNING)
+            : resolvedArea.sourceKind === "csg_geom_area"
+              ? "Official cadastral area published directly by the CSG parcel record (GEOM_AREA, square metres)."
+              : "Explicit square-metre area supplied by the official parcel record.",
       sourceIds: [sourceId],
       locators: [{ fieldPath: `parcel.rawProperties.${resolvedArea.sourceKey}` }],
       observedAt: input.workspaceState.updatedAt,
@@ -274,9 +301,8 @@ function addOfficialParcelEvidence(
       warning: resolvedArea.warning,
     });
   }
-  const zoningCandidates = isOfficialParcel && !input.planningAssessment
-    ? candidates(raw, ZONING_KEYS)
-    : [];
+  const zoningCandidates =
+    isOfficialParcel && !input.planningAssessment ? candidates(raw, ZONING_KEYS) : [];
   for (const candidate of zoningCandidates) {
     addClaim(pack, {
       id: claimId("planning", "zoning", candidate.path),
@@ -313,7 +339,8 @@ function addOfficialParcelEvidence(
         nature: "fact",
         status: "supported",
         confidence: "medium",
-        confidenceReason: "Recognized planning-control alias supplied by official parcel raw properties.",
+        confidenceReason:
+          "Recognized planning-control alias supplied by official parcel raw properties.",
         sourceIds: [sourceId],
         locators: [{ fieldPath: candidate.path }],
         observedAt: input.workspaceState.updatedAt,
@@ -324,7 +351,10 @@ function addOfficialParcelEvidence(
     }
   }
 
-  if (input.workspaceState.identityStatus === "looks_correct" || input.workspaceState.identityStatus === "checked") {
+  if (
+    input.workspaceState.identityStatus === "looks_correct" ||
+    input.workspaceState.identityStatus === "checked"
+  ) {
     addClaim(pack, {
       id: "claim-user-confirmed-identity",
       parcelId: parcel.id,
@@ -584,7 +614,14 @@ function addResearchSources(pack: MutablePack, input: BuildPropertyEvidencePackI
           : source.status === "unavailable"
             ? "unavailable"
             : "reference",
-      status: source.status === "unavailable" ? "unavailable" : reviewed ? "reviewed" : opened ? "opened" : "not_opened",
+      status:
+        source.status === "unavailable"
+          ? "unavailable"
+          : reviewed
+            ? "reviewed"
+            : opened
+              ? "opened"
+              : "not_opened",
       url: source.url,
       capturedAt: input.workspaceState.updatedAt,
       updatedAt: input.workspaceState.updatedAt,
@@ -599,7 +636,11 @@ function addResearchSources(pack: MutablePack, input: BuildPropertyEvidencePackI
         label: "Research source reviewed",
         detail: source.name,
         sourceIds: [`research-${source.id}`],
-        domain: source.category.includes("deeds") ? "deeds" : source.category.includes("planning") ? "planning" : "documents",
+        domain: source.category.includes("deeds")
+          ? "deeds"
+          : source.category.includes("planning")
+            ? "planning"
+            : "documents",
       });
     }
   }
@@ -634,7 +675,9 @@ function addAddressEvidence(pack: MutablePack, input: BuildPropertyEvidencePackI
 function addAddressCandidateEvidence(
   pack: MutablePack,
   parcelId: string,
-  candidate: NonNullable<BuildPropertyEvidencePackInput["marketAddressIntelligence"]>["candidates"][number],
+  candidate: NonNullable<
+    BuildPropertyEvidencePackInput["marketAddressIntelligence"]
+  >["candidates"][number],
   confirmed: boolean,
   fieldPath: string,
 ) {
@@ -657,11 +700,71 @@ function addAddressCandidateEvidence(
       : candidate.reason;
   const status = confirmed ? "supported" : "not_reviewed";
   const confidence = confirmed ? "medium" : candidate.confidence;
-  addAddressClaim(pack, parcelId, candidate.id, "marketAddress", confirmed ? "Confirmed market address" : "Address candidate", candidate.formattedAddress, fieldPath, sourceId, status, confidence, reason, candidate.createdAt, candidate.updatedAt, confirmed);
-  addAddressClaim(pack, parcelId, candidate.id, "municipality", "Market address municipality", candidate.municipality ?? null, fieldPath, sourceId, status, confidence, reason, candidate.createdAt, candidate.updatedAt, confirmed);
-  addAddressClaim(pack, parcelId, candidate.id, "province", "Market address province", candidate.province ?? null, fieldPath, sourceId, status, confidence, reason, candidate.createdAt, candidate.updatedAt, confirmed);
+  addAddressClaim(
+    pack,
+    parcelId,
+    candidate.id,
+    "marketAddress",
+    confirmed ? "Confirmed market address" : "Address candidate",
+    candidate.formattedAddress,
+    fieldPath,
+    sourceId,
+    status,
+    confidence,
+    reason,
+    candidate.createdAt,
+    candidate.updatedAt,
+    confirmed,
+  );
+  addAddressClaim(
+    pack,
+    parcelId,
+    candidate.id,
+    "municipality",
+    "Market address municipality",
+    candidate.municipality ?? null,
+    fieldPath,
+    sourceId,
+    status,
+    confidence,
+    reason,
+    candidate.createdAt,
+    candidate.updatedAt,
+    confirmed,
+  );
+  addAddressClaim(
+    pack,
+    parcelId,
+    candidate.id,
+    "province",
+    "Market address province",
+    candidate.province ?? null,
+    fieldPath,
+    sourceId,
+    status,
+    confidence,
+    reason,
+    candidate.createdAt,
+    candidate.updatedAt,
+    confirmed,
+  );
   if (candidate.lat != null && candidate.lng != null) {
-    addAddressClaim(pack, parcelId, candidate.id, "coordinates", "Market address coordinates", `${candidate.lat},${candidate.lng}`, fieldPath, sourceId, status, confidence, reason, candidate.createdAt, candidate.updatedAt, confirmed);
+    addAddressClaim(
+      pack,
+      parcelId,
+      candidate.id,
+      "coordinates",
+      "Market address coordinates",
+      `${candidate.lat},${candidate.lng}`,
+      fieldPath,
+      sourceId,
+      status,
+      confidence,
+      reason,
+      candidate.createdAt,
+      candidate.updatedAt,
+      confirmed,
+    );
   }
 }
 
@@ -721,8 +824,12 @@ function addMarketEvidence(pack: MutablePack, evidence: SavedMarketEvidence[]) {
       fragments: [
         item.notes ?? null,
         ...(item.importedListing?.warnings ?? []),
-        ...(item.importedListing?.missingFields ?? []).map((field) => `Missing imported field: ${field}`),
-      ].filter((value): value is string => Boolean(value)).map(limitFragment),
+        ...(item.importedListing?.missingFields ?? []).map(
+          (field) => `Missing imported field: ${field}`,
+        ),
+      ]
+        .filter((value): value is string => Boolean(value))
+        .map(limitFragment),
     });
     const excluded = item.confidence === "excluded" || !item.includeInSummary;
     const base = {
@@ -731,7 +838,8 @@ function addMarketEvidence(pack: MutablePack, evidence: SavedMarketEvidence[]) {
       nature: "observation" as const,
       status: excluded ? ("excluded" as const) : ("supported" as const),
       confidence: item.confidence === "excluded" ? ("low" as const) : item.confidence,
-      confidenceReason: "Saved market evidence. Asking and listing facts are market observations, not valuations.",
+      confidenceReason:
+        "Saved market evidence. Asking and listing facts are market observations, not valuations.",
       sourceIds: [sourceId],
       observedAt: item.importedListing?.listingDate ?? item.savedAt,
       updatedAt: item.updatedAt,
@@ -747,7 +855,14 @@ function addMarketEvidence(pack: MutablePack, evidence: SavedMarketEvidence[]) {
     marketClaim(pack, item, base, "landSizeM2", "Land size", item.landSizeM2, "m2");
     marketClaim(pack, item, base, "buildingSizeM2", "Building size", item.buildingSizeM2, "m2");
     marketClaim(pack, item, base, "relationship", "Evidence relationship", item.relationship);
-    marketClaim(pack, item, base, "listingRole", "Listing role", item.listingRole ?? "comparable_evidence");
+    marketClaim(
+      pack,
+      item,
+      base,
+      "listingRole",
+      "Listing role",
+      item.listingRole ?? "comparable_evidence",
+    );
     if (item.importedListing?.listingId) {
       marketClaim(pack, item, base, "listingId", "Listing ID", item.importedListing.listingId);
     }
@@ -774,7 +889,8 @@ function addAssetEvidence(
             ? "paid_provider"
             : "user_supplied",
       sourceQuality: fragments.length ? "untrusted_content" : "reference",
-      status: asset.status === "failed" ? "failed" : asset.status === "ready" ? "ready" : "uploaded",
+      status:
+        asset.status === "failed" ? "failed" : asset.status === "ready" ? "ready" : "uploaded",
       assetId: asset.id,
       fileName: asset.original_file_name,
       capturedAt: asset.created_at,
@@ -820,7 +936,8 @@ function addAssetEvidence(
         nature: "interpretation",
         status: "supported",
         confidence: "unverified",
-        confidenceReason: "Selected means user-selected; it does not verify planning approval or legal buildability.",
+        confidenceReason:
+          "Selected means user-selected; it does not verify planning approval or legal buildability.",
         sourceIds: [sourceId],
         locators: [{ assetId: asset.id }],
         observedAt: asset.updated_at,
@@ -860,7 +977,10 @@ function addExtractedDocumentClaims(pack: MutablePack, asset: ErfAsset, sourceId
     // (extent, erf number, LPI). Only explicitly parent-labelled identity
     // context (parent erf / parent portion) survives.
     if (parentLineage && rawDomain === "identity" && !item.key.startsWith("parent")) continue;
-    if (parentLineage && (rawDomain === "ownership" || rawDomain === "valuation" || rawDomain === "transfers")) {
+    if (
+      parentLineage &&
+      (rawDomain === "ownership" || rawDomain === "valuation" || rawDomain === "transfers")
+    ) {
       continue;
     }
 
@@ -871,9 +991,10 @@ function addExtractedDocumentClaims(pack: MutablePack, asset: ErfAsset, sourceId
     const parentScoped = item.scope === "parent_plan";
     const fromParentPlan = parentLineage && !parentScoped;
 
-    const numeric = typeof item.numericValue === "number" && Number.isFinite(item.numericValue)
-      ? item.numericValue
-      : null;
+    const numeric =
+      typeof item.numericValue === "number" && Number.isFinite(item.numericValue)
+        ? item.numericValue
+        : null;
     addClaim(pack, {
       id: `claim-extracted-${asset.id}-${index}-${slug(`${domain}-${item.key}`)}`,
       parcelId: asset.parcel_id,
@@ -887,7 +1008,8 @@ function addExtractedDocumentClaims(pack: MutablePack, asset: ErfAsset, sourceId
       // never presented as an established fact.
       nature: parentScoped || item.interpretation === true ? "interpretation" : "fact",
       status: parentScoped || item.interpretation === true ? "not_reviewed" : "supported",
-      confidence: parentScoped || item.interpretation === true || userConfirmed ? "unverified" : "medium",
+      confidence:
+        parentScoped || item.interpretation === true || userConfirmed ? "unverified" : "medium",
 
       confidenceReason: parentScoped
         ? `Read from ${planLabel}, which covers this erf's parent property and many other erven. It is contextual cadastral evidence for this erf, not a confirmed value for it.`
@@ -912,11 +1034,11 @@ function addExtractedDocumentClaims(pack: MutablePack, asset: ErfAsset, sourceId
       updatedAt: asset.updated_at,
       userConfirmed,
       excluded: false,
-      notes: parentScoped || fromParentPlan
-        ? "Confirm applicability to this erf with a land surveyor or conveyancer before relying on it."
-        : undefined,
+      notes:
+        parentScoped || fromParentPlan
+          ? "Confirm applicability to this erf with a land surveyor or conveyancer before relying on it."
+          : undefined,
     });
-
   }
 }
 
@@ -932,7 +1054,9 @@ function addDocumentIdentityWarnings(pack: MutablePack, asset: ErfAsset, sourceI
     // Accepted, but never as a diagram of this erf: it stays a labelled
     // context source with an explicit "confirm applicability" next action.
     const lineage = erfAssetDocumentLineage(asset);
-    const plan = lineage?.generalPlanReference ? `General Plan ${lineage.generalPlanReference}` : "General Plan";
+    const plan = lineage?.generalPlanReference
+      ? `General Plan ${lineage.generalPlanReference}`
+      : "General Plan";
     const parent = lineage?.parentErfNumber ? ` of parent Erf ${lineage.parentErfNumber}` : "";
     pack.gaps.push({
       id: `document-parent-lineage-${asset.id}`,
@@ -942,7 +1066,8 @@ function addDocumentIdentityWarnings(pack: MutablePack, asset: ErfAsset, sourceI
       title: `${plan}${parent} — parent-plan context only`,
       explanation: `${asset.original_file_name} is the ${plan}${parent}, from which this erf was created. It covers several erven, so nothing on it is confirmed for this erf on its own, and it never sets this erf's extent.`,
       basis: reason ?? "identityMatchStatus=parent_lineage_match",
-      nextAction: "Upload the SG diagram of this erf, or confirm any relevant plan note with a land surveyor or conveyancer.",
+      nextAction:
+        "Upload the SG diagram of this erf, or confirm any relevant plan note with a land surveyor or conveyancer.",
       targetTab: "sources",
       blocking: false,
     });
@@ -957,7 +1082,10 @@ function addDocumentIdentityWarnings(pack: MutablePack, asset: ErfAsset, sourceI
       explanation: `${asset.original_file_name} does not match this erf, so none of its contents are used as evidence.`,
       claimIds: [`claim-document-${asset.id}`],
       sourceIds: [sourceId],
-      displayedValues: [asset.original_file_name, reason ?? "Document identity does not match the selected parcel."],
+      displayedValues: [
+        asset.original_file_name,
+        reason ?? "Document identity does not match the selected parcel.",
+      ],
       nextAction: "Remove this file and upload the correct report for this erf.",
       targetTab: "reports",
     });
@@ -1011,7 +1139,9 @@ function addNotesEvidence(pack: MutablePack, input: BuildPropertyEvidencePackInp
       notes.questions,
       notes.municipality,
       notes.renovation,
-    ].filter((value): value is string => Boolean(value?.trim())).map(limitFragment),
+    ]
+      .filter((value): value is string => Boolean(value?.trim()))
+      .map(limitFragment),
   });
   for (const [key, label, value] of [
     ["personal", "Personal notes", notes.personal],
@@ -1034,7 +1164,8 @@ function addNotesEvidence(pack: MutablePack, input: BuildPropertyEvidencePackInp
       nature: "observation",
       status: key === "questions" ? "not_reviewed" : "supported",
       confidence: "unverified",
-      confidenceReason: "User-supplied note. It may be useful evidence context but is not official proof.",
+      confidenceReason:
+        "User-supplied note. It may be useful evidence context but is not official proof.",
       sourceIds: [sourceId],
       locators: [{ fieldPath: `propertyNotes.${key}` }],
       observedAt: notes.createdAt,
@@ -1080,7 +1211,8 @@ function addStrategyEvidence(
       nature: "assumption",
       status: "not_reviewed",
       confidence: "unverified",
-      confidenceReason: "Draft Strategy inputs are user assumptions until saved as the chosen report scenario.",
+      confidenceReason:
+        "Draft Strategy inputs are user assumptions until saved as the chosen report scenario.",
       sourceIds: [sourceId],
       locators: [{ fieldPath: "strategyWorkspace.activeStrategy" }],
       observedAt: workspace.draftUpdatedAt,
@@ -1101,7 +1233,8 @@ function addStrategyEvidence(
         nature: "assumption",
         status: "not_reviewed",
         confidence: "unverified",
-        confidenceReason: "Strategy draft input is a user assumption, not verified market or planning evidence.",
+        confidenceReason:
+          "Strategy draft input is a user assumption, not verified market or planning evidence.",
         sourceIds: [sourceId],
         locators: [{ fieldPath: `strategyWorkspace.draftInputs.${key}` }],
         observedAt: workspace.draftUpdatedAt,
@@ -1149,9 +1282,12 @@ function addStrategyEvidence(
         nature: "calculation",
         status: selected ? "supported" : "not_reviewed",
         confidence: "medium",
-        confidenceReason: "Deterministic calculator output from saved Strategy assumptions. It is not a valuation opinion.",
+        confidenceReason:
+          "Deterministic calculator output from saved Strategy assumptions. It is not a valuation opinion.",
         sourceIds: [sourceId],
-        locators: [{ fieldPath: `strategyWorkspace.scenarios.${scenario.id}.summary.${slug(item.label)}` }],
+        locators: [
+          { fieldPath: `strategyWorkspace.scenarios.${scenario.id}.summary.${slug(item.label)}` },
+        ],
         observedAt: scenario.savedAt,
         updatedAt: scenario.updatedAt ?? scenario.savedAt,
         userConfirmed: selected,
@@ -1168,7 +1304,8 @@ function addSitePotentialEvidence(
   selectedDesign: ErfAsset | null,
   systemSourceId: string,
 ) {
-  const project = input.sitePotentialProject?.parcel_id === input.parcel.id ? input.sitePotentialProject : null;
+  const project =
+    input.sitePotentialProject?.parcel_id === input.parcel.id ? input.sitePotentialProject : null;
   if (project) {
     const sourceId = addSource(pack, {
       id: `site-project-${project.id}`,
@@ -1181,7 +1318,9 @@ function addSitePotentialEvidence(
       capturedAt: project.created_at,
       updatedAt: project.updated_at,
       locators: [{ fieldPath: "sitePotentialProject" }],
-      fragments: [project.design_brief, project.custom_instructions].filter((value): value is string => Boolean(value)).map(limitFragment),
+      fragments: [project.design_brief, project.custom_instructions]
+        .filter((value): value is string => Boolean(value))
+        .map(limitFragment),
     });
     addClaim(pack, {
       id: `claim-site-project-${project.id}`,
@@ -1194,7 +1333,8 @@ function addSitePotentialEvidence(
       nature: "interpretation",
       status: "supported",
       confidence: "unverified",
-      confidenceReason: "Site Potential state records workflow progress only. Generated concepts are AI interpretation.",
+      confidenceReason:
+        "Site Potential state records workflow progress only. Generated concepts are AI interpretation.",
       sourceIds: [sourceId],
       locators: [{ fieldPath: "sitePotentialProject.generation_status" }],
       observedAt: project.created_at,
@@ -1214,7 +1354,8 @@ function addSitePotentialEvidence(
       nature: "interpretation",
       status: "partial",
       confidence: "unverified",
-      confidenceReason: "Workspace state indicates Site Potential progress but does not prove planning approval or buildability.",
+      confidenceReason:
+        "Workspace state indicates Site Potential progress but does not prove planning approval or buildability.",
       sourceIds: [systemSourceId],
       locators: [{ fieldPath: "workspaceState.sitePotential.progressState" }],
       observedAt: input.workspaceState.updatedAt,
@@ -1259,7 +1400,8 @@ function addCrossParcelRejections(
       parcelId: input.parcel.id,
       title: "Chosen Strategy scenario belongs to another parcel",
       severity: "high",
-      explanation: "A supplied chosen Strategy scenario was rejected because its parcel ID does not match this erf.",
+      explanation:
+        "A supplied chosen Strategy scenario was rejected because its parcel ID does not match this erf.",
       claimIds: [],
       sourceIds: [systemSourceId],
       displayedValues: [input.chosenScenario.parcelId, input.parcel.id],
@@ -1273,7 +1415,8 @@ function addCrossParcelRejections(
       parcelId: input.parcel.id,
       title: "Selected Site Potential asset belongs to another parcel",
       severity: "high",
-      explanation: "A selected Site Potential asset was rejected because its parcel ID does not match this erf.",
+      explanation:
+        "A selected Site Potential asset was rejected because its parcel ID does not match this erf.",
       claimIds: [],
       sourceIds: [systemSourceId],
       displayedValues: [input.selectedSiteDesign.parcel_id, input.parcel.id],
@@ -1289,33 +1432,61 @@ function addContradictions(
   evidence: SavedMarketEvidence[],
 ) {
   const confirmedAddress = input.marketAddressIntelligence?.userConfirmedAddress ?? null;
-  if (confirmedAddress?.municipality && input.parcel.municipality && normalizeText(confirmedAddress.municipality) !== normalizeText(input.parcel.municipality)) {
+  if (
+    confirmedAddress?.municipality &&
+    input.parcel.municipality &&
+    normalizeText(confirmedAddress.municipality) !== normalizeText(input.parcel.municipality)
+  ) {
     const officialClaim = findClaim(pack, "identity", "municipality");
-    const addressClaim = findClaim(pack, "address", "municipality", `claim-address-${confirmedAddress.id}-municipality`);
+    const addressClaim = findClaim(
+      pack,
+      "address",
+      "municipality",
+      `claim-address-${confirmedAddress.id}-municipality`,
+    );
     addContradiction(pack, {
       id: "market-address-municipality-mismatch",
       title: "Confirmed market-address municipality differs from parcel municipality",
       severity: "high",
       explanation: "The user-confirmed market address and parcel municipality disagree.",
       claimIds: compact([officialClaim?.id, addressClaim?.id]),
-      sourceIds: unique(compact([...(officialClaim?.sourceIds ?? []), ...(addressClaim?.sourceIds ?? [])])),
-      displayedValues: [`Market address: ${confirmedAddress.municipality}`, `Parcel: ${input.parcel.municipality}`],
+      sourceIds: unique(
+        compact([...(officialClaim?.sourceIds ?? []), ...(addressClaim?.sourceIds ?? [])]),
+      ),
+      displayedValues: [
+        `Market address: ${confirmedAddress.municipality}`,
+        `Parcel: ${input.parcel.municipality}`,
+      ],
       nextAction: "Reconfirm the Market address and parcel identity.",
       targetTab: "listings",
     });
     markClaimsConflicting(pack, compact([officialClaim?.id, addressClaim?.id]));
   }
-  if (confirmedAddress?.province && input.parcel.province && normalizeText(confirmedAddress.province) !== normalizeText(input.parcel.province)) {
+  if (
+    confirmedAddress?.province &&
+    input.parcel.province &&
+    normalizeText(confirmedAddress.province) !== normalizeText(input.parcel.province)
+  ) {
     const officialClaim = findClaim(pack, "identity", "province");
-    const addressClaim = findClaim(pack, "address", "province", `claim-address-${confirmedAddress.id}-province`);
+    const addressClaim = findClaim(
+      pack,
+      "address",
+      "province",
+      `claim-address-${confirmedAddress.id}-province`,
+    );
     addContradiction(pack, {
       id: "market-address-province-mismatch",
       title: "Confirmed market-address province differs from parcel province",
       severity: "high",
       explanation: "The user-confirmed market address and parcel province disagree.",
       claimIds: compact([officialClaim?.id, addressClaim?.id]),
-      sourceIds: unique(compact([...(officialClaim?.sourceIds ?? []), ...(addressClaim?.sourceIds ?? [])])),
-      displayedValues: [`Market address: ${confirmedAddress.province}`, `Parcel: ${input.parcel.province}`],
+      sourceIds: unique(
+        compact([...(officialClaim?.sourceIds ?? []), ...(addressClaim?.sourceIds ?? [])]),
+      ),
+      displayedValues: [
+        `Market address: ${confirmedAddress.province}`,
+        `Parcel: ${input.parcel.province}`,
+      ],
       nextAction: "Reconfirm the Market address and parcel identity.",
       targetTab: "listings",
     });
@@ -1323,7 +1494,9 @@ function addContradictions(
   }
   // Canonical precedence resolves to a single area claim; surface disagreement
   // between *stated* official aliases without letting a lesser alias win.
-  const areaAliases = statedAreaAliases(input.parcel.rawProperties as Record<string, unknown> | null | undefined);
+  const areaAliases = statedAreaAliases(
+    input.parcel.rawProperties as Record<string, unknown> | null | undefined,
+  );
   if (areaAliases.length > 1) {
     const min = Math.min(...areaAliases.map((a) => a.value));
     const max = Math.max(...areaAliases.map((a) => a.value));
@@ -1344,7 +1517,14 @@ function addContradictions(
       markClaimsConflicting(pack, compact([canonicalClaim?.id]));
     }
   }
-  addAliasConflict(pack, "planning", "zoning", "official-zoning-alias-conflict", "Official zoning aliases disagree", "Verify zoning against municipal planning records.");
+  addAliasConflict(
+    pack,
+    "planning",
+    "zoning",
+    "official-zoning-alias-conflict",
+    "Official zoning aliases disagree",
+    "Verify zoning against municipal planning records.",
+  );
 
   const officialArea = firstClaimNumber(pack.claims, "identity", "areaM2", true);
   // Official cadastral area vs a registered/deed extent read from a matched
@@ -1363,7 +1543,9 @@ function addContradictions(
         severity: "medium",
         explanation: `The official cadastral record states ${officialArea} m2 while a matched document states a registered extent of ${registeredExtent} m2. Easy Erf keeps both values and does not choose between them.`,
         claimIds: compact([areaClaim?.id, extentClaim?.id]),
-        sourceIds: unique(compact([...(areaClaim?.sourceIds ?? []), ...(extentClaim?.sourceIds ?? [])])),
+        sourceIds: unique(
+          compact([...(areaClaim?.sourceIds ?? []), ...(extentClaim?.sourceIds ?? [])]),
+        ),
         displayedValues: [
           `Official cadastral area: ${officialArea} m2`,
           `Registered extent: ${registeredExtent} m2`,
@@ -1378,7 +1560,9 @@ function addContradictions(
   const subjectListings = evidence.filter((item) => item.listingRole === "subject_active_listing");
   if (subjectListings.length > 1) {
     const listingClaims = subjectListings
-      .map((item) => findClaim(pack, "market", "listingRole", `claim-market-${item.id}-listingRole`))
+      .map((item) =>
+        findClaim(pack, "market", "listingRole", `claim-market-${item.id}-listingRole`),
+      )
       .filter((claim): claim is EvidenceClaim => Boolean(claim));
     addContradiction(pack, {
       id: "multiple-subject-active-listings",
@@ -1387,11 +1571,16 @@ function addContradictions(
       explanation: "Multiple listings are marked as the active listing for this erf.",
       claimIds: listingClaims.map((claim) => claim.id),
       sourceIds: unique(listingClaims.flatMap((claim) => claim.sourceIds)),
-      displayedValues: subjectListings.map((item) => `${item.title}: ${item.listingRole ?? "unknown role"}`),
+      displayedValues: subjectListings.map(
+        (item) => `${item.title}: ${item.listingRole ?? "unknown role"}`,
+      ),
       nextAction: "Keep one active subject listing and convert others to comparable evidence.",
       targetTab: "listings",
     });
-    markClaimsConflicting(pack, listingClaims.map((claim) => claim.id));
+    markClaimsConflicting(
+      pack,
+      listingClaims.map((claim) => claim.id),
+    );
   }
   for (const listing of subjectListings) {
     if (!officialArea || !listing.landSizeM2) continue;
@@ -1399,15 +1588,25 @@ function addContradictions(
     const pct = (diff / officialArea) * 100;
     if (pct > AREA_MISMATCH_PERCENT && diff > AREA_MISMATCH_M2) {
       const areaClaim = findClaim(pack, "identity", "areaM2");
-      const listingClaim = findClaim(pack, "market", "landSizeM2", `claim-market-${listing.id}-landSizeM2`);
+      const listingClaim = findClaim(
+        pack,
+        "market",
+        "landSizeM2",
+        `claim-market-${listing.id}-landSizeM2`,
+      );
       addContradiction(pack, {
         id: `subject-land-size-mismatch-${listing.id}`,
         title: "Subject listing land size differs from official erf area",
         severity: "medium",
         explanation: `Difference is ${pct.toFixed(1)}% and ${Math.round(diff)} m2, above the ${AREA_MISMATCH_PERCENT}% and ${AREA_MISMATCH_M2} m2 threshold.`,
         claimIds: compact([areaClaim?.id, listingClaim?.id]),
-        sourceIds: unique(compact([...(areaClaim?.sourceIds ?? []), ...(listingClaim?.sourceIds ?? [])])),
-        displayedValues: [`Official area: ${officialArea} m2`, `Listing land size: ${listing.landSizeM2} m2`],
+        sourceIds: unique(
+          compact([...(areaClaim?.sourceIds ?? []), ...(listingClaim?.sourceIds ?? [])]),
+        ),
+        displayedValues: [
+          `Official area: ${officialArea} m2`,
+          `Listing land size: ${listing.landSizeM2} m2`,
+        ],
         nextAction: "Check the listing against the SG diagram and parcel record.",
         targetTab: "listings",
       });
@@ -1442,19 +1641,70 @@ function addGaps(
   workspace: ReturnType<typeof createEmptyStrategyWorkspace>,
   chosenScenario: ErfStrategyScenario | null,
 ) {
-  const planningClaims = (key: string) => pack.claims.some((claim) => claim.domain === "planning" && claim.key === key && claim.status === "supported");
+  const planningClaims = (key: string) =>
+    pack.claims.some(
+      (claim) => claim.domain === "planning" && claim.key === key && claim.status === "supported",
+    );
   const recordedPlanningClaim = (key: string) =>
     pack.claims.some(
       (claim) => claim.domain === "planning" && claim.key === key && !claim.excluded,
     );
-  const gap = (id: string, domain: EvidenceDomain, importance: "low" | "medium" | "high", title: string, explanation: string, basis: string, nextAction: string, targetTab: string, blocking = false) =>
-    pack.gaps.push({ id, parcelId: input.parcel.id, domain, importance, title, explanation, basis, nextAction, targetTab, blocking });
+  const gap = (
+    id: string,
+    domain: EvidenceDomain,
+    importance: "low" | "medium" | "high",
+    title: string,
+    explanation: string,
+    basis: string,
+    nextAction: string,
+    targetTab: string,
+    blocking = false,
+  ) =>
+    pack.gaps.push({
+      id,
+      parcelId: input.parcel.id,
+      domain,
+      importance,
+      title,
+      explanation,
+      basis,
+      nextAction,
+      targetTab,
+      blocking,
+    });
 
   if (!["checked", "looks_correct"].includes(input.workspaceState.identityStatus)) {
-    gap("identity-not-user-reviewed", "identity", "high", "Official identity not user-reviewed", "The official parcel identity has not been marked as checked for this erf.", `identityStatus=${input.workspaceState.identityStatus}`, "Review the official identity in Sources.", "research", true);
+    gap(
+      "identity-not-user-reviewed",
+      "identity",
+      "high",
+      "Official identity not user-reviewed",
+      "The official parcel identity has not been marked as checked for this erf.",
+      `identityStatus=${input.workspaceState.identityStatus}`,
+      "Review the official identity in Sources.",
+      "research",
+      true,
+    );
   }
-  if (!pack.claims.some((claim) => claim.key === "areaM2")) gap("missing-erf-area", "identity", "medium", "Erf area missing", "No official erf area claim is available.", "No recognized area alias on parcel raw properties.", "Upload or open the SG diagram.", "research");
-  for (const [key, label] of [["zoning", "Zoning"], ["coverage", "Coverage"], ["far", "FAR"], ["height", "Height"], ["setbacks", "Setbacks or building lines"], ["permittedUses", "Permitted uses"]] as const) {
+  if (!pack.claims.some((claim) => claim.key === "areaM2"))
+    gap(
+      "missing-erf-area",
+      "identity",
+      "medium",
+      "Erf area missing",
+      "No official erf area claim is available.",
+      "No recognized area alias on parcel raw properties.",
+      "Upload or open the SG diagram.",
+      "research",
+    );
+  for (const [key, label] of [
+    ["zoning", "Zoning"],
+    ["coverage", "Coverage"],
+    ["far", "FAR"],
+    ["height", "Height"],
+    ["setbacks", "Setbacks or building lines"],
+    ["permittedUses", "Permitted uses"],
+  ] as const) {
     if (!planningClaims(key)) {
       const recorded = recordedPlanningClaim(key);
       const title = recorded
@@ -1465,11 +1715,31 @@ function addGaps(
       const explanation = recorded
         ? `${label} is recorded as a working or published value, but no supported property-specific source confirms it.`
         : `${label} has not been captured from a supported source.`;
-      gap(`missing-${key}`, "planning", key === "zoning" ? "high" : "medium", title, explanation, `No supported planning claim for ${key}.`, `Verify ${label.toLowerCase()} with municipal planning records.`, "research", key === "zoning");
+      gap(
+        `missing-${key}`,
+        "planning",
+        key === "zoning" ? "high" : "medium",
+        title,
+        explanation,
+        `No supported planning claim for ${key}.`,
+        `Verify ${label.toLowerCase()} with municipal planning records.`,
+        "research",
+        key === "zoning",
+      );
     }
   }
   if (!pack.claims.some((claim) => claim.domain === "ownership" && claim.status === "supported")) {
-    gap("ownership-not-verified", "ownership", "high", "Ownership not verified", "No structured ownership claim exists for this erf.", "Uploaded reports alone do not verify ownership without extracted ownership text.", "Upload or review title deed, WinDeed or Lightstone ownership evidence.", "reports", true);
+    gap(
+      "ownership-not-verified",
+      "ownership",
+      "high",
+      "Ownership not verified",
+      "No structured ownership claim exists for this erf.",
+      "Uploaded reports alone do not verify ownership without extracted ownership text.",
+      "Upload or review title deed, WinDeed or Lightstone ownership evidence.",
+      "reports",
+      true,
+    );
   }
   const unreadDocuments = assets.filter(
     (asset) =>
@@ -1479,7 +1749,9 @@ function addGaps(
   );
   if (unreadDocuments.length) {
     const failed = unreadDocuments.filter((asset) => erfAssetExtractionStatus(asset) === "failed");
-    const extracting = unreadDocuments.filter((asset) => erfAssetExtractionStatus(asset) === "processing");
+    const extracting = unreadDocuments.filter(
+      (asset) => erfAssetExtractionStatus(asset) === "processing",
+    );
     gap(
       "documents-not-read",
       "documents",
@@ -1493,33 +1765,87 @@ function addGaps(
         ? `Easy Erf could not read ${failed.length} uploaded document${failed.length === 1 ? "" : "s"}, so their contents are not in the evidence pack.`
         : `${unreadDocuments.length} uploaded document${unreadDocuments.length === 1 ? " is" : "s are"} stored but not yet read, so their contents cannot be quoted or searched.`,
       failed.length
-        ? (failed.map((asset) => erfAssetExtractionError(asset)).find(Boolean) ?? "Extraction failed.")
-        : unreadDocuments.map((asset) => asset.original_file_name).slice(0, 5).join(", "),
-      failed.length ? "Retry reading the document in Reports." : "Read these documents so their values become searchable evidence.",
+        ? (failed.map((asset) => erfAssetExtractionError(asset)).find(Boolean) ??
+            "Extraction failed.")
+        : unreadDocuments
+            .map((asset) => asset.original_file_name)
+            .slice(0, 5)
+            .join(", "),
+      failed.length
+        ? "Retry reading the document in Reports."
+        : "Read these documents so their values become searchable evidence.",
       "reports",
     );
   }
-  if (!assets.some((asset) => asset.asset_category === "paid_report" || asset.asset_category === "title_deed")) {
-    gap("no-title-deed-or-paid-report", "deeds", "medium", "No title deed or paid ownership report", "No ownership/deeds document is attached.", "No paid_report or title_deed asset found.", "Add Lightstone, WinDeed or title deed documents.", "reports");
+  if (
+    !assets.some(
+      (asset) => asset.asset_category === "paid_report" || asset.asset_category === "title_deed",
+    )
+  ) {
+    gap(
+      "no-title-deed-or-paid-report",
+      "deeds",
+      "medium",
+      "No title deed or paid ownership report",
+      "No ownership/deeds document is attached.",
+      "No paid_report or title_deed asset found.",
+      "Add Lightstone, WinDeed or title deed documents.",
+      "reports",
+    );
   }
   if (!assets.some((asset) => asset.asset_category === "sg_diagram")) {
-    gap("sg-diagram-missing", "documents", "medium", "SG diagram missing", "No SG diagram is attached for this erf.", "No sg_diagram asset found.", "Upload or fetch the SG diagram.", "research");
+    gap(
+      "sg-diagram-missing",
+      "documents",
+      "medium",
+      "SG diagram missing",
+      "No SG diagram is attached for this erf.",
+      "No sg_diagram asset found.",
+      "Upload or fetch the SG diagram.",
+      "research",
+    );
   }
-  for (const asset of assets.filter((doc) => criticalDocument(doc) && !erfAssetHasSearchableExtraction(doc))) {
+  for (const asset of assets.filter(
+    (doc) => criticalDocument(doc) && !erfAssetHasSearchableExtraction(doc),
+  )) {
     const identity = erfAssetIdentityMatchStatus(asset);
     // Never say "no report was uploaded" — the file exists; say exactly why it is unusable.
     const state =
       identity === "mismatch"
-        ? { title: "Uploaded document is for the wrong property", detail: "describes a different property, so nothing in it can be quoted for this erf", action: "Upload the correct report for this erf." }
+        ? {
+            title: "Uploaded document is for the wrong property",
+            detail: "describes a different property, so nothing in it can be quoted for this erf",
+            action: "Upload the correct report for this erf.",
+          }
         : identity === "unverified"
-          ? { title: "Uploaded document could not be matched to this erf", detail: "does not identify this erf clearly enough to be used as evidence", action: "Upload a report that states this erf's identity." }
+          ? {
+              title: "Uploaded document could not be matched to this erf",
+              detail: "does not identify this erf clearly enough to be used as evidence",
+              action: "Upload a report that states this erf's identity.",
+            }
           : erfAssetExtractionStatus(asset) === "failed"
-            ? { title: "Uploaded document could not be read", detail: erfAssetExtractionError(asset) ?? "could not be read", action: "Retry extraction in Reports." }
+            ? {
+                title: "Uploaded document could not be read",
+                detail: erfAssetExtractionError(asset) ?? "could not be read",
+                action: "Retry extraction in Reports.",
+              }
             : erfAssetExtractionStatus(asset) === "processing"
-              ? { title: "Uploaded document is still being extracted", detail: "is being extracted right now", action: "Wait for extraction to finish." }
+              ? {
+                  title: "Uploaded document is still being extracted",
+                  detail: "is being extracted right now",
+                  action: "Wait for extraction to finish.",
+                }
               : erfAssetExtractionStatus(asset) === "partial"
-                ? { title: "Uploaded document is searchable but has no structured values", detail: "was read but no structured values were found", action: "Check the document manually or upload a clearer copy." }
-                : { title: "Uploaded document has not been extracted yet", detail: "is uploaded but has not been read yet", action: "Read the document in Reports." };
+                ? {
+                    title: "Uploaded document is searchable but has no structured values",
+                    detail: "was read but no structured values were found",
+                    action: "Check the document manually or upload a clearer copy.",
+                  }
+                : {
+                    title: "Uploaded document has not been extracted yet",
+                    detail: "is uploaded but has not been read yet",
+                    action: "Read the document in Reports.",
+                  };
     gap(
       `document-extraction-missing-${asset.id}`,
       "documents",
@@ -1532,31 +1858,115 @@ function addGaps(
     );
   }
   if (!input.marketAddressIntelligence?.userConfirmedAddress) {
-    gap("confirmed-market-address-missing", "address", "medium", "Confirmed market address missing", "No user-confirmed working market address is saved.", "marketAddressIntelligence.userConfirmedAddress is missing.", "Confirm a market address in Market.", "listings");
+    gap(
+      "confirmed-market-address-missing",
+      "address",
+      "medium",
+      "Confirmed market address missing",
+      "No user-confirmed working market address is saved.",
+      "marketAddressIntelligence.userConfirmedAddress is missing.",
+      "Confirm a market address in Market.",
+      "listings",
+    );
   }
-  const usableComps = evidence.filter((item) => item.listingRole !== "subject_active_listing" && item.includeInSummary && item.confidence !== "excluded" && item.relationship !== "not_related");
+  const usableComps = evidence.filter(
+    (item) =>
+      item.listingRole !== "subject_active_listing" &&
+      item.includeInSummary &&
+      item.confidence !== "excluded" &&
+      item.relationship !== "not_related",
+  );
   if (usableComps.length < 3) {
-    gap("fewer-than-three-comps", "market", "high", "Fewer than three included comparable items", "Market summary needs at least three relevant included comparables.", `${usableComps.length} usable comparable item(s).`, "Save more comparable listings or sales.", "listings", true);
+    gap(
+      "fewer-than-three-comps",
+      "market",
+      "high",
+      "Fewer than three included comparable items",
+      "Market summary needs at least three relevant included comparables.",
+      `${usableComps.length} usable comparable item(s).`,
+      "Save more comparable listings or sales.",
+      "listings",
+      true,
+    );
   }
   if (!evidence.some((item) => item.listingRole === "subject_active_listing")) {
-    gap("no-subject-active-listing", "market", "low", "No subject active listing", "No active listing is saved as the subject listing for this erf.", "No subject_active_listing market evidence.", "Import or add the active listing for this erf if one exists.", "listings");
+    gap(
+      "no-subject-active-listing",
+      "market",
+      "low",
+      "No subject active listing",
+      "No active listing is saved as the subject listing for this erf.",
+      "No subject_active_listing market evidence.",
+      "Import or add the active listing for this erf if one exists.",
+      "listings",
+    );
   }
   if (!chosenScenario) {
-    gap("chosen-strategy-scenario-missing", "strategy", "high", "Chosen Strategy scenario missing", "No Strategy scenario is selected to feed the Easy Erf Report.", `scenarioCount=${workspace.scenarios.length}`, "Choose a scenario in Strategy Lab.", "calculators", true);
+    gap(
+      "chosen-strategy-scenario-missing",
+      "strategy",
+      "high",
+      "Chosen Strategy scenario missing",
+      "No Strategy scenario is selected to feed the Easy Erf Report.",
+      `scenarioCount=${workspace.scenarios.length}`,
+      "Choose a scenario in Strategy Lab.",
+      "calculators",
+      true,
+    );
   }
   const strategyName = chosenScenario?.strategy ?? workspace.activeStrategy;
   const development = /development|flip|brrrr/i.test(strategyName);
-  if (development && ["zoning", "coverage", "far", "height", "setbacks", "permittedUses"].some((key) => !planningClaims(key))) {
-    gap("development-planning-controls-unverified", "planning", "high", "Development strategy lacks verified planning controls", "A development-sensitive strategy is selected, but core planning controls are incomplete.", `strategy=${strategyName}`, "Verify planning controls before relying on development outputs.", "research", true);
+  if (
+    development &&
+    ["zoning", "coverage", "far", "height", "setbacks", "permittedUses"].some(
+      (key) => !planningClaims(key),
+    )
+  ) {
+    gap(
+      "development-planning-controls-unverified",
+      "planning",
+      "high",
+      "Development strategy lacks verified planning controls",
+      "A development-sensitive strategy is selected, but core planning controls are incomplete.",
+      `strategy=${strategyName}`,
+      "Verify planning controls before relying on development outputs.",
+      "research",
+      true,
+    );
   }
-  if (development && !input.sitePotentialAccepted && !input.workspaceState.sitePotential.skipped
-    && input.workspaceState.sitePotential.progressState !== "skipped") {
+  if (
+    development &&
+    !input.sitePotentialAccepted &&
+    !input.workspaceState.sitePotential.skipped &&
+    input.workspaceState.sitePotential.progressState !== "skipped"
+  ) {
     // Retain the recorded gap ID so saved action references remain stable.
-    gap("selected-site-potential-concept-missing", "site", "medium", "Site Potential build envelope not accepted", "An accepted indicative build envelope can strengthen development analysis. This optional step is not a planning approval and never blocks the report.", `strategy=${strategyName}`, "Review and accept the Site Potential build envelope, or explicitly skip this optional step.", "site-potential");
+    gap(
+      "selected-site-potential-concept-missing",
+      "site",
+      "medium",
+      "Site Potential build envelope not accepted",
+      "An accepted indicative build envelope can strengthen development analysis. This optional step is not a planning approval and never blocks the report.",
+      `strategy=${strategyName}`,
+      "Review and accept the Site Potential build envelope, or explicitly skip this optional step.",
+      "site-potential",
+    );
   }
-  const questions = input.propertyNotes?.parcelId === input.parcel.id ? splitLines(input.propertyNotes.questions) : [];
+  const questions =
+    input.propertyNotes?.parcelId === input.parcel.id
+      ? splitLines(input.propertyNotes.questions)
+      : [];
   for (const [index, question] of questions.entries()) {
-    gap(`unresolved-user-question-${index + 1}`, "notes", "low", "Unresolved user question", question, "Question saved in property notes.", "Resolve or update the note when answered.", "notes");
+    gap(
+      `unresolved-user-question-${index + 1}`,
+      "notes",
+      "low",
+      "Unresolved user question",
+      question,
+      "Question saved in property notes.",
+      "Resolve or update the note when answered.",
+      "notes",
+    );
   }
 }
 
@@ -1571,21 +1981,98 @@ function addTimeline(
   builtAt: string,
 ) {
   const confirmed = input.marketAddressIntelligence?.userConfirmedAddress;
-  if (confirmed) addTimelineEvent(pack, { id: "timeline-market-address-confirmed", parcelId: input.parcel.id, occurredAt: confirmed.updatedAt ?? confirmed.createdAt, label: "Market address confirmed", detail: confirmed.formattedAddress, sourceIds: [`address-${confirmed.id}`], domain: "address" });
+  if (confirmed)
+    addTimelineEvent(pack, {
+      id: "timeline-market-address-confirmed",
+      parcelId: input.parcel.id,
+      occurredAt: confirmed.updatedAt ?? confirmed.createdAt,
+      label: "Market address confirmed",
+      detail: confirmed.formattedAddress,
+      sourceIds: [`address-${confirmed.id}`],
+      domain: "address",
+    });
   for (const asset of assets) {
-    addTimelineEvent(pack, { id: `timeline-asset-uploaded-${asset.id}`, parcelId: input.parcel.id, occurredAt: asset.created_at, label: "Asset uploaded", detail: asset.original_file_name, sourceIds: [`asset-${asset.id}`], domain: "documents" });
+    addTimelineEvent(pack, {
+      id: `timeline-asset-uploaded-${asset.id}`,
+      parcelId: input.parcel.id,
+      occurredAt: asset.created_at,
+      label: "Asset uploaded",
+      detail: asset.original_file_name,
+      sourceIds: [`asset-${asset.id}`],
+      domain: "documents",
+    });
     if (extractionStatus(asset) === "ready" || extractionStatus(asset) === "failed") {
-      addTimelineEvent(pack, { id: `timeline-asset-extraction-${asset.id}`, parcelId: input.parcel.id, occurredAt: asset.updated_at, label: extractionStatus(asset) === "ready" ? "Extraction completed" : "Extraction failed", detail: asset.original_file_name, sourceIds: [`asset-${asset.id}`], domain: "documents" });
+      addTimelineEvent(pack, {
+        id: `timeline-asset-extraction-${asset.id}`,
+        parcelId: input.parcel.id,
+        occurredAt: asset.updated_at,
+        label: extractionStatus(asset) === "ready" ? "Extraction completed" : "Extraction failed",
+        detail: asset.original_file_name,
+        sourceIds: [`asset-${asset.id}`],
+        domain: "documents",
+      });
     }
   }
   for (const item of evidence) {
-    addTimelineEvent(pack, { id: `timeline-market-evidence-${item.id}`, parcelId: input.parcel.id, occurredAt: item.updatedAt ?? item.savedAt, label: "Market Evidence saved or updated", detail: item.title, sourceIds: [`market-${item.id}`], domain: "market" });
+    addTimelineEvent(pack, {
+      id: `timeline-market-evidence-${item.id}`,
+      parcelId: input.parcel.id,
+      occurredAt: item.updatedAt ?? item.savedAt,
+      label: "Market Evidence saved or updated",
+      detail: item.title,
+      sourceIds: [`market-${item.id}`],
+      domain: "market",
+    });
   }
-  if (workspace.draftUpdatedAt) addTimelineEvent(pack, { id: "timeline-strategy-draft-updated", parcelId: input.parcel.id, occurredAt: workspace.draftUpdatedAt, label: "Strategy draft updated", detail: workspace.activeStrategy, sourceIds: ["strategy-workspace"], domain: "strategy" });
-  if (chosenScenario) addTimelineEvent(pack, { id: `timeline-strategy-chosen-${chosenScenario.id}`, parcelId: input.parcel.id, occurredAt: chosenScenario.updatedAt ?? chosenScenario.savedAt, label: "Strategy scenario chosen", detail: chosenScenario.label, sourceIds: ["strategy-workspace"], domain: "strategy" });
-  if (selectedSiteDesign) addTimelineEvent(pack, { id: `timeline-site-concept-selected-${selectedSiteDesign.id}`, parcelId: input.parcel.id, occurredAt: selectedSiteDesign.updated_at, label: "Site Potential concept selected", detail: selectedSiteDesign.original_file_name, sourceIds: [`asset-${selectedSiteDesign.id}`], domain: "site" });
-  if (input.propertyNotes?.parcelId === input.parcel.id && input.propertyNotes.updatedAt) addTimelineEvent(pack, { id: "timeline-notes-updated", parcelId: input.parcel.id, occurredAt: input.propertyNotes.updatedAt, label: "Notes updated", detail: "Property notes changed.", sourceIds: ["property-notes"], domain: "notes" });
-  addTimelineEvent(pack, { id: "evidence-pack-built", parcelId: input.parcel.id, occurredAt: builtAt, label: "Evidence pack built", detail: "Canonical Property Evidence Pack assembled from current saved evidence.", sourceIds: ["system-state"], domain: "documents" });
+  if (workspace.draftUpdatedAt)
+    addTimelineEvent(pack, {
+      id: "timeline-strategy-draft-updated",
+      parcelId: input.parcel.id,
+      occurredAt: workspace.draftUpdatedAt,
+      label: "Strategy draft updated",
+      detail: workspace.activeStrategy,
+      sourceIds: ["strategy-workspace"],
+      domain: "strategy",
+    });
+  if (chosenScenario)
+    addTimelineEvent(pack, {
+      id: `timeline-strategy-chosen-${chosenScenario.id}`,
+      parcelId: input.parcel.id,
+      occurredAt: chosenScenario.updatedAt ?? chosenScenario.savedAt,
+      label: "Strategy scenario chosen",
+      detail: chosenScenario.label,
+      sourceIds: ["strategy-workspace"],
+      domain: "strategy",
+    });
+  if (selectedSiteDesign)
+    addTimelineEvent(pack, {
+      id: `timeline-site-concept-selected-${selectedSiteDesign.id}`,
+      parcelId: input.parcel.id,
+      occurredAt: selectedSiteDesign.updated_at,
+      label: "Site Potential concept selected",
+      detail: selectedSiteDesign.original_file_name,
+      sourceIds: [`asset-${selectedSiteDesign.id}`],
+      domain: "site",
+    });
+  if (input.propertyNotes?.parcelId === input.parcel.id && input.propertyNotes.updatedAt)
+    addTimelineEvent(pack, {
+      id: "timeline-notes-updated",
+      parcelId: input.parcel.id,
+      occurredAt: input.propertyNotes.updatedAt,
+      label: "Notes updated",
+      detail: "Property notes changed.",
+      sourceIds: ["property-notes"],
+      domain: "notes",
+    });
+  addTimelineEvent(pack, {
+    id: "evidence-pack-built",
+    parcelId: input.parcel.id,
+    occurredAt: builtAt,
+    label: "Evidence pack built",
+    detail: "Canonical Property Evidence Pack assembled from current saved evidence.",
+    sourceIds: ["system-state"],
+    domain: "documents",
+  });
 }
 
 function buildDomainSummaries(pack: MutablePack): EvidenceDomainSummary[] {
@@ -1658,8 +2145,17 @@ function addContradiction(
   });
 }
 
-function addAliasConflict(pack: MutablePack, domain: EvidenceDomain, key: string, id: string, title: string, nextAction: string) {
-  const claims = pack.claims.filter((claim) => claim.domain === domain && claim.key === key && claim.normalizedValue != null);
+function addAliasConflict(
+  pack: MutablePack,
+  domain: EvidenceDomain,
+  key: string,
+  id: string,
+  title: string,
+  nextAction: string,
+) {
+  const claims = pack.claims.filter(
+    (claim) => claim.domain === domain && claim.key === key && claim.normalizedValue != null,
+  );
   const values = Array.from(new Set(claims.map((claim) => String(claim.normalizedValue))));
   if (values.length <= 1) return;
   pack.contradictions.push({
@@ -1670,7 +2166,9 @@ function addAliasConflict(pack: MutablePack, domain: EvidenceDomain, key: string
     explanation: "Recognized official aliases contain materially different normalized values.",
     claimIds: claims.map((claim) => claim.id),
     sourceIds: Array.from(new Set(claims.flatMap((claim) => claim.sourceIds))),
-    displayedValues: claims.map((claim) => `${claim.locators[0]?.fieldPath ?? claim.key}: ${claim.value}`),
+    displayedValues: claims.map(
+      (claim) => `${claim.locators[0]?.fieldPath ?? claim.key}: ${claim.value}`,
+    ),
     nextAction,
     targetTab: "research",
   });
@@ -1682,7 +2180,10 @@ function findClaim(pack: MutablePack, domain: EvidenceDomain, key: string, id?: 
     const exact = pack.claims.find((claim) => claim.id === id);
     if (exact) return exact;
   }
-  return pack.claims.find((claim) => claim.domain === domain && claim.key === key && !claim.excluded) ?? null;
+  return (
+    pack.claims.find((claim) => claim.domain === domain && claim.key === key && !claim.excluded) ??
+    null
+  );
 }
 
 function markClaimsConflicting(pack: MutablePack, claimIds: string[]) {
@@ -1692,7 +2193,15 @@ function markClaimsConflicting(pack: MutablePack, claimIds: string[]) {
   }
 }
 
-function marketClaim(pack: MutablePack, item: SavedMarketEvidence, base: Partial<EvidenceClaim>, key: string, label: string, value: unknown, unit?: string) {
+function marketClaim(
+  pack: MutablePack,
+  item: SavedMarketEvidence,
+  base: Partial<EvidenceClaim>,
+  key: string,
+  label: string,
+  value: unknown,
+  unit?: string,
+) {
   if (value == null || String(value).trim() === "") return;
   addClaim(pack, {
     ...(base as EvidenceClaim),
@@ -1714,7 +2223,11 @@ function selectChosenScenario(
 ) {
   if (chosen?.parcelId === parcelId) return chosen;
   const chosenId = workspace.chosenScenarioId;
-  return scenarios.find((scenario) => scenario.id === chosenId) ?? scenarios.find((scenario) => scenario.selected) ?? null;
+  return (
+    scenarios.find((scenario) => scenario.id === chosenId) ??
+    scenarios.find((scenario) => scenario.selected) ??
+    null
+  );
 }
 
 function uniqueScenario(parcelId: string) {
@@ -1748,7 +2261,8 @@ function firstClaimNumber(
 }
 
 function numeric(value: unknown): number | null {
-  const parsed = typeof value === "number" ? value : Number(String(value ?? "").replace(/[^\d.-]/g, ""));
+  const parsed =
+    typeof value === "number" ? value : Number(String(value ?? "").replace(/[^\d.-]/g, ""));
   return Number.isFinite(parsed) ? parsed : null;
 }
 
@@ -1766,7 +2280,10 @@ function normalizeValue(value: unknown) {
 }
 
 function normalizeText(value: string) {
-  return value.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
 }
 
 function slug(value: string) {
@@ -1777,7 +2294,12 @@ export const EXTRACTED_FACT_CONFIDENCE_REASON =
   "Fact explicitly stated in an identity-matched uploaded report; verify against the issuing source for legal reliance.";
 
 /** Categories whose extracted registered extent may outrank the map area. */
-const REGISTERED_EXTENT_CATEGORIES = ["paid_report", "title_deed", "sg_diagram", "official_document"];
+const REGISTERED_EXTENT_CATEGORIES = [
+  "paid_report",
+  "title_deed",
+  "sg_diagram",
+  "official_document",
+];
 
 /**
  * Highest-precedence area input: an explicit `areaM2` claim, with a quote and
@@ -1836,6 +2358,7 @@ function assetMetadata(asset: ErfAsset, selectedSiteConcept: boolean) {
     checksumSha256: asset.checksum_sha256,
     storageStatus: asset.status,
     extractionStatus: extractionStatus(asset),
+    identityMatchStatus: erfAssetIdentityMatchStatus(asset),
     extractionWarning: extractionNote(asset),
     pageCount: metadataNumber(asset.metadata.pageCount ?? asset.metadata.page_count),
     selectedSiteConcept,
@@ -1881,7 +2404,13 @@ function splitFragments(text: string) {
 }
 
 function criticalDocument(asset: ErfAsset) {
-  return ["paid_report", "title_deed", "zoning_document", "sg_diagram", "official_document"].includes(asset.asset_category);
+  return [
+    "paid_report",
+    "title_deed",
+    "zoning_document",
+    "sg_diagram",
+    "official_document",
+  ].includes(asset.asset_category);
 }
 
 function splitLines(value: string | null | undefined) {
@@ -1908,9 +2437,15 @@ function dedupeTimeline(events: EvidenceTimelineEvent[]) {
   return Array.from(new Map(events.map((event) => [event.id, event])).values());
 }
 
-function domainExplanation(domain: EvidenceDomain, state: EvidenceDomainState, supported: number, gaps: number) {
+function domainExplanation(
+  domain: EvidenceDomain,
+  state: EvidenceDomainState,
+  supported: number,
+  gaps: number,
+) {
   if (state === "supported") return `${domain} has ${supported} supported claim(s).`;
-  if (state === "partial") return `${domain} is partially supported with ${supported} claim(s) and ${gaps} gap(s).`;
+  if (state === "partial")
+    return `${domain} is partially supported with ${supported} claim(s) and ${gaps} gap(s).`;
   if (state === "conflicting") return `${domain} contains conflicting visible evidence.`;
   if (state === "missing") return `${domain} is missing required evidence.`;
   return `${domain} has not been reviewed yet.`;

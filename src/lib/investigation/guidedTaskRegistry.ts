@@ -31,6 +31,8 @@ export interface InvestigationFacts {
   approvedPlansOnFile: boolean;
   titleDeedSearchable: boolean;
   paidReportSearchable: boolean;
+  /** All usable paid reports are automatically matched, not merely user-attached. */
+  paidReportsAllMatched?: boolean;
   paidReportCount: number;
   marketEvidenceCount: number;
   marketAddressSaved: boolean;
@@ -128,7 +130,8 @@ export const GUIDED_TASK_DEFINITIONS: GuidedTaskDefinition[] = [
     afterCompletion:
       "Easy Erf records readable cadastral evidence. A parent General Plan remains contextual evidence, and the individual subject SG diagram remains a confidence upgrade.",
     canSkip: true,
-    confidenceAfterLabel: "Readable cadastral evidence attached; obtain the subject SG diagram to strengthen property-specific confidence.",
+    confidenceAfterLabel:
+      "Readable cadastral evidence attached; obtain the subject SG diagram to strengthen property-specific confidence.",
     isComplete: (facts) => facts.sgDiagramSearchable || facts.sgDiagramParentLineageOnly,
     isBlocked: (facts) => facts.identityUncertain,
     confidenceBefore: (facts) => (facts.sgDiagramParentLineageOnly ? "indicative" : "unconfirmed"),
@@ -278,10 +281,10 @@ export const GUIDED_TASK_DEFINITIONS: GuidedTaskDefinition[] = [
       "Review the buildable envelope on the map and the same limits in the street-side view.",
       "Accept the envelope, or skip this optional step.",
     ],
-    afterCompletion:
-      "Easy Erf records the accepted indicative build envelope for this erf.",
+    afterCompletion: "Easy Erf records the accepted indicative build envelope for this erf.",
     canSkip: true,
-    confidenceAfterLabel: "Accepted indicative build envelope recorded from the confirmed site inputs",
+    confidenceAfterLabel:
+      "Accepted indicative build envelope recorded from the confirmed site inputs",
     limitations:
       "The envelope is indicative. It is not a land-surveyor determination, architectural plan, municipal approval, confirmation of title conditions or servitudes, or permission to build.",
     isComplete: (facts) => facts.sitePotentialAccepted || facts.siteSkipped,

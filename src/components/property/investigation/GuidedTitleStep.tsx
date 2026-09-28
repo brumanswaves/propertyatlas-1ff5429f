@@ -15,7 +15,11 @@ import { toast } from "sonner";
 import type { NormalizedOfficialParcel } from "@/lib/parcels/officialParcelId";
 import { GOVZA_DEEDS_GUIDANCE_URL } from "@/lib/external-urls";
 import { dispatchErfFileVaultUpdated, useErfFileVault } from "@/lib/workbench/useErfFileVault";
-import { buildErfAssetExpectedIdentityContext, type ErfAsset, type ErfAssetCategory } from "@/lib/workbench/erfFileVault";
+import {
+  buildErfAssetExpectedIdentityContext,
+  type ErfAsset,
+  type ErfAssetCategory,
+} from "@/lib/workbench/erfFileVault";
 import { extractErfAsset } from "@/lib/workbench/erfAssetExtraction";
 import {
   erfAssetCanConfirmIdentity,
@@ -55,6 +59,10 @@ function evidenceLabel(asset: ErfAsset) {
 function isUsableTitleEvidence(asset: ErfAsset) {
   return (
     (asset.asset_category === "title_deed" || asset.asset_category === "paid_report") &&
+    asset.status !== "archived" &&
+    asset.status !== "deleted" &&
+    asset.status !== "failed" &&
+    erfAssetIdentityMatchStatus(asset) !== "parent_lineage_match" &&
     erfAssetHasSearchableExtraction(asset)
   );
 }
@@ -67,9 +75,17 @@ export function GuidedTitleStep({ parcel, onContinue, onOpenPaidReports }: Guide
   const [removingAssetId, setRemovingAssetId] = useState<string | null>(null);
   const [confirmingAssetId, setConfirmingAssetId] = useState<string | null>(null);
 
-  const usableEvidence = vault.assets.filter(isUsableTitleEvidence);
+  const currentAssets = vault.assets.filter(
+    (asset) =>
+      asset.parcel_id === parcel.id && !["archived", "deleted", "failed"].includes(asset.status),
+  );
+  const usableEvidence = currentAssets.filter(
+    (asset) => asset.parcel_id === parcel.id && isUsableTitleEvidence(asset),
+  );
   const usableTitleDeeds = usableEvidence.filter((asset) => asset.asset_category === "title_deed");
-  const usablePaidReports = usableEvidence.filter((asset) => asset.asset_category === "paid_report");
+  const usablePaidReports = usableEvidence.filter(
+    (asset) => asset.asset_category === "paid_report",
+  );
   const hasTitleDeed = usableTitleDeeds.length > 0;
   const hasPaidReport = usablePaidReports.length > 0;
   const canContinue = hasTitleDeed || hasPaidReport;
@@ -147,7 +163,11 @@ export function GuidedTitleStep({ parcel, onContinue, onOpenPaidReports }: Guide
 
     const uploadedAssets: ErfAsset[] = [];
     for (const file of selectedFiles) {
-      if (category === "paid_report" && file.type !== "application/pdf" && !/\.pdf$/i.test(file.name)) {
+      if (
+        category === "paid_report" &&
+        file.type !== "application/pdf" &&
+        !/\.pdf$/i.test(file.name)
+      ) {
         toast.error(`${file.name} must be a PDF paid report.`);
         continue;
       }
@@ -208,7 +228,9 @@ export function GuidedTitleStep({ parcel, onContinue, onOpenPaidReports }: Guide
     setConfirmingAssetId(asset.id);
     try {
       await vault.confirmIdentity(asset);
-      toast.success("Document attached as user-confirmed evidence. This is not official verification.");
+      toast.success(
+        "Document attached as user-confirmed evidence. This is not official verification.",
+      );
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "The document could not be confirmed.");
     } finally {
@@ -220,7 +242,7 @@ export function GuidedTitleStep({ parcel, onContinue, onOpenPaidReports }: Guide
     ? "Readable title deed ready"
     : hasPaidReport
       ? "Readable paid report attached"
-      : vault.assets.length
+      : currentAssets.length
         ? "Document needs attention"
         : "No title evidence attached";
 
@@ -233,13 +255,15 @@ export function GuidedTitleStep({ parcel, onContinue, onOpenPaidReports }: Guide
               Ownership and deeds evidence
             </div>
             <h4 className="mt-1 text-lg font-semibold tracking-tight text-[#0D1B2A]">
-              {vault.investigationOrderId ? "Obtain and review the included property report" : "Buy the property report, then upload the PDF here"}
+              {vault.investigationOrderId
+                ? "Obtain and review the included property report"
+                : "Buy the property report, then upload the PDF here"}
             </h4>
             <p className="mt-2 max-w-3xl text-sm leading-6 text-[#0D1B2A]/66">
               The fastest practical route is usually a Lightstone or WinDeed report. Easy Erf can
               use a readable report that matches automatically or is explicitly attached by you to
-              continue, while an actual title deed remains the stronger
-              source for deed conditions, servitudes and restrictions.
+              continue, while an actual title deed remains the stronger source for deed conditions,
+              servitudes and restrictions.
             </p>
           </div>
           <span
@@ -247,14 +271,14 @@ export function GuidedTitleStep({ parcel, onContinue, onOpenPaidReports }: Guide
               "inline-flex w-fit items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold",
               canContinue
                 ? "bg-emerald-100 text-emerald-800"
-                : vault.assets.length
+                : currentAssets.length
                   ? "bg-amber-100 text-amber-800"
                   : "bg-slate-100 text-slate-700",
             )}
           >
             {canContinue ? (
               <CheckCircle2 className="h-3.5 w-3.5" />
-            ) : vault.assets.length ? (
+            ) : currentAssets.length ? (
               <AlertTriangle className="h-3.5 w-3.5" />
             ) : (
               <FileText className="h-3.5 w-3.5" />
@@ -264,61 +288,103 @@ export function GuidedTitleStep({ parcel, onContinue, onOpenPaidReports }: Guide
         </div>
       </section>
 
-      {vault.investigationOrderId ? <section className="rounded-[1.25rem] border border-[#FF6A00]/18 bg-[#fff8ec] p-4">
-        <h4 className="text-base font-semibold text-[#0D1B2A]">Included evidence, no second customer charge</h4>
-        <p className="mt-2 text-sm leading-6 text-[#0D1B2A]/68">Obtain the included property-data report through the existing authorized provider process where coverage is available. Record the findings in this customer file. If unavailable, record the source checked, date, outcome and limitation for the reviewer.</p>
-        <p className="mt-2 text-xs leading-5 text-[#0D1B2A]/62">Process or share the original only where the provider license permits. A provider report is not the certified title deed or municipal approval.</p>
-      </section> : <section className="rounded-[1.25rem] border border-[#FF6A00]/18 bg-[#fff8ec] p-4">
-        <h4 className="text-base font-semibold text-[#0D1B2A]">One of the most important upgrades to your Easy Erf investigation</h4>
-        <p className="mt-2 text-sm leading-6 text-[#0D1B2A]/68">Free public data helps Easy Erf identify the land. A paid property report adds deeds, transaction and market context that can materially change a buying or development decision.</p>
-        <div className="mt-3 flex flex-wrap gap-2">
-          <a href="https://www.lightstoneproperty.co.za/" target="_blank" rel="noopener noreferrer" className="inline-flex min-h-10 items-center gap-2 rounded-full bg-[#0D1B2A] px-4 py-2 text-xs font-semibold text-white">Buy from Lightstone <ExternalLink className="h-3.5 w-3.5" /></a>
-          <a href="https://www.windeed.co.za/wpr/" target="_blank" rel="noopener noreferrer" className="inline-flex min-h-10 items-center gap-2 rounded-full border border-[#0D1B2A]/12 bg-white px-4 py-2 text-xs font-semibold text-[#0D1B2A]">Buy from WinDeed <ExternalLink className="h-3.5 w-3.5" /></a>
-          <button type="button" onClick={onOpenPaidReports} className="inline-flex min-h-10 items-center rounded-full bg-[#FF6A00] px-4 py-2 text-xs font-semibold text-white">Already have one? Upload your PDF</button>
-        </div>
-        <p className="mt-2 text-xs leading-5 text-[#0D1B2A]/62">Payment happens on the provider's website. Easy Erf does not process it or claim a referral relationship.</p>
-        <h5 className="mt-4 text-sm font-semibold text-[#0D1B2A]">How to get the information</h5>
-        <ol className="mt-3 grid gap-3 md:grid-cols-3">
-          {[
-            {
-              title: "Open Paid Reports",
-              body: "Go directly to the Reports workspace for this selected erf.",
-            },
-            {
-              title: "Buy the correct report",
-              body: "Choose Lightstone or WinDeed and verify the erf, portion and location before paying.",
-            },
-            {
-              title: "Download and upload",
-              body: "Download the provider PDF, return to this page and upload it below.",
-            },
-          ].map((step, index) => (
-            <li key={step.title} className="rounded-xl border border-[#0D1B2A]/8 bg-white p-4">
-              <div className="flex items-center gap-2 text-sm font-semibold text-[#0D1B2A]">
-                <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#FF6A00]/12 text-[11px] font-bold text-[#FF6A00]">
-                  {index + 1}
-                </span>
-                {step.title}
-              </div>
-              <p className="mt-2 text-xs leading-5 text-[#0D1B2A]/62">{step.body}</p>
-              {index === 0 ? (
-                <button
-                  type="button"
-                  onClick={onOpenPaidReports}
-                  className="mt-3 inline-flex min-h-10 items-center rounded-full bg-[#0D1B2A] px-4 py-2 text-xs font-semibold text-white transition hover:bg-[#142941]"
-                >
-                  Open Paid Reports
-                </button>
-              ) : null}
-            </li>
-          ))}
-        </ol>
-        <p className="mt-3 text-xs leading-5 text-[#0D1B2A]/68">
-          A paid property report can provide ownership, transfer and deeds-level context, but it may
-          not be the certified title deed. A conveyancer or the Deeds Office may still be needed for
-          the actual deed and legal interpretation.
-        </p>
-      </section>}
+      {vault.investigationOrderId ? (
+        <section className="rounded-[1.25rem] border border-[#FF6A00]/18 bg-[#fff8ec] p-4">
+          <h4 className="text-base font-semibold text-[#0D1B2A]">
+            Included evidence, no second customer charge
+          </h4>
+          <p className="mt-2 text-sm leading-6 text-[#0D1B2A]/68">
+            Obtain the included property-data report through the existing authorized provider
+            process where coverage is available. Record the findings in this customer file. If
+            unavailable, record the source checked, date, outcome and limitation for the reviewer.
+          </p>
+          <p className="mt-2 text-xs leading-5 text-[#0D1B2A]/62">
+            Process or share the original only where the provider license permits. A provider report
+            is not the certified title deed or municipal approval.
+          </p>
+        </section>
+      ) : (
+        <section className="rounded-[1.25rem] border border-[#FF6A00]/18 bg-[#fff8ec] p-4">
+          <h4 className="text-base font-semibold text-[#0D1B2A]">
+            One of the most important upgrades to your Easy Erf investigation
+          </h4>
+          <p className="mt-2 text-sm leading-6 text-[#0D1B2A]/68">
+            Free public data helps Easy Erf identify the land. A paid property report adds deeds,
+            transaction and market context that can materially change a buying or development
+            decision.
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <a
+              href="https://www.lightstoneproperty.co.za/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex min-h-10 items-center gap-2 rounded-full bg-[#0D1B2A] px-4 py-2 text-xs font-semibold text-white"
+            >
+              Buy from Lightstone <ExternalLink className="h-3.5 w-3.5" />
+            </a>
+            <a
+              href="https://www.windeed.co.za/wpr/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex min-h-10 items-center gap-2 rounded-full border border-[#0D1B2A]/12 bg-white px-4 py-2 text-xs font-semibold text-[#0D1B2A]"
+            >
+              Buy from WinDeed <ExternalLink className="h-3.5 w-3.5" />
+            </a>
+            <button
+              type="button"
+              onClick={onOpenPaidReports}
+              className="inline-flex min-h-10 items-center rounded-full bg-[#FF6A00] px-4 py-2 text-xs font-semibold text-white"
+            >
+              Already have one? Upload your PDF
+            </button>
+          </div>
+          <p className="mt-2 text-xs leading-5 text-[#0D1B2A]/62">
+            Payment happens on the provider's website. Easy Erf does not process it or claim a
+            referral relationship.
+          </p>
+          <h5 className="mt-4 text-sm font-semibold text-[#0D1B2A]">How to get the information</h5>
+          <ol className="mt-3 grid gap-3 md:grid-cols-3">
+            {[
+              {
+                title: "Open Paid Reports",
+                body: "Go directly to the Reports workspace for this selected erf.",
+              },
+              {
+                title: "Buy the correct report",
+                body: "Choose Lightstone or WinDeed and verify the erf, portion and location before paying.",
+              },
+              {
+                title: "Download and upload",
+                body: "Download the provider PDF, return to this page and upload it below.",
+              },
+            ].map((step, index) => (
+              <li key={step.title} className="rounded-xl border border-[#0D1B2A]/8 bg-white p-4">
+                <div className="flex items-center gap-2 text-sm font-semibold text-[#0D1B2A]">
+                  <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#FF6A00]/12 text-[11px] font-bold text-[#FF6A00]">
+                    {index + 1}
+                  </span>
+                  {step.title}
+                </div>
+                <p className="mt-2 text-xs leading-5 text-[#0D1B2A]/62">{step.body}</p>
+                {index === 0 ? (
+                  <button
+                    type="button"
+                    onClick={onOpenPaidReports}
+                    className="mt-3 inline-flex min-h-10 items-center rounded-full bg-[#0D1B2A] px-4 py-2 text-xs font-semibold text-white transition hover:bg-[#142941]"
+                  >
+                    Open Paid Reports
+                  </button>
+                ) : null}
+              </li>
+            ))}
+          </ol>
+          <p className="mt-3 text-xs leading-5 text-[#0D1B2A]/68">
+            A paid property report can provide ownership, transfer and deeds-level context, but it
+            may not be the certified title deed. A conveyancer or the Deeds Office may still be
+            needed for the actual deed and legal interpretation.
+          </p>
+        </section>
+      )}
 
       <section className="rounded-[1.25rem] border border-[#0D1B2A]/10 bg-white p-4">
         <div className="grid gap-3 md:grid-cols-2">
@@ -449,7 +515,7 @@ export function GuidedTitleStep({ parcel, onContinue, onOpenPaidReports }: Guide
             </p>
           </div>
           <span className="text-xs font-semibold text-[#64748B]">
-            {vault.assets.length} file{vault.assets.length === 1 ? "" : "s"}
+            {currentAssets.length} file{currentAssets.length === 1 ? "" : "s"}
           </span>
         </div>
 
@@ -458,12 +524,12 @@ export function GuidedTitleStep({ parcel, onContinue, onOpenPaidReports }: Guide
             <Loader2 className="h-4 w-4 animate-spin" />
             Checking the Erf File Vault...
           </div>
-        ) : vault.assets.length ? (
+        ) : currentAssets.length ? (
           <div className="mt-4 grid gap-3">
-            {vault.assets.map((asset) => {
+            {currentAssets.map((asset) => {
               const extractionStatus = erfAssetExtractionStatus(asset);
               const identityStatus = erfAssetIdentityMatchStatus(asset);
-              const usable = isUsableTitleEvidence(asset);
+              const usable = asset.parcel_id === parcel.id && isUsableTitleEvidence(asset);
               const reading = readingAssetId === asset.id;
               const removing = removingAssetId === asset.id;
               const extractedIdentity = erfAssetExtractedIdentity(asset);
@@ -522,6 +588,12 @@ export function GuidedTitleStep({ parcel, onContinue, onOpenPaidReports }: Guide
                           Identity: {identityStatus ?? "not checked"}
                         </span>
                       </div>
+                      {usable && identityStatus === "unverified" && userConfirmed ? (
+                        <p className="mt-2 text-xs leading-5 text-amber-950">
+                          User-supported evidence. Document identity has not been independently
+                          matched. This does not certify ownership or legal rights.
+                        </p>
+                      ) : null}
                       {erfAssetIdentityMatchReason(asset) ? (
                         <p className="mt-2 text-xs leading-5 text-[#0D1B2A]/62">
                           {erfAssetIdentityMatchReason(asset)}
@@ -529,12 +601,30 @@ export function GuidedTitleStep({ parcel, onContinue, onOpenPaidReports }: Guide
                       ) : null}
                       {canConfirm ? (
                         <div className="mt-3 rounded-lg border border-amber-300/55 bg-white/75 p-3 text-xs leading-5 text-amber-950">
-                          <p className="font-semibold">Read successfully - needs your confirmation</p>
-                          <p className="mt-1">Detected identity: Erf {extractedIdentity?.erfNumber ?? "not stated"}, portion {extractedIdentity?.portionNumber ?? "not stated"}, {extractedIdentity?.streetAddress ?? extractedIdentity?.suburbOrTown ?? extractedIdentity?.municipality ?? "location not stated"}.</p>
-                          <button type="button" disabled={confirmingAssetId === asset.id} onClick={() => void confirmEvidenceIdentity(asset)} className="mt-2 inline-flex min-h-9 items-center rounded-full bg-[#0D1B2A] px-3 py-1.5 text-[11px] font-semibold text-white disabled:opacity-60">
-                            Yes, this document is for or supports Erf {parcel.erfNumber ?? "this erf"}
+                          <p className="font-semibold">
+                            Read successfully - needs your confirmation
+                          </p>
+                          <p className="mt-1">
+                            Detected identity: Erf {extractedIdentity?.erfNumber ?? "not stated"},
+                            portion {extractedIdentity?.portionNumber ?? "not stated"},{" "}
+                            {extractedIdentity?.streetAddress ??
+                              extractedIdentity?.suburbOrTown ??
+                              extractedIdentity?.municipality ??
+                              "location not stated"}
+                            .
+                          </p>
+                          <button
+                            type="button"
+                            disabled={confirmingAssetId === asset.id}
+                            onClick={() => void confirmEvidenceIdentity(asset)}
+                            className="mt-2 inline-flex min-h-9 items-center rounded-full bg-[#0D1B2A] px-3 py-1.5 text-[11px] font-semibold text-white disabled:opacity-60"
+                          >
+                            Yes, this document is for or supports Erf{" "}
+                            {parcel.erfNumber ?? "this erf"}
                           </button>
-                          <p className="mt-1 text-[11px]">Recorded as user-confirmed evidence, not official verification.</p>
+                          <p className="mt-1 text-[11px]">
+                            Recorded as user-confirmed evidence, not official verification.
+                          </p>
                         </div>
                       ) : null}
                     </div>
@@ -582,7 +672,9 @@ export function GuidedTitleStep({ parcel, onContinue, onOpenPaidReports }: Guide
             })}
           </div>
         ) : (
-          <p className="mt-4 text-sm text-[#0D1B2A]/58">No title or paid-report PDF is attached yet.</p>
+          <p className="mt-4 text-sm text-[#0D1B2A]/58">
+            No title or paid-report PDF is attached yet.
+          </p>
         )}
       </section>
 
@@ -593,7 +685,8 @@ export function GuidedTitleStep({ parcel, onContinue, onOpenPaidReports }: Guide
             <div>
               <h4 className="text-sm font-semibold text-emerald-950">Extracted deeds evidence</h4>
               <p className="mt-1 text-xs leading-5 text-emerald-950/70">
-                Review each value against the original PDF. This is research support, not a legal opinion.
+                Review each value against the original PDF. This is research support, not a legal
+                opinion.
               </p>
             </div>
           </div>

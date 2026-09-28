@@ -11,6 +11,8 @@ import {
   erfAssetExtractionLabel,
   erfAssetExtractionStatus,
   erfAssetIdentityMatchStatus,
+  erfAssetIdentityUserConfirmed,
+  erfAssetHasSearchableExtraction,
   isExtractableErfAsset,
 } from "@/lib/evidence/extractionMetadata";
 import { redactPersonalIdentifiers } from "@/lib/reports/reportFindings";
@@ -18,6 +20,7 @@ import type { ErfAsset } from "@/lib/workbench/erfFileVault";
 import type { PropertyEvidencePack } from "@/lib/evidence/propertyEvidenceTypes";
 
 export type AppendixReadState =
+  | "user_attached"
   | "searchable_matched"
   | "parent_plan_context"
   | "pending"
@@ -27,6 +30,7 @@ export type AppendixReadState =
   | "reference_only";
 
 export const APPENDIX_READ_STATE_LABEL: Record<AppendixReadState, string> = {
+  user_attached: "Readable - attached by user; identity not independently matched",
   searchable_matched: "Searchable — identity matched",
   parent_plan_context: "Parent General Plan matched — context only",
   pending: "Pending — not read yet",
@@ -97,8 +101,15 @@ function readStateForAsset(asset: ErfAsset): AppendixReadState {
   if (!isExtractableErfAsset(asset)) return "reference_only";
   const identity = erfAssetIdentityMatchStatus(asset);
   if (identity === "mismatch") return "wrong_property";
+  if (["archived", "deleted", "failed"].includes(asset.status)) return "reference_only";
   if (identity === "parent_lineage_match") return "parent_plan_context";
   const status = erfAssetExtractionStatus(asset);
+  if (
+    identity === "unverified" &&
+    erfAssetIdentityUserConfirmed(asset) &&
+    erfAssetHasSearchableExtraction(asset)
+  )
+    return "user_attached";
   if (status === "ready" && identity === "matched") return "searchable_matched";
   if (status === "failed") return "failed";
   if (status === "unsupported" || status === "partial") return "unreadable";
@@ -106,6 +117,7 @@ function readStateForAsset(asset: ErfAsset): AppendixReadState {
 }
 
 function scopeForAsset(asset: ErfAsset, readState: AppendixReadState): AppendixScope {
+  if (readState === "user_attached") return "user_supplied";
   if (readState === "parent_plan_context") return "parent_plan_context";
   if (asset.asset_category === "paid_report") return "paid_provider";
   if (
@@ -146,6 +158,8 @@ function pageLocatorFor(pack: PropertyEvidencePack | null, assetId: string): str
 }
 
 function detailForAsset(asset: ErfAsset, readState: AppendixReadState): string | null {
+  if (readState === "user_attached")
+    return "User-supported evidence. Document identity has not been independently matched.";
   const lineage = erfAssetDocumentLineage(asset);
   if (readState === "parent_plan_context" && lineage) {
     const parts = [
