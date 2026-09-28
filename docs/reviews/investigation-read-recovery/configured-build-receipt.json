@@ -1,0 +1,31 @@
+{
+  "source": "05022627e82c29499738e43cb27f660c3754f086",
+  "command": [
+    "npm",
+    "run",
+    "build"
+  ],
+  "target": "normal vite build, default configured Nitro target; inspect log for actual preset",
+  "started": "2026-09-28T19:43:12.325Z",
+  "finished": "2026-09-28T19:45:02.284Z",
+  "exitCode": 0,
+  "node": "v24.16.0",
+  "config": [
+    {
+      "file": ".env",
+      "sha256": "0572f885ec179732c9ad30819bad8edf98badb0db4170a7d31f7af70c0d96053"
+    }
+  ],
+  "configurationUnchanged": true,
+  "inheritedConfigKeys": [],
+  "configFilesCopied": false,
+  "overrides": "NODE_OPTIONS network guard and EE_BUILD_NETWORK_LOG only; no application config overrides",
+  "networkGuardSha256": "33785e16232f779891a361f62d31d221403ef87c3aba9da1a71b8b96f0a12039",
+  "networkAttempts": 0,
+  "configSourceBlob": "7e83ebad80d82714a622f4797e0bec9273d706bb",
+  "packages": {
+    "vite": "7.3.6",
+    "nitro": "3.0.260603-beta",
+    "@lovable.dev/vite-tanstack-config": "2.12.0"
+  }
+}
