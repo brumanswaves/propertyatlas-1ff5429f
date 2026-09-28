@@ -1,0 +1,41 @@
+{
+  "implementation": "8a272621a08cc992b47bae3984d5f7791616f7c2",
+  "reviewedPreviousHead": "e283128e88678026235d1da8e2cdb331c9631b86",
+  "base": "3fb1d7ea284e792d5ddf05c0d4b96fca12230353",
+  "srcTree": "4f692d615f244b0d55f31092ed871e21dd15cdef",
+  "files": {
+    "src/lib/evidence/buildPropertyEvidencePack.ts": "18f5f3a909c0852e71f2ad57ee9bbc9c171c81dc",
+    "src/lib/evidence/__tests__/documentIdentitySurfaces.test.tsx": "9cf94b19afea61719df2735300cc706fcf84f1ce"
+  },
+  "checks": [
+    {
+      "command": "node node_modules/vitest/vitest.mjs run src/lib/evidence/__tests__ src/lib/reports/__tests__",
+      "exitCode": 0,
+      "files": 34,
+      "tests": 515
+    },
+    {
+      "command": "node node_modules/vitest/vitest.mjs run",
+      "exitCode": 0,
+      "files": 174,
+      "tests": 1809
+    },
+    {
+      "command": "node node_modules/eslint/bin/eslint.js src/lib/evidence/buildPropertyEvidencePack.ts src/lib/evidence/__tests__/documentIdentitySurfaces.test.tsx",
+      "exitCode": 0,
+      "prettierRule": "enabled"
+    },
+    {
+      "command": "node node_modules/typescript/bin/tsc --noEmit",
+      "exitCode": 0
+    },
+    {
+      "command": "git diff --check",
+      "exitCode": 0
+    }
+  ],
+  "newCanonicalTests": 7,
+  "liveActions": 0,
+  "saveAllowance": "1/1 consumed previously; untouched",
+  "spendInitiated": 0
+}
