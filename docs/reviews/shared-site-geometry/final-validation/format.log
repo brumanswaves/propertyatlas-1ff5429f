@@ -1,0 +1,11 @@
+src/components/humanReview/OrderInvestigationWorkspace.tsx 178ms
+src/components/property/dossier/SitePotentialTab.tsx 34ms
+src/components/property/sitePotential/SatelliteParcelMap.tsx 68ms
+src/components/property/sitePotential/VacantLandBuildEnvelope.tsx 63ms
+src/lib/investigation/__tests__/sharedParcelGeometry.test.ts 14ms (unchanged)
+src/lib/investigation/sharedInvestigation.ts 47ms
+src/lib/investigation/sharedParcelGeometry.ts 7ms (unchanged)
+src/lib/investigation/useSharedParcelGeometry.ts 5ms (unchanged)
+src/lib/providers/publicDataClient.ts 47ms
+src/lib/sitePotential/buildEnvelopeAcceptance.ts 9ms
+src/lib/sitePotential/parcelRing.ts 7ms

@@ -1,0 +1,8 @@
+warning: in the working copy of 'src/components/humanReview/OrderInvestigationWorkspace.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/components/property/dossier/SitePotentialTab.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/components/property/sitePotential/SatelliteParcelMap.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/components/property/sitePotential/VacantLandBuildEnvelope.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/lib/investigation/sharedInvestigation.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/lib/providers/publicDataClient.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/lib/sitePotential/buildEnvelopeAcceptance.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/lib/sitePotential/parcelRing.ts', LF will be replaced by CRLF the next time Git touches it

@@ -1,0 +1,119 @@
+{
+  "reviewed": "8a3a1ea0983b3d568a0cd23adfe3e779ce5c9d79",
+  "base": "c4e20d3e55b8ac81c48dc798c155219f8c42ae6d",
+  "node": "v24.16.0",
+  "typescript": "5.9.3",
+  "method": "TypeScript ES2022/react-jsx emit without comments/maps; esbuild whitespace-only normalization, identifiers and syntax minification disabled",
+  "files": [
+    {
+      "file": "src/components/humanReview/OrderInvestigationWorkspace.tsx",
+      "beforeSource": "51dff7992392a7724b74bf92b0255f3c0f8530f716b35496efba6b65b386978f",
+      "afterSource": "687ee85901e3d98771c830bf4a483fb530cf35a715588aeec8538e6d58953d11",
+      "tsEmitBefore": "804eb0b7b4cb22a213c4f71fd3b5bbdb096d118b543ddef609e551f06f5cd277",
+      "tsEmitAfter": "87072de765114937d1f8144da48cfb288a7445ea7e2a0338e61c8613daad9b52",
+      "normalizedEmitBefore": "2cb731f2a7b2344db832db0f1a0f1af668b613eda495b9afae2aa9ec16a246db",
+      "normalizedEmitAfter": "2cb731f2a7b2344db832db0f1a0f1af668b613eda495b9afae2aa9ec16a246db",
+      "equivalent": true
+    },
+    {
+      "file": "src/components/property/dossier/SitePotentialTab.tsx",
+      "beforeSource": "8f809d0f5786650a6aad34f5b567399737663fd8ea873a345f948f2e2f636163",
+      "afterSource": "533c7f42c464230de9f655a6155a7bb31a9de46971231449359342a2586e75a0",
+      "tsEmitBefore": "ddc152b06ae4a79472ec099ba02a200972ddee1ac061f6addcd8c71e43224082",
+      "tsEmitAfter": "779444578f760bbce84b7944bfdc4905c2b6f281de5cf7a08434a5e8be0c5d10",
+      "normalizedEmitBefore": "99c349937d629c56579a01c1a58593e9beb04bd5075b79c5e1c6d56113c1f5f5",
+      "normalizedEmitAfter": "99c349937d629c56579a01c1a58593e9beb04bd5075b79c5e1c6d56113c1f5f5",
+      "equivalent": true
+    },
+    {
+      "file": "src/components/property/sitePotential/SatelliteParcelMap.tsx",
+      "beforeSource": "651ae2880ccf0220868ebbffd2c20a69a85e388c891d17678f3f6ba0c0ddc5a9",
+      "afterSource": "b1528c5064ec8c5d6b5a7439a059e1cbcf9f0fdef6224a64ca6eb6278c6e7434",
+      "tsEmitBefore": "42f53337cd68431645a625bb62aef7a74ce46ebda323fd4d63aa8c141444f26c",
+      "tsEmitAfter": "a00f136bc0b25e8283c9f68d379c015f0562cea550b6848724e6a387231891ae",
+      "normalizedEmitBefore": "cb2e781977c9d4d9d4836b991b9f6119f911aec16a8ac8961330a9da8f04e4cc",
+      "normalizedEmitAfter": "cb2e781977c9d4d9d4836b991b9f6119f911aec16a8ac8961330a9da8f04e4cc",
+      "equivalent": true
+    },
+    {
+      "file": "src/components/property/sitePotential/VacantLandBuildEnvelope.tsx",
+      "beforeSource": "4745d16e355f8ae2a5efcd650b1a322c549db4b2a5ba97634410a787f8615fe1",
+      "afterSource": "de49df7008afdc745d4441f59e4a625059f34ed0dc330353a0b318330ba5919b",
+      "tsEmitBefore": "3cb0a2b83a287823856df3cdd3a1a3d63e77086ef53fabeb4bdb88507267480e",
+      "tsEmitAfter": "7377ae88abeb59e1d6e7b0dc1d9d6c8434331c7c4747a4e6b8460fe7eeaabe4c",
+      "normalizedEmitBefore": "3e27728906ee643ac034ab174d990875b85b9daa0dbccc7408495f5215f72c8b",
+      "normalizedEmitAfter": "3e27728906ee643ac034ab174d990875b85b9daa0dbccc7408495f5215f72c8b",
+      "equivalent": true
+    },
+    {
+      "file": "src/lib/investigation/__tests__/sharedParcelGeometry.test.ts",
+      "beforeSource": "30c893ef60a5b3298b4fa9f1a5004b90128b0aec546f9ce795264a756c4f0b51",
+      "afterSource": "30c893ef60a5b3298b4fa9f1a5004b90128b0aec546f9ce795264a756c4f0b51",
+      "tsEmitBefore": "6391fbd35930583229295c68bedd4fe2994ed07aa9bb56cd1f28fa590c781bb1",
+      "tsEmitAfter": "6391fbd35930583229295c68bedd4fe2994ed07aa9bb56cd1f28fa590c781bb1",
+      "normalizedEmitBefore": "deadc18483c899242f4ecd1a4a0be8b9feb74870dba34b767a5923c45f672de8",
+      "normalizedEmitAfter": "deadc18483c899242f4ecd1a4a0be8b9feb74870dba34b767a5923c45f672de8",
+      "equivalent": true
+    },
+    {
+      "file": "src/lib/investigation/sharedInvestigation.ts",
+      "beforeSource": "3b17d5fe375a27a26adab9e5299d275d159a327de221f9adceb48ac3ff4981bc",
+      "afterSource": "f3d28defb40924fc5377225c2cce5a6c1c86cf9a428a73f6a0b1c0d81cd8d950",
+      "tsEmitBefore": "070c7d6103b9844744f425321a618cd17d90a35b763ffc9f8c3f394e50a6d67d",
+      "tsEmitAfter": "58e73c4bb0d4c6a3ae3bcf4420ce12701a144ca4e2ea5628fc213841c3b76935",
+      "normalizedEmitBefore": "51e16b119e83a06b9e45eee672951742e246509c24f902515786248440a847df",
+      "normalizedEmitAfter": "51e16b119e83a06b9e45eee672951742e246509c24f902515786248440a847df",
+      "equivalent": true
+    },
+    {
+      "file": "src/lib/investigation/sharedParcelGeometry.ts",
+      "beforeSource": "cf169c751216e294b7b1f903af02dbc3c382e6b302fca40faf5390a1019e1fc4",
+      "afterSource": "cf169c751216e294b7b1f903af02dbc3c382e6b302fca40faf5390a1019e1fc4",
+      "tsEmitBefore": "b5cf7e9177bf03453c548b856540513934c5b87b20012aeebc4a749c8bbcf7bb",
+      "tsEmitAfter": "b5cf7e9177bf03453c548b856540513934c5b87b20012aeebc4a749c8bbcf7bb",
+      "normalizedEmitBefore": "09da5295e83609a39d3272f99b49243984173a9b417e7a866eb5c659f16b90ee",
+      "normalizedEmitAfter": "09da5295e83609a39d3272f99b49243984173a9b417e7a866eb5c659f16b90ee",
+      "equivalent": true
+    },
+    {
+      "file": "src/lib/investigation/useSharedParcelGeometry.ts",
+      "beforeSource": "7d3901333c458ad6a92c0d56d393180c68b8a4f4c45e5d95ea9bdb1856bf4571",
+      "afterSource": "7d3901333c458ad6a92c0d56d393180c68b8a4f4c45e5d95ea9bdb1856bf4571",
+      "tsEmitBefore": "96ef0e264c4b43894437a129e6f8c8b11161cd525716c26c2eb3496ff01257c7",
+      "tsEmitAfter": "96ef0e264c4b43894437a129e6f8c8b11161cd525716c26c2eb3496ff01257c7",
+      "normalizedEmitBefore": "cb396c58ea59209876f1f7ae2b4ac09faed48c997dbbd1ad380a141cc1b34814",
+      "normalizedEmitAfter": "cb396c58ea59209876f1f7ae2b4ac09faed48c997dbbd1ad380a141cc1b34814",
+      "equivalent": true
+    },
+    {
+      "file": "src/lib/providers/publicDataClient.ts",
+      "beforeSource": "88d85399d983e668b1686b161f20e23672932e544b5288cd69fce362be8c60d6",
+      "afterSource": "cae0f1f727a99352487768d3e0ff87ae5af814a100ae0afb5cdf1653dcd46032",
+      "tsEmitBefore": "e279923fc51adf2e0b5862f1b7e68b8111f372ccb15c5be3b92f1ac8a7f34367",
+      "tsEmitAfter": "a16e65aae92e32080bdc479863630b2e0d5f26defc6b02db2cfd3d778fa07d17",
+      "normalizedEmitBefore": "8644de51efe4118980f6499828a8d53e931baa3ef94508cf87fae38522dc02a0",
+      "normalizedEmitAfter": "8644de51efe4118980f6499828a8d53e931baa3ef94508cf87fae38522dc02a0",
+      "equivalent": true
+    },
+    {
+      "file": "src/lib/sitePotential/buildEnvelopeAcceptance.ts",
+      "beforeSource": "3b93abd92bf5301cfc0e6cc8589617b664edfe3f04405168fb9fd8a595321281",
+      "afterSource": "d67d0c9508ba9386ff4b69f69fe0d55a501ab38c66240033b231d52ea1c5c33e",
+      "tsEmitBefore": "05529f03f3132f99298d5acfe4f5bcfbd5ca122286a6889b7f7aea427f236ce6",
+      "tsEmitAfter": "05529f03f3132f99298d5acfe4f5bcfbd5ca122286a6889b7f7aea427f236ce6",
+      "normalizedEmitBefore": "0bc9ef5f6504407d6d450d281b356add4573aa849f8a268d3cef0086be35104d",
+      "normalizedEmitAfter": "0bc9ef5f6504407d6d450d281b356add4573aa849f8a268d3cef0086be35104d",
+      "equivalent": true
+    },
+    {
+      "file": "src/lib/sitePotential/parcelRing.ts",
+      "beforeSource": "89e7814b60094eb91567c61d939b8a2fa62272d93be599b3f3ef5539e908d8d3",
+      "afterSource": "4fb3567c47148d289eafa433464a8b2217279c03f97bf1fab56e594f08e3fd0b",
+      "tsEmitBefore": "0ee1dbccb718cb234fcf61bd9a4036aed7ae58cd6da54f0722ce9e2c65de587d",
+      "tsEmitAfter": "b937dc2dec9de8d5946de47e346c2bd4c5b8af7350850f062ab0229af6399fba",
+      "normalizedEmitBefore": "dd71fa82409fa1cad84fb86f8c254335043770dd8d9f99f343a4ff819643bd8b",
+      "normalizedEmitAfter": "dd71fa82409fa1cad84fb86f8c254335043770dd8d9f99f343a4ff819643bd8b",
+      "equivalent": true
+    }
+  ]
+}

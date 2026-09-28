@@ -1,0 +1,65 @@
+[
+  {
+    "name": "format",
+    "command": [
+      "node",
+      "node_modules/prettier/bin/prettier.cjs",
+      "--write",
+      "src/components/humanReview/OrderInvestigationWorkspace.tsx",
+      "src/components/property/dossier/SitePotentialTab.tsx",
+      "src/components/property/sitePotential/SatelliteParcelMap.tsx",
+      "src/components/property/sitePotential/VacantLandBuildEnvelope.tsx",
+      "src/lib/investigation/__tests__/sharedParcelGeometry.test.ts",
+      "src/lib/investigation/sharedInvestigation.ts",
+      "src/lib/investigation/sharedParcelGeometry.ts",
+      "src/lib/investigation/useSharedParcelGeometry.ts",
+      "src/lib/providers/publicDataClient.ts",
+      "src/lib/sitePotential/buildEnvelopeAcceptance.ts",
+      "src/lib/sitePotential/parcelRing.ts"
+    ],
+    "started": "2026-09-28T13:04:56.645Z",
+    "finished": "2026-09-28T13:04:57.501Z",
+    "exitCode": 0
+  },
+  {
+    "name": "lint",
+    "command": [
+      "node",
+      "node_modules/eslint/bin/eslint.js",
+      "src/components/humanReview/OrderInvestigationWorkspace.tsx",
+      "src/components/property/dossier/SitePotentialTab.tsx",
+      "src/components/property/sitePotential/SatelliteParcelMap.tsx",
+      "src/components/property/sitePotential/VacantLandBuildEnvelope.tsx",
+      "src/lib/investigation/__tests__/sharedParcelGeometry.test.ts",
+      "src/lib/investigation/sharedInvestigation.ts",
+      "src/lib/investigation/sharedParcelGeometry.ts",
+      "src/lib/investigation/useSharedParcelGeometry.ts",
+      "src/lib/providers/publicDataClient.ts",
+      "src/lib/sitePotential/buildEnvelopeAcceptance.ts",
+      "src/lib/sitePotential/parcelRing.ts"
+    ],
+    "started": "2026-09-28T13:04:58.813Z",
+    "finished": "2026-09-28T13:05:23.014Z",
+    "exitCode": 0
+  },
+  {
+    "name": "typecheck",
+    "command": [
+      "node",
+      "node_modules/typescript/bin/tsc",
+      "--noEmit"
+    ],
+    "started": "2026-09-28T13:05:23.015Z",
+    "finished": "2026-09-28T13:05:43.077Z",
+    "exitCode": 0
+  },
+  {
+    "name": "whitespace",
+    "command": [
+      "git",
+      "diff",
+      "--check"
+    ],
+    "exitCode": 0
+  }
+]

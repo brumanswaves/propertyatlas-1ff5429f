@@ -1,5 +1,7 @@
 # Issue #193: shared Site Potential geometry
 
+Follow-up 2026-09-28: the original formatting-enabled lint and ordinary configured build gates now pass. See [final validation, source equivalence and receipts](final-validation/README.md). Earlier results below retain their original scope; the complete original-evidence archive is linked from PR #194.
+
 Source-only local receipt, 2026-09-25. Actor: Codex using Git, local Vitest/TypeScript/ESLint/Vite and isolated Playwright. Base: `c4e20d3e55b8ac81c48dc798c155219f8c42ae6d`. Branch: `codex/193-shared-site-geometry`. Exact delivery head is recorded in the draft PR.
 
 ## Root cause and change
