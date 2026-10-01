@@ -170,7 +170,7 @@ export function ReportOwnershipSection({
         eyebrow="Ownership & Deeds"
         title={
           hasOwners || hasDeed
-            ? "Read from a matched document — not certified by Easy Erf"
+            ? "Ownership and deeds evidence; not certified by Easy Erf"
             : "Not verified by Easy Erf"
         }
       />
