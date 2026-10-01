@@ -1,0 +1,27 @@
+{
+  "source": "b0ca9c46f081996584e7e69da83c0d0d55221429",
+  "command": [
+    "node",
+    "node_modules/eslint/bin/eslint.js",
+    "src/components/property/dossier/ReportEvidenceUi.tsx",
+    "src/lib/reports/contextSections.ts",
+    "src/lib/evidence/__tests__/documentIdentitySurfaces.test.tsx"
+  ],
+  "exitCode": 0,
+  "stdout": "",
+  "stderr": "",
+  "prettierRule": "enabled by unchanged eslint-plugin-prettier/recommended",
+  "evidence": "Observed unified exec session 1824 completion; no suppressions or configuration changes",
+  "formatCheck": {
+    "command": [
+      "node",
+      "node_modules/prettier/bin/prettier.cjs",
+      "--check",
+      "src/components/property/dossier/ReportEvidenceUi.tsx",
+      "src/lib/reports/contextSections.ts",
+      "src/lib/evidence/__tests__/documentIdentitySurfaces.test.tsx"
+    ],
+    "exitCode": 0,
+    "stdout": "All matched files use Prettier code style!"
+  }
+}

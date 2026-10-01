@@ -1,5 +1,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
+import { mkdirSync, writeFileSync } from "node:fs";
+import { SharedInvestigationReport } from "@/components/humanReview/SharedInvestigationReport";
+import { ReportOwnershipSection } from "@/components/property/dossier/ReportEvidenceUi";
+import { assembleInvestigation } from "@/lib/investigation/sharedInvestigation";
+import { buildMunicipalServicesSectionModel } from "@/lib/reports/contextSections";
 import { ReportEvidenceAppendix } from "@/components/property/dossier/ReportBodySections";
 import { GuidedTitleStep } from "@/components/property/investigation/GuidedTitleStep";
 import { buildPropertyInvestigation } from "@/lib/investigation/propertyInvestigation";
@@ -276,6 +281,193 @@ describe("registered extent warning provenance", () => {
     (identity) => {
       const s = surfaces([extent(identity)]);
       expect(s.pack.contradictions.find((item) => item.id === warningId)).toBeUndefined();
+    },
+  );
+});
+
+describe("expanded Ownership and context provenance in the actual report and print renderer", () => {
+  const claims = [
+    {
+      domain: "ownership",
+      key: "registeredOwner",
+      label: "Owner",
+      value: "Synthetic owner",
+      scope: "subject",
+      page: 1,
+    },
+    {
+      domain: "deeds",
+      key: "titleDeedNumber",
+      label: "Deed number",
+      value: "T123/2026",
+      scope: "subject",
+      page: 2,
+    },
+    {
+      domain: "valuation",
+      key: "municipalValue",
+      label: "Municipal value",
+      value: "450000",
+      numericValue: 450000,
+      scope: "subject",
+      page: 3,
+    },
+    {
+      domain: "infrastructure",
+      key: "waterConnection",
+      label: "Water",
+      value: "Recorded connection",
+      scope: "subject",
+      page: 4,
+    },
+    {
+      domain: "ownership",
+      key: "ownerIdNumber",
+      label: "ID number",
+      value: "8001015009087",
+      scope: "subject",
+      page: 1,
+    },
+  ];
+  const document = (identity: string, extraction = "ready", id = "report") =>
+    asset(identity, extraction, identity !== "matched", {
+      id,
+      original_file_name: `${id}.pdf`,
+      metadata: { extractedClaims: claims },
+    });
+  const cases = [
+    { name: "ready", assets: [document("unverified")] },
+    { name: "partial", assets: [document("unverified", "partial")] },
+    { name: "mixed", assets: [document("matched", "ready", "matched"), document("unverified")] },
+    { name: "matched", assets: [document("matched")] },
+    {
+      name: "deed-only",
+      assets: [
+        asset("unverified", "ready", true, {
+          metadata: { extractedClaims: claims.filter((c) => c.domain === "deeds") },
+        }),
+      ],
+    },
+    { name: "legacy", assets: [document("matched")] },
+    { name: "empty", assets: [] },
+    { name: "mismatch", assets: [document("mismatch")] },
+    { name: "excluded", assets: [{ ...document("matched"), status: "archived" as const }] },
+  ];
+  it.each(cases)(
+    "keeps $name headings, body, values, context and print consistent",
+    ({ name, assets }) => {
+      const before = JSON.stringify(assets);
+      const fetch = vi.fn(() => {
+        throw new Error("No network permitted");
+      });
+      vi.stubGlobal("fetch", fetch);
+      const parcel = evidenceParcel({ source: "csg" });
+      const assembly = assembleInvestigation(
+        {
+          schemaVersion: 1,
+          parcelId: parcel.id,
+          revision: 1,
+          assets,
+          siteProject: null,
+          userData: { normalizedParcel: parcel },
+        },
+        new Date("2026-09-30T10:00:00Z"),
+      );
+      if (name === "legacy") {
+        for (const source of assembly.pack.sources)
+          if (source.asset) delete source.asset.identityMatchStatus;
+        assembly.report = buildReportViewModel({
+          assets,
+          parcel,
+          workspaceState: evidenceWorkspace(),
+          savedEvidence: [],
+          marketAddress: null,
+          chosenScenario: null,
+          strategyScenarios: [],
+          evidencePack: assembly.pack,
+        });
+        assembly.municipal = buildMunicipalServicesSectionModel({ pack: assembly.pack });
+      }
+      const ownership = assembly.report.ownership;
+      const direct = renderToStaticMarkup(<ReportOwnershipSection ownership={ownership} />);
+      const normal = renderToStaticMarkup(<SharedInvestigationReport assembly={assembly} />);
+      const printable = renderToStaticMarkup(
+        <SharedInvestigationReport assembly={assembly} openingControls={{ printOnly: true }} />,
+      );
+      const populated = !["empty", "mismatch", "excluded"].includes(name);
+      for (const html of [direct, normal, printable]) {
+        expect(html).toContain(
+          populated
+            ? "Ownership and deeds evidence; not certified by Easy Erf"
+            : "Not verified by Easy Erf",
+        );
+        expect(html).not.toContain("Read from a matched document");
+        expect(html).not.toContain("Only amounts read from an identity-matched document");
+        expect(html).toContain("Easy Erf does not certify ownership");
+        expect(html).not.toContain("8001015009087");
+        for (const detail of [...ownership.owners, ...ownership.titleDeed]) {
+          expect(html).toContain(detail.value);
+          for (const source of detail.sourceIds) expect(html).toContain(source);
+          expect(html).toContain(`page ${detail.pageNumbers.join(", ")}`);
+        }
+      }
+      expect(normal).toContain(direct);
+      expect(printable).toContain(direct);
+      expect(printable.match(/<details open="" class="report-evidence-details/g)).toHaveLength(6);
+      if (populated) {
+        expect(ownership.owners.length + ownership.titleDeed.length).toBeGreaterThan(0);
+        if (name === "deed-only") {
+          expect(ownership.owners).toHaveLength(0);
+          expect(direct).toContain("T123/2026");
+        } else expect(direct).toContain("Synthetic owner");
+        if (["ready", "partial", "mixed", "deed-only"].includes(name))
+          expect(direct).toContain("user-attached; document identity not independently matched");
+        if (["matched", "mixed"].includes(name))
+          expect(direct).toContain("identity-matched source");
+        if (name === "legacy") expect(direct).toContain("document identity not established");
+      } else {
+        expect(ownership.owners).toHaveLength(0);
+        expect(ownership.titleDeed).toHaveLength(0);
+        expect(direct).not.toContain("Synthetic owner");
+      }
+      for (const html of [normal, printable]) {
+        for (const fact of assembly.municipal.facts.filter((f) => f.value !== null)) {
+          expect(html).toContain(fact.value);
+          expect(html).toContain(fact.provenance);
+          expect(html).toContain("Recorded evidence; check source provenance");
+        }
+        expect(html).toContain("inclusion does not establish a document identity match");
+      }
+      if (!["deed-only", "empty", "mismatch", "excluded"].includes(name)) {
+        expect(assembly.municipal.facts.filter((f) => f.value !== null)).toHaveLength(2);
+        expect(normal).toContain("Recorded connection");
+        expect(normal).toContain("page 3");
+        expect(normal).toContain("page 4");
+      } else
+        expect(normal).toContain("No municipal roll value is recorded in the available evidence.");
+      expect(JSON.stringify(assets)).toBe(before);
+      expect(fetch).not.toHaveBeenCalled();
+      expect(extract).not.toHaveBeenCalled();
+      for (const fn of [
+        vault.upload,
+        vault.remove,
+        vault.refresh,
+        vault.confirmIdentity,
+        vault.open,
+      ])
+        expect(fn).not.toHaveBeenCalled();
+      // Optional local-only browser fixture: the actual renderer, no app or provider requests.
+      if (process.env.EE_RENDER_EVIDENCE_DIR) {
+        mkdirSync(process.env.EE_RENDER_EVIDENCE_DIR, { recursive: true });
+        for (const [mode, html] of [
+          ["normal", normal],
+          ["print", printable],
+        ])
+          writeFileSync(
+            `${process.env.EE_RENDER_EVIDENCE_DIR}/${name}-${mode}.html`,
+            `<!doctype html><meta charset="utf-8"><title>Synthetic provenance regression</title>${html}`,
+          );
+      }
     },
   );
 });

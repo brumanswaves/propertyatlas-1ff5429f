@@ -20,7 +20,7 @@ export type ContextFactSource = "official" | "document" | "listing" | "user_conf
 
 export const CONTEXT_SOURCE_LABEL: Record<ContextFactSource, string> = {
   official: "Official / map-derived",
-  document: "Read from a matched document",
+  document: "Recorded evidence; check source provenance",
   listing: "Listing-derived",
   user_confirmed: "User supplied",
   unknown: "Not established",
@@ -304,7 +304,7 @@ const SERVICE_FACT_SPECS: Array<{
     label: "Municipal valuation",
     domains: ["valuation"],
     keys: ["municipalValue"],
-    unknown: "No municipal roll value has been read from an identity-matched document.",
+    unknown: "No municipal roll value is recorded in the available evidence.",
     money: true,
   },
   {
@@ -438,7 +438,7 @@ export function buildMunicipalServicesSectionModel(input: {
       ? `${supportedCount} of ${facts.length} ownership-cost items supported by evidence`
       : "No ownership-cost item is supported by evidence yet",
     headlineDetail:
-      "Rates, levies and service charges change the true cost of holding this erf. Only amounts read from an identity-matched document are shown.",
+      "Rates, levies and service charges change the true cost of holding this erf. Recorded amounts retain their source provenance and confidence; inclusion does not establish a document identity match.",
     missingChecks,
     note: "Easy Erf never shows R0 for an unknown amount and never estimates a charge that no document states.",
     monthlyEstimate: monthlyClaims.length
