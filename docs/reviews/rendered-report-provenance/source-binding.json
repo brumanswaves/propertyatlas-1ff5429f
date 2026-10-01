@@ -1,0 +1,22 @@
+{
+  "testedSource": "b0ca9c46f081996584e7e69da83c0d0d55221429",
+  "base": "7740788a575def442422914bd8a0315d2f4ac395",
+  "srcTree": "f2fd45ea91f20974019d19730720fc3f9ef89a40",
+  "files": [
+    {
+      "path": "src/components/property/dossier/ReportEvidenceUi.tsx",
+      "gitBlob": "20bab9a89a99617cf2ecb57a6910f2d1984c857e",
+      "sha256": "7fe92e4e43129af8ca494bed282332dc248a9767c1294c6f7645c995d9b899cf"
+    },
+    {
+      "path": "src/lib/evidence/__tests__/documentIdentitySurfaces.test.tsx",
+      "gitBlob": "7bb44436b0d0602697ab8b6eb918c5a017a73437",
+      "sha256": "121b545f54f370b1be4710cdc9f6b40a7e409bc5d2f56df4a856ff723782890e"
+    },
+    {
+      "path": "src/lib/reports/contextSections.ts",
+      "gitBlob": "586507379aeddc6c05e20eb2f05b5f2ed2895f6e",
+      "sha256": "5bcec86aa6ab715950c5024d55511ac237e0a9e09f0176f4f25c25513eb6c3a3"
+    }
+  ]
+}
