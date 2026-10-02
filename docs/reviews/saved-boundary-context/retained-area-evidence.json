@@ -1,0 +1,13 @@
+{
+  "origin": "Retained original browser tool output, not a new lookup",
+  "timestamp": "2026-09-28T21:08:22.018Z",
+  "callId": "call_KqiDeTLYmigsL0PqwQLLb2yM",
+  "lpi": "C03400140000157000000",
+  "parcelKey": "E108C034001400001570000000",
+  "GEOM_AREA": 618.7,
+  "Shape__Area": 906.2578125,
+  "geometryInRetainedOutput": "Polygon, coordinates collapsed as [Array]; full wire bytes not retained in this excerpt",
+  "canonicalMeaning": "GEOM_AREA square metres; Shape__Area approximate projected fallback only",
+  "productionBackfill": false,
+  "storedRevision60Area": "Missing per issue201 exact metadata read; not reread in this task"
+}

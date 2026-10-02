@@ -1,0 +1,11 @@
+{
+  "base": "8c350b30952b8a8f9dc95dd70d0b852c44560b93",
+  "testedImplementation": "8814f64ab1dfdcc81413746c05f0bbbf8cbabbb7",
+  "srcTree": "c837cf19d436ee2ce5161abd839b76f5f6d2ad97",
+  "scope": "Source-only issue201; evidence commit preserves src tree",
+  "lint": {
+    "command": "node node_modules/eslint/bin/eslint.js src/lib/investigation/sharedParcelGeometry.ts src/lib/investigation/sharedInvestigation.ts src/lib/reports/contextSections.ts src/lib/investigation/__tests__/savedBoundaryReport.test.tsx",
+    "exitCode": 0,
+    "prettierEnabled": true
+  }
+}

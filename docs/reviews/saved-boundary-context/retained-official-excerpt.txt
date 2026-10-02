@@ -1,0 +1,45 @@
+{
+  official: {
+    type: 'FeatureCollection',
+    crs: { type: 'name', properties: { name: 'EPSG:4326' } },
+    features: [
+      {
+        type: 'Feature',
+        id: 18184,
+        geometry: { type: 'Polygon', coordinates: [Array] },
+        properties: {
+          OBJECTID: 18184,
+          GID: 388432,
+          PRCL_KEY: 'E108C034001400001570000000',
+          PRCL_TYPE: 'E',
+          LSTATUS: 'S',
+          WSTATUS: 'C',
+          GEOM_AREA: 618.7,
+          COMMENTS: ' ',
+          TAG_X: 24.8422571453885,
+          TAG_Y: -34.1792440930716,
+          TAG_VALUE: '1570',
+          TAG_SIZE: 0.00002,
+          TAG_ANGLE: 0,
+          TAG_JUST: 'MC',
+          ID: 'C03400140000157000000',
+          DATE_STAMP: 1250553600000,
+          DATE_PROCESSED: 1778112000000,
+          PROVINCE: 'EASTERN CAPE',
+          MAJ_REGION: 'HUMANSDORP',
+          MAJ_CODE: 'C0340000',
+          MIN_REGION: 'SEA VISTA',
+          MIN_CODE: 'C0340014',
+          PARCEL_NO: 1570,
+          PORTION: 0,
+          SG_DIAGRAM: null,
+          SS_NAME: ' ',
+          DSG_NO: ' ',
+          SR_NO: ' ',
+          SS_NO: ' ',
+          Shape__Area: 906.2578125,
+          Shape__Length: 123.75941141339372
+        }
+      }
+    ]
+  },
