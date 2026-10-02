@@ -206,9 +206,11 @@ export function assembleInvestigation(snapshot: InvestigationSnapshot, now = new
   const documentZone = zone
     ? assets.find((asset) => isUsableSubjectZoningDocument(asset, zone))
     : null;
-  const ring = isValidParcelRing(snapshot.userData.parcelRing)
-    ? snapshot.userData.parcelRing
-    : null;
+  const ring =
+    parcelSchema.safeParse(snapshot.userData.normalizedParcel).success &&
+    isValidParcelRing(snapshot.userData.parcelRing)
+      ? snapshot.userData.parcelRing
+      : null;
   const planning = buildParcelPlanningAssessment({
     parcelId: parcel.id,
     municipality: parcel.municipality ?? null,
@@ -323,6 +325,7 @@ export function assembleInvestigation(snapshot: InvestigationSnapshot, now = new
       pack,
       identity: report.identity,
       subjectListing: report.market.subjectListing,
+      hasSavedBoundary: Boolean(ring),
     }),
     appendix,
     sg: buildSgSectionModel({ appendixRows: appendix, pack, assets }),

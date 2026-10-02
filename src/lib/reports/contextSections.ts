@@ -475,6 +475,8 @@ export function buildLocationLifestyleSectionModel(input: {
     coordinates: { lng: number; lat: number } | null;
   };
   subjectListing: SavedMarketEvidence | null;
+  /** Validated ring from this investigation, independent of point/area metadata. */
+  hasSavedBoundary?: boolean;
 }): ContextSectionModel {
   const { pack, identity, subjectListing } = input;
   const facts: ContextFact[] = [];
@@ -517,7 +519,9 @@ export function buildLocationLifestyleSectionModel(input: {
     source: identity.coordinates ? "official" : "unknown",
     provenance: identity.coordinates
       ? "Derived from the official parcel geometry."
-      : "No parcel geometry is available for this erf.",
+      : input.hasSavedBoundary
+        ? "A saved parcel boundary is available. Representative point metadata is unavailable; the boundary is map context, not a surveyed position or boundary confirmation."
+        : "No validated parcel boundary or representative point is available for this erf.",
   });
 
   for (const spec of LOCATION_DISTANCE_SPECS) {
