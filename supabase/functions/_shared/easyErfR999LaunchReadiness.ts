@@ -52,8 +52,9 @@ export type EasyErfWebhookInspection = {
 };
 
 export type EasyErfStripeAccountInspection = {
-  nameValid: boolean;
-  businessUrlValid: boolean;
+  accountId: string | null;
+  nameStatus: EasyErfLaunchCheckStatus;
+  businessUrlStatus: EasyErfLaunchCheckStatus;
   chargesEnabled: boolean;
   payoutsEnabled: boolean;
   requirementsClear: boolean;
@@ -100,6 +101,7 @@ type WebhookEndpointProbe = {
 };
 
 type StripeAccountProbe = {
+  id?: string | null;
   business_profile?: {
     name?: string | null;
     url?: string | null;
@@ -149,9 +151,11 @@ function isExpectedReturnUrl(value: string | null | undefined): boolean {
   const actual = normalizeUrl(value);
   const expected = normalizeUrl(EASY_ERF_R999_RETURN_URL);
   if (!actual || !expected) return false;
-  return actual.origin === expected.origin &&
+  return (
+    actual.origin === expected.origin &&
     actual.pathname === expected.pathname &&
-    actual.searchParams.get("payment") === "received";
+    actual.searchParams.get("payment") === "received"
+  );
 }
 
 export function inspectEasyErfPaymentLink(
@@ -160,11 +164,11 @@ export function inspectEasyErfPaymentLink(
   expectedLivemode: boolean,
 ): EasyErfPaymentLinkInspection {
   const checkoutUrl = normalizeUrl(link.url);
-  const price = lineItems.length === 1 && typeof lineItems[0]?.price !== "string"
-    ? lineItems[0]?.price
-    : null;
+  const price =
+    lineItems.length === 1 && typeof lineItems[0]?.price !== "string" ? lineItems[0]?.price : null;
 
-  const contractValid = link.active === true &&
+  const contractValid =
+    link.active === true &&
     link.livemode === expectedLivemode &&
     checkoutUrl?.protocol === "https:" &&
     checkoutUrl.hostname === "buy.stripe.com" &&
@@ -174,7 +178,8 @@ export function inspectEasyErfPaymentLink(
     price?.currency?.toLowerCase() === EASY_ERF_R999_CURRENCY &&
     price?.type === "one_time";
 
-  const returnUrlValid = link.after_completion?.type === "redirect" &&
+  const returnUrlValid =
+    link.after_completion?.type === "redirect" &&
     isExpectedReturnUrl(link.after_completion.redirect?.url);
 
   return { contractValid, returnUrlValid };
@@ -188,7 +193,8 @@ export function inspectEasyErfWebhookEndpoints(
   const expected = normalizedEndpoint(expectedUrl);
   const endpoint = endpoints.find((candidate) => normalizedEndpoint(candidate.url) === expected);
   const enabledEvents = new Set(endpoint?.enabled_events ?? []);
-  const requiredEventsPresent = enabledEvents.has("*") ||
+  const requiredEventsPresent =
+    enabledEvents.has("*") ||
     EASY_ERF_REQUIRED_WEBHOOK_EVENTS.every((event) => enabledEvents.has(event));
 
   return {
@@ -213,15 +219,32 @@ export function inspectEasyErfStripeAccount(
   const pastDue = account.requirements?.past_due ?? [];
 
   return {
-    nameValid: account.business_profile?.name?.trim().toLowerCase() === "easy erf",
-    businessUrlValid: isEasyErfBusinessUrl(account.business_profile?.url),
+    accountId:
+      typeof account.id === "string" && /^acct_[A-Za-z0-9]+$/.test(account.id) ? account.id : null,
+    nameStatus:
+      account.business_profile?.name == null
+        ? "unknown"
+        : account.business_profile.name.trim().toLowerCase() === "easy erf"
+          ? "pass"
+          : "fail",
+    businessUrlStatus:
+      account.business_profile?.url == null
+        ? "unknown"
+        : isEasyErfBusinessUrl(account.business_profile.url)
+          ? "pass"
+          : "fail",
     chargesEnabled: account.charges_enabled === true,
     payoutsEnabled: account.payouts_enabled === true,
-    requirementsClear: currentlyDue.length === 0 &&
-      pastDue.length === 0 &&
-      !account.requirements?.disabled_reason,
+    requirementsClear:
+      currentlyDue.length === 0 && pastDue.length === 0 && !account.requirements?.disabled_reason,
     detailsSubmitted: account.details_submitted === true,
   };
+}
+
+function profileFieldDetail(field: string, status: EasyErfLaunchCheckStatus | undefined): string {
+  if (status === "pass") return `${field} was supplied and matches Easy Erf.`;
+  if (status === "fail") return `${field} was supplied but is invalid or does not match Easy Erf.`;
+  return `${field} is absent or unavailable from this account probe. It remains UNKNOWN and blocking; do not infer a settings mismatch.`;
 }
 
 function check(
@@ -248,11 +271,12 @@ export function buildEasyErfR999LaunchReadiness(input: {
   account: EasyErfStripeAccountInspection | null;
 }): EasyErfLaunchReadiness {
   const { environment, paymentLink, webhook, account } = input;
-  const expectedKeyMode = environment.checkoutMode === "live"
-    ? "live"
-    : environment.checkoutMode === "test"
-      ? "test"
-      : null;
+  const expectedKeyMode =
+    environment.checkoutMode === "live"
+      ? "live"
+      : environment.checkoutMode === "test"
+        ? "test"
+        : null;
 
   const checks: EasyErfLaunchCheck[] = [
     check(
@@ -288,7 +312,9 @@ export function buildEasyErfR999LaunchReadiness(input: {
     check(
       "accepted-payment-link",
       "Accepted R999 Payment Link",
-      environment.acceptedPaymentLinkCount > 0 && paymentLink?.contractValid === true ? "pass" : "fail",
+      environment.acceptedPaymentLinkCount > 0 && paymentLink?.contractValid === true
+        ? "pass"
+        : "fail",
       paymentLink?.contractValid
         ? `${environment.acceptedPaymentLinkCount} accepted Payment Link ID${environment.acceptedPaymentLinkCount === 1 ? " is" : "s are"} configured; a link matches one-time R999 ZAR checkout in the expected mode.`
         : environment.acceptedPaymentLinkCount === 0
@@ -314,10 +340,16 @@ export function buildEasyErfR999LaunchReadiness(input: {
     check(
       "webhook-endpoint",
       "Stripe webhook endpoint",
-      webhook?.endpointFound && webhook.enabled && webhook.modeMatches && webhook.requiredEventsPresent
+      webhook?.endpointFound &&
+        webhook.enabled &&
+        webhook.modeMatches &&
+        webhook.requiredEventsPresent
         ? "pass"
         : "fail",
-      webhook?.endpointFound && webhook.enabled && webhook.modeMatches && webhook.requiredEventsPresent
+      webhook?.endpointFound &&
+        webhook.enabled &&
+        webhook.modeMatches &&
+        webhook.requiredEventsPresent
         ? "The expected Easy Erf webhook is enabled in the correct mode with both required Checkout events."
         : "The expected webhook is missing, disabled, in the wrong mode, or missing a required Checkout event.",
     ),
@@ -325,25 +357,51 @@ export function buildEasyErfR999LaunchReadiness(input: {
       "stripe-account-capability",
       "Stripe account capability",
       account?.chargesEnabled &&
-          account.payoutsEnabled &&
-          account.requirementsClear &&
-          account.detailsSubmitted
+        account.payoutsEnabled &&
+        account.requirementsClear &&
+        account.detailsSubmitted
         ? "pass"
         : "fail",
       account?.chargesEnabled &&
-          account.payoutsEnabled &&
-          account.requirementsClear &&
-          account.detailsSubmitted
+        account.payoutsEnabled &&
+        account.requirementsClear &&
+        account.detailsSubmitted
         ? "Stripe reports charging and payouts enabled with no current or past-due account requirements."
         : "The Stripe account is not fully enabled or has unresolved requirements.",
     ),
     check(
+      "stripe-account-identity",
+      "Observed Stripe account",
+      account?.accountId ? "pass" : "unknown",
+      account?.accountId
+        ? `Observed account: ${account.accountId}. Configured key mode: ${environment.stripeKeyMode.toUpperCase()}. This identifies the account returned by this probe, not launch approval.`
+        : "The Stripe account ID is unavailable from this probe. Account binding remains unverified.",
+    ),
+    check(
+      "stripe-business-name",
+      "Stripe business name",
+      account?.nameStatus ?? "unknown",
+      profileFieldDetail("business_profile.name", account?.nameStatus),
+    ),
+    check(
+      "stripe-business-url",
+      "Stripe business website",
+      account?.businessUrlStatus ?? "unknown",
+      profileFieldDetail("business_profile.url", account?.businessUrlStatus),
+    ),
+    check(
       "stripe-business-profile",
       "Easy Erf Stripe business profile",
-      account?.nameValid && account.businessUrlValid ? "pass" : "fail",
-      account?.nameValid && account.businessUrlValid
-        ? "The Stripe business name and website identify Easy Erf."
-        : "The Stripe business name or website does not identify Easy Erf correctly.",
+      account?.nameStatus === "fail" || account?.businessUrlStatus === "fail"
+        ? "fail"
+        : account?.nameStatus === "pass" && account?.businessUrlStatus === "pass"
+          ? "pass"
+          : "unknown",
+      account?.nameStatus === "fail" || account?.businessUrlStatus === "fail"
+        ? "At least one supplied Stripe profile field does not match Easy Erf. See the per-field results; unavailable fields remain unverified."
+        : account?.nameStatus === "pass" && account?.businessUrlStatus === "pass"
+          ? "The explicit Stripe business name and website identify Easy Erf."
+          : "Stripe profile information is unavailable or incomplete. This does not establish incorrect settings; launch remains blocked.",
     ),
     check(
       "webhook-signature-match",
@@ -357,10 +415,10 @@ export function buildEasyErfR999LaunchReadiness(input: {
   const inspectablePreflightPassed = checks.every(
     (item) => !item.blocking || !item.inspectable || item.status === "pass",
   );
-  const readyForControlledSignatureTest = environment.checkoutMode === "live" &&
-    !environment.liveArmed &&
-    inspectablePreflightPassed;
-  const liveCheckoutGateOpen = environment.checkoutMode === "live" &&
+  const readyForControlledSignatureTest =
+    environment.checkoutMode === "live" && !environment.liveArmed && inspectablePreflightPassed;
+  const liveCheckoutGateOpen =
+    environment.checkoutMode === "live" &&
     environment.liveArmed &&
     environment.stripeKeyMode === "live" &&
     paymentLink?.contractValid === true;
@@ -369,13 +427,9 @@ export function buildEasyErfR999LaunchReadiness(input: {
   if (environment.checkoutMode === "invalid") state = "invalid_configuration";
   else if (environment.checkoutMode === "test") state = "test_mode";
   else if (environment.liveArmed) {
-    state = inspectablePreflightPassed
-      ? "live_armed_preflight_passed"
-      : "live_armed_blocked";
+    state = inspectablePreflightPassed ? "live_armed_preflight_passed" : "live_armed_blocked";
   } else {
-    state = inspectablePreflightPassed
-      ? "live_disarmed_preflight_passed"
-      : "live_disarmed_blocked";
+    state = inspectablePreflightPassed ? "live_disarmed_preflight_passed" : "live_disarmed_blocked";
   }
 
   return {
