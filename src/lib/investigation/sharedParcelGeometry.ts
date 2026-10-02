@@ -9,6 +9,7 @@ import {
 } from "@/lib/providers/publicDataClient";
 import { extractExteriorRing, isValidParcelRing } from "@/lib/sitePotential/parcelRing";
 import type { OrderInvestigation } from "./sharedInvestigation";
+import { CANONICAL_AREA_KEYS, toValidAreaM2 } from "@/lib/evidence/parcelArea";
 
 export interface RecoveredParcelGeometry {
   parcelRing: Array<[number, number]>;
@@ -36,12 +37,32 @@ export function validateRecoveredGeometry(
   const parcelRing = extractExteriorRing(feature.geometry);
   if (!parcelRing) return null;
   const identity = extractOfficialFeatureIdentity("csg-parcels", feature.properties);
+  // Keep only canonical area attributes from this exact feature. In particular,
+  // geometry recovery cannot import provider zoning or development-right claims.
+  const sameOfficialSource = parcel.source === "csg" && parcel.layer === "csg-parcels";
+  const rawProperties = { ...(sameOfficialSource ? parcel.rawProperties : {}) };
+  for (const key of CANONICAL_AREA_KEYS) {
+    const raw = feature.properties?.[key];
+    const value = typeof raw === "number" || typeof raw === "string" ? toValidAreaM2(raw) : null;
+    if (value !== null) rawProperties[key] = value;
+  }
   const normalizedParcel: NormalizedOfficialParcel = {
     ...parcel,
     id: parcel.id,
     source: "csg",
     sourceLabel: result.sourceLabel,
     layer: "csg-parcels",
+    rawProperties,
+    // A legacy/manual point is not made official by recovering a boundary.
+    coordinates:
+      sameOfficialSource &&
+      parcel.coordinates &&
+      Number.isFinite(parcel.coordinates.lng) &&
+      Number.isFinite(parcel.coordinates.lat) &&
+      Math.abs(parcel.coordinates.lng) <= 180 &&
+      Math.abs(parcel.coordinates.lat) <= 90
+        ? parcel.coordinates
+        : null,
     lpi: identity.lpi,
     parcelKey: identity.parcelKey,
     erfNumber: identity.erfNumber ?? parcel.erfNumber,

@@ -1,0 +1,38 @@
+[
+  {
+    "source": "8814f64ab1dfdcc81413746c05f0bbbf8cbabbb7",
+    "name": "suite",
+    "command": [
+      "node",
+      "node_modules/vitest/vitest.mjs",
+      "run"
+    ],
+    "started": "2026-10-02T01:23:56.445Z",
+    "finished": "2026-10-02T01:24:11.120Z",
+    "exitCode": 0
+  },
+  {
+    "source": "8814f64ab1dfdcc81413746c05f0bbbf8cbabbb7",
+    "name": "typescript",
+    "command": [
+      "node",
+      "node_modules/typescript/bin/tsc",
+      "--noEmit"
+    ],
+    "started": "2026-10-02T01:24:11.125Z",
+    "finished": "2026-10-02T01:24:49.216Z",
+    "exitCode": 0
+  },
+  {
+    "source": "8814f64ab1dfdcc81413746c05f0bbbf8cbabbb7",
+    "name": "whitespace",
+    "command": [
+      "git",
+      "diff",
+      "--check"
+    ],
+    "started": "2026-10-02T01:24:49.217Z",
+    "finished": "2026-10-02T01:24:49.322Z",
+    "exitCode": 0
+  }
+]

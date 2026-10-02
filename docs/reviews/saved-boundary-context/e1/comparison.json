@@ -1,0 +1,20 @@
+{
+  "review": 5387488393,
+  "reviewedHead": "3a493304cae98b8d3cceb59183dfab5b11539400",
+  "original": {
+    "path": "artifacts/issue201/network-deny.mjs",
+    "bytes": 1412,
+    "sha256": "3e6df94c738a1600e5cb65e510aa8a9d0ccc9e3662b7a3fe2a0e66e1233ca790",
+    "receiptMatch": true
+  },
+  "published": {
+    "path": "docs/reviews/saved-boundary-context/network-deny.mjs",
+    "bytes": 1410,
+    "sha256": "33785e16232f779891a361f62d31d221403ef87c3aba9da1a71b8b96f0a12039"
+  },
+  "difference": "Original equals published bytes followed by hexadecimal 0d0a. Original has 24 LF-terminated code lines plus one CRLF blank line; published has only the 24 LF-terminated code lines.",
+  "behavior": "Identical executable source; only trailing whitespace differs.",
+  "originalReceiptSha256": "8eb6803805ac412d329167382fe904be5cf0679cd188aefd37e28f9bf173bd99",
+  "publishedReceiptSha256": "4aaf948b33697169da2df44d580a70f207bf6cb9f0b9ae6d10ace73679aa09f1",
+  "rebuildPerformed": false
+}
