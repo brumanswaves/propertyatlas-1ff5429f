@@ -15,4 +15,3 @@ const diagnostics=ts.getPreEmitDiagnostics(program);
 fs.writeFileSync(out+'/edge-types.log',ts.formatDiagnosticsWithColorAndContext(diagnostics,{getCanonicalFileName:x=>x,getCurrentDirectory:()=>process.cwd(),getNewLine:()=> '\n'}));
 fs.writeFileSync(out+'/edge-types-receipt.json',JSON.stringify({command:'node artifacts/payment-preflight-diagnostics/edge-types.mjs',entry,typescript:ts.version,stripe:'22.6.0 cached types',supabase:sup.version,diagnostics:diagnostics.length,exitCode:diagnostics.length?1:0,limitation:'TypeScript source type check using locally cached SDK types, not Deno dependency resolution or deployed runtime execution.'},null,2));
 console.log('edge type diagnostics: '+diagnostics.length); process.exitCode=diagnostics.length?1:0;
-

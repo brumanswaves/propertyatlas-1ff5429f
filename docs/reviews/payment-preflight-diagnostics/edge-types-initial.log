@@ -1,0 +1,12 @@
+[96msupabase/functions/easy-erf-founder-launch-readiness/index.ts[0m:[93m2[0m:[93m20[0m - [91merror[0m[90m TS2307: [0mCannot find module 'npm:stripe@22.6.0' or its corresponding type declarations.
+
+[7m2[0m import Stripe from "npm:stripe@22.6.0";
+[7m [0m [91m                   ~~~~~~~~~~~~~~~~~~~[0m
+[96msupabase/functions/easy-erf-founder-launch-readiness/index.ts[0m:[93m172[0m:[93m33[0m - [91merror[0m[90m TS7006: [0mParameter 'item' implicitly has an 'any' type.
+
+[7m172[0m             lineItems.data.map((item) => {
+[7m   [0m [91m                                ~~~~[0m
+[96msupabase/functions/easy-erf-founder-launch-readiness/index.ts[0m:[93m207[0m:[93m38[0m - [91merror[0m[90m TS7006: [0mParameter 'endpoint' implicitly has an 'any' type.
+
+[7m207[0m           webhookEndpoints.data.map((endpoint) => ({
+[7m   [0m [91m                                     ~~~~~~~~[0m
