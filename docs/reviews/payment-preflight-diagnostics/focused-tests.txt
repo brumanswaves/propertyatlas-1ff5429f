@@ -1,0 +1,4 @@
+Executed command: node node_modules/vitest/vitest.mjs run src/lib/payments/__tests__/easyErfPreflightDiagnostics.test.ts src/lib/payments/__tests__/easyErfR999LaunchReadiness.test.ts
+Tool receipt: functions.exec / exec_command chunk 0ffba7, exit 0.
+Vitest v4.1.11, start 14:02:32, duration 1.93s. Test Files 2 passed; Tests 32 passed.
+This is a transcription of the inspected tool result, not a separately captured raw Vitest log. No rerun for packaging.

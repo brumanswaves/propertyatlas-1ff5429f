@@ -15,9 +15,7 @@ function source(path: string) {
   return readFileSync(resolve(process.cwd(), path), "utf8").replace(/\r\n/g, "\n");
 }
 
-const functionSource = source(
-  "supabase/functions/easy-erf-founder-launch-readiness/index.ts",
-);
+const functionSource = source("supabase/functions/easy-erf-founder-launch-readiness/index.ts");
 const routeSource = source("src/routes/admin_.launch-readiness.tsx");
 const adminGuardSource = source("src/components/admin/AdminGuard.tsx");
 const configSource = source("supabase/config.toml");
@@ -50,10 +48,7 @@ const validWebhook = inspectEasyErfWebhookEndpoints(
       url: "https://project.supabase.co/functions/v1/easy-erf-stripe-webhook",
       status: "enabled",
       livemode: true,
-      enabled_events: [
-        "checkout.session.completed",
-        "checkout.session.async_payment_succeeded",
-      ],
+      enabled_events: ["checkout.session.completed", "checkout.session.async_payment_succeeded"],
     },
   ],
   "https://project.supabase.co/functions/v1/easy-erf-stripe-webhook",
@@ -61,6 +56,7 @@ const validWebhook = inspectEasyErfWebhookEndpoints(
 );
 
 const validAccount = inspectEasyErfStripeAccount({
+  id: "acct_Fixture123",
   business_profile: { name: "Easy Erf", url: "https://easyerf.co.za" },
   charges_enabled: true,
   payouts_enabled: true,
@@ -188,7 +184,7 @@ describe("Easy Erf R999 launch readiness model", () => {
       account: staleAccount,
     });
 
-    expect(staleAccount.businessUrlValid).toBe(false);
+    expect(staleAccount.businessUrlStatus).toBe("fail");
     expect(readiness.inspectablePreflightPassed).toBe(false);
     expect(readiness.readyForControlledSignatureTest).toBe(false);
     expect(readiness.checks.find((item) => item.id === "stripe-business-profile")).toMatchObject({

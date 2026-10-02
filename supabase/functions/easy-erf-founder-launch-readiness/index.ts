@@ -42,7 +42,17 @@ function log(stage: string, requestId: string, extra: Record<string, unknown> = 
 }
 
 function errorClass(error: unknown) {
-  return error instanceof Error ? error.name : "UnknownError";
+  const allowed = [
+    "Error",
+    "TypeError",
+    "StripeAPIError",
+    "StripeAuthenticationError",
+    "StripePermissionError",
+    "StripeConnectionError",
+    "StripeRateLimitError",
+    "StripeInvalidRequestError",
+  ];
+  return error instanceof Error && allowed.includes(error.name) ? error.name : "UnknownError";
 }
 
 Deno.serve(async (request: Request) => {
@@ -93,11 +103,8 @@ Deno.serve(async (request: Request) => {
     return json({ ok: false, error: "Founder admin access is required.", requestId }, 403);
   }
 
-  const checkoutMode = resolveEasyErfCheckoutMode(
-    Deno.env.get("EASY_ERF_R999_CHECKOUT_MODE"),
-  );
-  const liveArmed = Deno.env.get("EASY_ERF_R999_LIVE_ENABLED")?.trim().toLowerCase() ===
-    "true";
+  const checkoutMode = resolveEasyErfCheckoutMode(Deno.env.get("EASY_ERF_R999_CHECKOUT_MODE"));
+  const liveArmed = Deno.env.get("EASY_ERF_R999_LIVE_ENABLED")?.trim().toLowerCase() === "true";
   const stripeSecretKey = requiredEnv("STRIPE_SECRET_KEY");
   const stripeKeyMode = classifyEasyErfStripeKey(stripeSecretKey ?? undefined);
   const webhookSecretConfigured = Boolean(requiredEnv("STRIPE_WEBHOOK_SECRET"));
@@ -124,6 +131,7 @@ Deno.serve(async (request: Request) => {
     try {
       const account = await stripe.accounts.retrieve(null);
       accountInspection = inspectEasyErfStripeAccount({
+        id: account.id,
         business_profile: {
           name: account.business_profile?.name,
           url: account.business_profile?.url,
@@ -153,32 +161,34 @@ Deno.serve(async (request: Request) => {
               active: link.active,
               livemode: link.livemode,
               url: link.url,
-              after_completion: link.after_completion.type === "redirect"
-                ? {
-                    type: "redirect",
-                    redirect: { url: link.after_completion.redirect?.url ?? null },
-                  }
-                : { type: link.after_completion.type },
+              after_completion:
+                link.after_completion.type === "redirect"
+                  ? {
+                      type: "redirect",
+                      redirect: { url: link.after_completion.redirect?.url ?? null },
+                    }
+                  : { type: link.after_completion.type },
             },
             lineItems.data.map((item) => {
               const price = item.price;
               return {
-                price: typeof price === "string"
-                  ? price
-                  : price
-                    ? {
-                        unit_amount: price.unit_amount,
-                        currency: price.currency,
-                        type: price.type,
-                      }
-                    : null,
+                price:
+                  typeof price === "string"
+                    ? price
+                    : price
+                      ? {
+                          unit_amount: price.unit_amount,
+                          currency: price.currency,
+                          type: price.type,
+                        }
+                      : null,
               };
             }),
             expectedLivemode,
           );
 
-          const currentScore = Number(inspection.contractValid) * 2 +
-            Number(inspection.returnUrlValid);
+          const currentScore =
+            Number(inspection.contractValid) * 2 + Number(inspection.returnUrlValid);
           const previousScore = paymentLinkInspection
             ? Number(paymentLinkInspection.contractValid) * 2 +
               Number(paymentLinkInspection.returnUrlValid)
