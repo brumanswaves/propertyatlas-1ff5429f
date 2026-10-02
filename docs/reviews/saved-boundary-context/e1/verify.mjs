@@ -1,0 +1,17 @@
+import fs from 'node:fs';
+import crypto from 'node:crypto';
+import assert from 'node:assert/strict';
+const dir = new URL('./', import.meta.url);
+const original = Buffer.from(fs.readFileSync(new URL('original-network-deny.mjs.base64', dir), 'utf8').trim(), 'base64');
+const published = fs.readFileSync(new URL('../network-deny.mjs', dir));
+const comparison = JSON.parse(fs.readFileSync(new URL('comparison.json', dir)));
+const receipt = JSON.parse(fs.readFileSync(new URL('../configured-build-receipt.json', dir)));
+const sha = b => crypto.createHash('sha256').update(b).digest('hex');
+assert.equal(sha(original), comparison.original.sha256);
+assert.equal(sha(original), receipt.networkGuardSha256);
+assert.equal(sha(published), comparison.published.sha256);
+assert.equal(original.length, 1412);
+assert.equal(published.length, 1410);
+assert(original.equals(Buffer.concat([published, Buffer.from([13, 10])])));
+assert.equal(original.toString('utf8').split(/\r?\n/).map(s => s.trimEnd()).join('\n').trimEnd() + '\n', published.toString('utf8'));
+console.log('E1 verified: original matches recorded build guard; exact difference is trailing CRLF blank line; no code difference.');
