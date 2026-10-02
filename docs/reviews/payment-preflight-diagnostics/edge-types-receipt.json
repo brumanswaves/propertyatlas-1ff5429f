@@ -1,0 +1,10 @@
+{
+  "command": "node artifacts/payment-preflight-diagnostics/edge-types.mjs",
+  "entry": "supabase/functions/easy-erf-founder-launch-readiness/index.ts",
+  "typescript": "5.9.3",
+  "stripe": "22.6.0 cached types",
+  "supabase": "2.108.0",
+  "diagnostics": 0,
+  "exitCode": 0,
+  "limitation": "TypeScript source type check using locally cached SDK types, not Deno dependency resolution or deployed runtime execution."
+}

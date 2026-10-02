@@ -1,0 +1,18 @@
+{
+  "src/lib/payments/__tests__/easyErfPreflightDiagnostics.test.ts": {
+    "blob": "3e60bc460eaac71b88b4f850b17e12e79de48683",
+    "sha256": "a5292421e0492afb7086bcbf90e2ae5602c206a3a01bb504a4c750d3e24b60d5"
+  },
+  "src/lib/payments/__tests__/easyErfR999LaunchReadiness.test.ts": {
+    "blob": "012c86f96db6111c5c50427a4915d64b3c81e94b",
+    "sha256": "293968b647045a8a465c12861739d292882e8b89e110b58ebefe66caf722d46b"
+  },
+  "supabase/functions/_shared/easyErfR999LaunchReadiness.ts": {
+    "blob": "3cf6de662be41aa3692d02ee7bde0eb6090e4993",
+    "sha256": "243ba24834b47a7d04dbcad2e52ae7b7dfee9a55d9ced8504ee6e105c7b825a5"
+  },
+  "supabase/functions/easy-erf-founder-launch-readiness/index.ts": {
+    "blob": "7009c7233df6b43da5d10857585e7658ea1c3196",
+    "sha256": "f2f0755ca0ef2ef72bdf0bdc02e76c17acf75ad83f7995cea69ab149febe33aa"
+  }
+}
