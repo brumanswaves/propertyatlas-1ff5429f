@@ -145,8 +145,11 @@ export async function verifyCustomerAccess({ open, appUrl, gatewayUrl, anon, cre
   results.push("Actual RPC order/version substitutions and a distinct undelivered version denied with verified fixture identities and positive owner control");
 
   await page.getByRole("button", { name: "Sign out", exact: true }).click();
+  await page.getByLabel("Email", { exact: true }).waitFor();
+  assert.equal(new URL(page.url()).pathname, "/auth"); await absent(page);
   await page.goto(`${appUrl}/orders?report=${orderA}`);
-  await page.waitForURL("**/auth?**"); await absent(page);
+  await page.getByLabel("Email", { exact: true }).waitFor();
+  assert.equal(new URL(page.url()).pathname, "/auth"); await absent(page);
   await page.reload(); await page.getByLabel("Email", { exact: true }).waitFor(); await absent(page);
   const anonymous = createClient(gatewayUrl, anon, options);
   const anonReview = await anonymous.rpc("read_investigation_review", { p_order_id: orderA, p_version_id: approved.id });
@@ -166,7 +169,8 @@ export async function verifyCustomerAccess({ open, appUrl, gatewayUrl, anon, cre
     await authPage.goto(`${appUrl}/orders`);
     await authPage.getByRole("button", { name: "Sign out", exact: true }).click();
     await authPage.getByLabel("Email", { exact: true }).waitFor();
-    await page.waitForURL("**/auth?**"); await absent(page);
+    await page.getByLabel("Email", { exact: true }).waitFor();
+    assert.equal(new URL(page.url()).pathname, "/auth"); await absent(page);
     await login(authPage, actor);
   };
   const unavailable = async () => {
