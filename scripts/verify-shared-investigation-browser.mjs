@@ -661,7 +661,7 @@ try {
   results.push("Actual approval, existing delivery, synthetic email receipt and duplicate protection; fresh customer combined report; later work cannot rewrite delivered version");
 
   await verifyCustomerAccess({ open, appUrl, gatewayUrl, anon, createClient, options, clients, adminClient,
-    ids, orderA, orderB, approved, frozenHash, password, rpc, must, control: customerControl, artifacts, results });
+    ids, orderA, orderB, approved, frozenHash, password, rpc, must, reviewRequest, control: customerControl, artifacts, results });
   await verifyCustomerEntry();
 
   // Exercise the real Founder UI and Auth ban with old JWTs, not a hidden UI.

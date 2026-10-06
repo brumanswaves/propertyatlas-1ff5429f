@@ -98,7 +98,7 @@ async function watchNoReport(page) {
   await page.evaluate(() => {
     window.__accessLeaks = [];
     const inspect = () => {
-      if (document.querySelector("[data-review-version]") || document.body.innerText.includes("SYNTHETIC_HUMAN_EDIT")) window.__accessLeaks.push("foreign-report");
+      if (document.querySelector("[data-review-version]") || ["SYNTHETIC_HUMAN_EDIT", "SYNTHETIC_B_DELIVERED"].some(marker => document.body.innerText.includes(marker))) window.__accessLeaks.push("foreign-report");
     };
     window.__accessObserver = new MutationObserver(inspect);
     window.__accessObserver.observe(document.body, { subtree: true, childList: true, characterData: true });
@@ -107,7 +107,7 @@ async function watchNoReport(page) {
   return async () => {
     assert.deepEqual(await page.evaluate(() => {
       // Flush pending mutation records before disconnecting.
-      if (window.__accessObserver.takeRecords().length && (document.querySelector("[data-review-version]") || document.body.innerText.includes("SYNTHETIC_HUMAN_EDIT"))) window.__accessLeaks.push("foreign-report");
+      if (window.__accessObserver.takeRecords().length && (document.querySelector("[data-review-version]") || ["SYNTHETIC_HUMAN_EDIT", "SYNTHETIC_B_DELIVERED"].some(marker => document.body.innerText.includes(marker)))) window.__accessLeaks.push("foreign-report");
       window.__accessObserver.disconnect(); return window.__accessLeaks;
     }), []);
   };
@@ -163,7 +163,7 @@ export function customerResponseControl() {
 }
 
 export async function verifyCustomerAccess({ open, appUrl, gatewayUrl, anon, createClient, options,
-  clients, adminClient, ids, orderA, orderB, approved, frozenHash, password, rpc, must,
+  clients, adminClient, ids, orderA, orderB, approved, frozenHash, password, rpc, must, reviewRequest,
   control, artifacts, results }) {
   const evidence = control.ledger;
   evidence.push(await verifyMissingTerminalSignal());
@@ -337,6 +337,122 @@ export async function verifyCustomerAccess({ open, appUrl, gatewayUrl, anon, cre
     }
   }
   await page.screenshot({ path: resolve(artifacts, "customer-access-account-switch.png"), fullPage: true });
-  await authPage.close(); await context.close();
   results.push("Same unseeded browser loaded and in-flight A/B/A switches hold real order and review responses; no stale foreign report and fresh account-bound positive reads");
+
+  // Add B's distinct delivered fixture only after the accepted one-delivered
+  // matrix. Use the real human-only approval gate and existing local delivery
+  // lifecycle; no frozen row edits, model generation, or real provider calls.
+  const contentB = {
+    bottomLine: "SYNTHETIC_B_DELIVERED: this separate customer property has explicit unresolved evidence gaps.",
+    known: ["The synthetic customer confirmed the separate Erf 84 property identity and address."],
+    potential: ["The property needs further investigation before any consequential decision."],
+    risks: ["Planning, title, market and site evidence remain unavailable in this fixture."],
+    unknowns: ["Unavailable evidence is unverified and does not establish development permission."],
+    nextSteps: ["Obtain and review the missing evidence before relying on the report."],
+  };
+  const rejectedB = await reviewRequest("admin", { action: "human_approve", orderId: orderB, content: contentB });
+  assert.equal(rejectedB.status, 409); assert(rejectedB.body.blockers.length > 0);
+  const currentB = await rpc("b", "read_customer_investigation", { p_parcel_id: snapshotB.parcelId });
+  const checkedAt = new Date().toISOString();
+  const attemptB = disposition => ({ source: "Synthetic B review fixture", checkedAt, disposition,
+    result: disposition === "reviewed" ? "The separate synthetic property checks were reviewed." : "No reliable record exists in this isolated fixture.",
+    reason: "Record the actual limited scope of this synthetic review.", limitation: "Real evidence is unavailable and remains unverified." });
+  await rpc("b", "patch_saved_property_user_data_if_unchanged", { p_parcel_id: snapshotB.parcelId, p_expected: currentB.userData,
+    p_user_data_patch: {
+      normalizedParcel: { id: snapshotB.parcelId, source: "manual", sourceLabel: "Separate synthetic customer B property",
+        erfNumber: "84", portion: "0", municipality: "Synthetic B municipality", town: "Synthetic B town", knownFields: [], missingFields: [] },
+      displayTitle: "84 Synthetic B Street", approximateAddress: "84 Synthetic B Street", erfNumber: "84", portion: "0",
+      easyErfInvestigation: { version: 1, parcelId: snapshotB.parcelId, syncedAt: checkedAt, workspaceUpdatedAt: checkedAt,
+        identityStatus: "looks_correct", marketAddressSaved: true, sgDiagramAttachmentCount: 0, marketEvidenceStarted: false,
+        strategyScenarioCount: 0, chosenScenarioId: null, reportStarted: false,
+        planning: { zoneCode: null, userConfirmedZoneCode: null, userConfirmedAt: null },
+        sitePotential: { skipped: false, conceptCount: 0, selectedDesignAssetId: null, progressState: "not_started" },
+        investigation: { startedAt: checkedAt, lastViewedAt: checkedAt, currentStepId: "review-report", skippedStepIds: [], lastMeaningfulActionAt: null } },
+      investigationWork: { ...Object.fromEntries(["cadastral_evidence", "ownership_title", "zoning_planning", "market_evidence", "strategy_calculations", "site_potential"].map(key => [key, attemptB("unavailable")])),
+        property_checks: attemptB("reviewed") },
+    } });
+  const approvalB = await reviewRequest("admin", { action: "human_approve", orderId: orderB, content: contentB });
+  assert.equal(approvalB.status, 200, JSON.stringify(approvalB.body));
+  assert.equal(approvalB.body.approved, true); assert.equal(approvalB.body.delivered, false);
+  const deliveryB = must(await clients.admin.functions.invoke("easy-erf-founder-fulfillment", { body: { orderId: orderB, action: "mark_ready" } }));
+  assert.equal(deliveryB.ok, true); assert.equal(deliveryB.notification.receipt.providerMessageId, "isolated-provider-receipt");
+  const deliveredB = await rpc("b", "read_investigation_review", { p_order_id: orderB, p_version_id: approvalB.body.versionId });
+  assert.equal(deliveredB.customer_id, ids.b); assert.equal(deliveredB.order_id, orderB); assert.equal(deliveredB.parcel_id, snapshotB.parcelId);
+  assert(deliveredB.approved_at && deliveredB.delivered_at); assert.equal(deliveredB.approved_by, ids.admin);
+  assert.notEqual(deliveredB.parcel_id, approved.parcel_id); assert.notEqual(deliveredB.id, approved.id);
+  for (const actor of ["a", "b"]) {
+    assert.equal(must(await adminClient.from("user_roles").select("role").eq("user_id", ids[actor])).length, 0);
+  }
+  const fixtures = {
+    a: { orderId: orderA, versionId: approved.id, parcelId: approved.parcel_id, marker, hash: frozenHash },
+    b: { orderId: orderB, versionId: deliveredB.id, parcelId: deliveredB.parcel_id, marker: "SYNTHETIC_B_DELIVERED",
+      hash: createHash("sha256").update(JSON.stringify(deliveredB.report_assembly)).digest("hex") },
+  };
+  assert.notEqual(fixtures.a.hash, fixtures.b.hash);
+  const ownReport = async (actor, caseId) => {
+    const own = fixtures[actor], other = fixtures[actor === "a" ? "b" : "a"];
+    await page.locator(`[data-review-version="${own.versionId}"]`).waitFor();
+    assert.equal(await page.locator("[data-review-version]").count(), 1);
+    const text = await page.locator("body").innerText();
+    assert(text.includes(own.marker)); assert(!text.includes(other.marker));
+    const row = await rpc(actor, "read_investigation_review", { p_order_id: own.orderId, p_version_id: own.versionId });
+    assert.equal(row.customer_id, ids[actor]); assert.equal(row.order_id, own.orderId); assert.equal(row.parcel_id, own.parcelId);
+    assert.equal(row.id, own.versionId); assert(row.delivered_at && row.approved_at);
+    assert.equal(createHash("sha256").update(JSON.stringify(row.report_assembly)).digest("hex"), own.hash);
+    evidence.push({ caseId, actorId: ids[actor], orderId: own.orderId, versionId: own.versionId,
+      parcelId: own.parcelId, assemblySha256: own.hash, ownMarkerVisible: true, foreignMarkerAbsent: true, passed: true });
+  };
+  const ownCard = actor => page.getByRole("button", { name: new RegExp(`^Open order ${reference(fixtures[actor].orderId)} for `) });
+  for (const actor of ["a", "b"]) {
+    if (actor === "b") await switchTo("b");
+    await list(actor); await ownCard(actor).click(); await ownReport(actor, `two-delivered-${actor}-open`);
+    await page.getByRole("button", { name: "Back to reports", exact: true }).click();
+    await ownCard(actor).waitFor(); assert.equal(await page.locator("[data-review-version]").count(), 0);
+    await ownCard(actor).click(); await ownReport(actor, `two-delivered-${actor}-reopen`);
+    await page.reload(); await ownReport(actor, `two-delivered-${actor}-reload`);
+    await page.screenshot({ path: resolve(artifacts, `two-delivered-${actor}.png`), fullPage: true });
+    const own = fixtures[actor], other = fixtures[actor === "a" ? "b" : "a"];
+    for (const [kind, orderId, versionId, expectedStatus] of [
+      ["foreign-order", other.orderId, other.versionId, 403],
+      ["foreign-order-own-version", other.orderId, own.versionId, 403],
+      ["own-order-foreign-delivered-version", own.orderId, other.versionId, 200],
+      ["own-order-undelivered-version", own.orderId, actor === "a" ? undelivered.id : foreignVersion, 200],
+    ]) {
+      const response = await clients[actor].rpc("read_investigation_review", { p_order_id: orderId, p_version_id: versionId });
+      assert.equal(response.status, expectedStatus); assert.equal(response.data, null);
+      assert.equal(response.error?.code ?? null, expectedStatus === 403 ? "42501" : null);
+      evidence.push({ caseId: `two-delivered-${actor}-${kind}`, actorId: ids[actor], orderId, versionId,
+        status: response.status, code: response.error?.code ?? null, returnedNull: true, passed: true });
+    }
+    const foreignOrder = await clients[actor].from("report_orders").select("id,user_id").eq("id", other.orderId);
+    assert.equal(foreignOrder.error, null); assert.deepEqual(foreignOrder.data, []);
+    await ownReport(actor, `two-delivered-${actor}-positive-after-denials`);
+  }
+  results.push("Two distinct synthetic customers each list/open/reopen/reload their own frozen delivered report; reciprocal actual foreign order/delivered-version and retained undelivered denials pass");
+
+  // Both reports now exist. Exercise each direction and both real endpoints,
+  // retaining the accepted exact-request terminal and no-report observation.
+  let active = "b";
+  for (const from of ["b", "a"]) for (const endpoint of ["report_orders", "rpc/read_investigation_review"]) {
+    if (active !== from) { await switchTo(from); active = from; }
+    const to = from === "a" ? "b" : "a", own = fixtures[from];
+    await list(from); await ownCard(from).click(); await ownReport(from, `two-delivered-${from}-${endpoint}-before`);
+    const caseId = `two-delivered-${from}-${to}-${endpoint.replaceAll("/", "-")}`;
+    const held = await holdBrowserResponse(page, control, { caseId, path: `/rest/v1/${endpoint}`,
+      actorId: ids[from], orderId: own.orderId, versionId: own.versionId });
+    try {
+      await page.reload(); await held.ready();
+      await switchTo(to); active = to; await unavailable();
+      const finishWatching = await watchNoReport(page);
+      held.release(); const outcome = await held.terminal();
+      await unavailable(); await absent(page);
+      assert(!(await page.locator("body").innerText()).includes(fixtures.b.marker));
+      await finishWatching();
+      evidence.push({ caseId, requestId: outcome.requestId, postSwitchActorId: ids[to],
+        postSwitchState: "foreign-delivered-report-unavailable", observationThroughTerminalAndAssertions: true });
+      await list(to); await ownCard(to).click(); await ownReport(to, `${caseId}-own-positive`);
+    } finally { await held.close(); }
+  }
+  results.push("Both delivered reports remain usable through same-browser A/B switches with four exact correlated order/review terminal outcomes and no foreign report content");
+  await authPage.close(); await context.close();
 }
