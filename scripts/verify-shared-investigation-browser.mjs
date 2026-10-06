@@ -317,7 +317,7 @@ async function gatherSections(page) {
   await page.getByRole("heading", { name: "Where could a building potentially fit?", exact: true }).waitFor();
   await page.getByText("Review inputs and technical details", { exact: true }).click();
   await page.getByRole("checkbox", { name: /The outline shown matches the erf/ }).check();
-  await page.getByRole("button", { name: /^Boundary 1/ }).click();
+  await page.getByRole("button", { name: /^Boundary 1 · / }).click();
   await page.getByRole("button", { name: /^My own assumption/ }).click();
   for (const [label, value] of [["Street (m)", "5"], ["Side (m)", "3"], ["Rear (m)", "3"], ["Max coverage (%)", "50"], ["Max height (m)", "8"]]) {
     await page.getByLabel(label, { exact: true }).fill(value);
