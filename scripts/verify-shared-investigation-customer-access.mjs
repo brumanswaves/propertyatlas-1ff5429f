@@ -357,11 +357,12 @@ export async function verifyCustomerAccess({ open, appUrl, gatewayUrl, anon, cre
   const attemptB = disposition => ({ source: "Synthetic B review fixture", checkedAt, disposition,
     result: disposition === "reviewed" ? "The separate synthetic property checks were reviewed." : "No reliable record exists in this isolated fixture.",
     reason: "Record the actual limited scope of this synthetic review.", limitation: "Real evidence is unavailable and remains unverified." });
-  await rpc("b", "patch_saved_property_user_data_if_unchanged", { p_parcel_id: snapshotB.parcelId, p_expected: currentB.userData,
-    p_user_data_patch: {
+  // Fixture preparation uses the ordinary reviewer projection, which preserves
+  // the private-note sentinel without returning that owner-only field in logs.
+  await rpc("admin", "patch_order_investigation", { p_order_id: orderB, p_expected_revision: currentB.revision,
+    p_patch: {
       normalizedParcel: { id: snapshotB.parcelId, source: "manual", sourceLabel: "Separate synthetic customer B property",
         erfNumber: "84", portion: "0", municipality: "Synthetic B municipality", town: "Synthetic B town", knownFields: [], missingFields: [] },
-      displayTitle: "84 Synthetic B Street", approximateAddress: "84 Synthetic B Street", erfNumber: "84", portion: "0",
       easyErfInvestigation: { version: 1, parcelId: snapshotB.parcelId, syncedAt: checkedAt, workspaceUpdatedAt: checkedAt,
         identityStatus: "looks_correct", marketAddressSaved: true, sgDiagramAttachmentCount: 0, marketEvidenceStarted: false,
         strategyScenarioCount: 0, chosenScenarioId: null, reportStarted: false,
