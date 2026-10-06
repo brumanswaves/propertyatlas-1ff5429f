@@ -9,6 +9,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { chromium } from "playwright";
 import { createClient } from "@supabase/supabase-js";
 import "./verify-shared-investigation-network.mjs";
+import { customerResponseControl, verifyCustomerAccess } from "./verify-shared-investigation-customer-access.mjs";
 
 const runtime = JSON.parse(await readFile(process.env.EASY_ERF_ISOLATED_RUNTIME, "utf8"));
 const backend = runtime.API_URL;
@@ -29,6 +30,7 @@ const providerRequests = [];
 const processes = [];
 const contexts = [];
 const errors = [];
+const customerControl = customerResponseControl();
 let browser;
 let delayedRead = null;
 function delayNextOrderRead(orderId) {
@@ -60,6 +62,7 @@ const gateway = createServer(async (req, res) => {
     const headers = { ...req.headers }; delete headers.host; delete headers.connection; delete headers["content-length"];
     const response = await fetch(target, { method: req.method, headers, ...(body.length ? { body } : {}) });
     const bytes = Buffer.from(await response.arrayBuffer());
+    await customerControl.response({ url, method: req.method, body, status: response.status, bytes });
     if (delayedRead && url.pathname === "/rest/v1/rpc/read_order_investigation" &&
         JSON.parse(body.toString()).p_order_id === delayedRead.orderId) {
       const held = delayedRead; delayedRead = null;
@@ -655,6 +658,8 @@ try {
   results.push("Combined report contains actual stored findings and envelope; version-bound Ask uses controlled provider; customer original-sharing rights and exact-order asset route enforced");
   results.push("Actual approval, existing delivery, synthetic email receipt and duplicate protection; fresh customer combined report; later work cannot rewrite delivered version");
 
+  await verifyCustomerAccess({ open, appUrl, gatewayUrl, anon, createClient, options, clients, adminClient,
+    ids, orderA, orderB, approved, frozenHash, password, rpc, must, control: customerControl, artifacts, results });
   await verifyCustomerEntry();
 
   // Exercise the real Founder UI and Auth ban with old JWTs, not a hidden UI.
@@ -759,6 +764,7 @@ try {
     results, errors, productionAccess: false, liveProviderCalls: 0 };
   await writeFile(resolve(artifacts, "receipt.json"), JSON.stringify(receipt, null, 2));
   await writeFile(resolve(artifacts, "network.json"), JSON.stringify(requests, null, 2));
+  await writeFile(resolve(artifacts, "customer-access.json"), JSON.stringify(customerControl.ledger, null, 2));
   await writeFile(resolve(artifacts, "provider-requests.json"), redact(JSON.stringify(providerRequests, null, 2)));
   await writeFile(resolve(artifacts, "processes.log"), redact(processes.map((p) => p.log.join("")).join("\n")));
   console.log(JSON.stringify(receipt, null, 2));
