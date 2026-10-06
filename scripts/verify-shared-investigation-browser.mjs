@@ -59,10 +59,12 @@ const gateway = createServer(async (req, res) => {
       assert(/^\/(auth|rest|storage)\/v1\//.test(url.pathname), "Unexpected backend path blocked");
       target = `${backend}${url.pathname}${url.search}`;
     }
+    const requestId = req.headers["x-ee-test-request-id"];
     const headers = { ...req.headers }; delete headers.host; delete headers.connection; delete headers["content-length"];
+    delete headers["x-ee-test-request-id"];
     const response = await fetch(target, { method: req.method, headers, ...(body.length ? { body } : {}) });
     const bytes = Buffer.from(await response.arrayBuffer());
-    await customerControl.response({ url, method: req.method, body, status: response.status, bytes });
+    await customerControl.response({ url, method: req.method, body, status: response.status, bytes, requestId });
     if (delayedRead && url.pathname === "/rest/v1/rpc/read_order_investigation" &&
         JSON.parse(body.toString()).p_order_id === delayedRead.orderId) {
       const held = delayedRead; delayedRead = null;
@@ -72,7 +74,7 @@ const gateway = createServer(async (req, res) => {
       // Capture actual persistence/function bodies, never Auth tokens or request headers.
       response: url.pathname.startsWith("/auth/") ? "Auth response withheld" : redact(bytes.toString("utf8")) });
     res.writeHead(response.status, { "content-type": response.headers.get("content-type") ?? "application/json",
-      "access-control-allow-origin": appUrl, "access-control-allow-headers": "authorization, apikey, content-type, x-client-info, prefer, range, x-upsert",
+      "access-control-allow-origin": appUrl, "access-control-allow-headers": "authorization, apikey, content-type, x-client-info, prefer, range, x-upsert, x-ee-test-request-id",
       "access-control-allow-methods": "GET,POST,PATCH,DELETE,PUT,OPTIONS", "access-control-expose-headers": "content-range", "cache-control": "no-store" });
     res.end(bytes);
   } catch (error) { errors.push(redact(error.message)); res.writeHead(502); res.end("Isolated gateway rejected the request"); }

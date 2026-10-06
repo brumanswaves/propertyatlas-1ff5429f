@@ -1,15 +1,117 @@
 import assert from "node:assert/strict";
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
+import { EventEmitter } from "node:events";
 import { resolve } from "node:path";
 
-const bounded = async (promise, label) => {
+const bounded = async (promise, label, timeout = 30000) => {
   let timer;
   try {
     return await Promise.race([promise, new Promise((_, reject) => {
-      timer = setTimeout(() => reject(new Error(`Timed out: ${label}`)), 30000);
+      timer = setTimeout(() => reject(new Error(`Timed out: ${label}`)), timeout);
     })]);
   } finally { clearTimeout(timer); }
 };
+
+function browserTerminal(page, requestId) {
+  let exactRequest, resolveTerminal, rejectTerminal;
+  const terminal = new Promise((resolve, reject) => { resolveTerminal = resolve; rejectTerminal = reject; });
+  // A failure can be reported while account UI work is still in progress.
+  terminal.catch(() => {});
+  const finished = async request => {
+    if (request !== exactRequest) return;
+    try {
+      const response = await request.response();
+      assert(response, "Finished held request has no response");
+      const bytes = await response.body();
+      resolveTerminal({ requestId, terminal: "completed-body", status: response.status(),
+        bodyBytes: bytes.length, bodySha256: createHash("sha256").update(bytes).digest("hex") });
+    } catch (error) { rejectTerminal(error); }
+  };
+  const failed = request => {
+    if (request !== exactRequest) return;
+    const error = request.failure()?.errorText;
+    if (error !== "net::ERR_ABORTED") return rejectTerminal(new Error(`Held request did not complete or cancel: ${error}`));
+    resolveTerminal({ requestId, terminal: "cancelled", cancellation: error });
+  };
+  page.on("requestfinished", finished); page.on("requestfailed", failed);
+  return {
+    bind(request) { assert(!exactRequest); exactRequest = request; },
+    wait: (timeout) => bounded(terminal, `${requestId} browser terminal`, timeout),
+    close() { page.off("requestfinished", finished); page.off("requestfailed", failed); },
+  };
+}
+
+export async function verifyMissingTerminalSignal() {
+  const page = new EventEmitter();
+  const tracked = browserTerminal(page, "negative-control-no-terminal");
+  tracked.bind({});
+  try {
+    // Neither a server release nor an unrelated cancellation can settle it.
+    page.emit("requestfailed", { failure: () => ({ errorText: "net::ERR_ABORTED" }) });
+    page.emit("requestfinished", {});
+    page.emit("server-release");
+    await assert.rejects(tracked.wait(20), /Timed out: negative-control-no-terminal browser terminal/);
+  } finally { tracked.close(); }
+  const unfinishedBody = browserTerminal(page, "negative-control-no-body");
+  const request = { response: async () => ({ body: () => new Promise(() => {}) }) };
+  unfinishedBody.bind(request);
+  try {
+    page.emit("requestfinished", request);
+    await assert.rejects(unfinishedBody.wait(20), /Timed out: negative-control-no-body browser terminal/);
+  } finally { unfinishedBody.close(); }
+  return { caseId: "missing-terminal-negative-control", unrelatedEventsIgnored: true,
+    missingSignalRejected: true, missingCompletedBodyRejected: true };
+}
+
+async function holdBrowserResponse(page, control, spec) {
+  const requestId = randomUUID();
+  const terminal = browserTerminal(page, requestId);
+  const held = control.hold({ ...spec, requestId });
+  let bound = false;
+  const pattern = "http://127.0.0.1:54325/rest/v1/**";
+  const routeHandler = async route => {
+    const request = route.request(), url = new URL(request.url());
+    const review = spec.path.endsWith("/read_investigation_review");
+    const args = request.method() === "POST" ? request.postDataJSON() : {};
+    const matches = url.pathname === spec.path && (review
+      ? request.method() === "POST" && args.p_order_id === spec.orderId && args.p_version_id === spec.versionId
+      : request.method() === "GET" && url.searchParams.get("id") === `eq.${spec.orderId}` && url.searchParams.get("user_id") === `eq.${spec.actorId}`);
+    if (bound || !matches) return route.fallback();
+    bound = true; terminal.bind(request);
+    // Correlation only. The gateway removes this test header before forwarding
+    // to the real backend. The existing context isolation route still runs.
+    await route.fallback({ headers: { ...request.headers(), "x-ee-test-request-id": requestId } });
+  };
+  await page.route(pattern, routeHandler);
+  return { ...held,
+    async terminal() {
+      const outcome = await terminal.wait();
+      control.ledger.push({ caseId: spec.caseId, actorId: spec.actorId, orderId: spec.orderId,
+        versionId: spec.versionId, ...outcome });
+      return outcome;
+    },
+    async close() { held.release(); terminal.close(); await page.unroute(pattern, routeHandler); },
+  };
+}
+
+async function watchNoReport(page) {
+  await page.evaluate(() => {
+    window.__accessLeaks = [];
+    const inspect = () => {
+      if (document.querySelector("[data-review-version]") || document.body.innerText.includes("SYNTHETIC_HUMAN_EDIT")) window.__accessLeaks.push("foreign-report");
+    };
+    window.__accessObserver = new MutationObserver(inspect);
+    window.__accessObserver.observe(document.body, { subtree: true, childList: true, characterData: true });
+    inspect();
+  });
+  return async () => {
+    assert.deepEqual(await page.evaluate(() => {
+      // Flush pending mutation records before disconnecting.
+      if (window.__accessObserver.takeRecords().length && (document.querySelector("[data-review-version]") || document.body.innerText.includes("SYNTHETIC_HUMAN_EDIT"))) window.__accessLeaks.push("foreign-report");
+      window.__accessObserver.disconnect(); return window.__accessLeaks;
+    }), []);
+  };
+}
 
 // Delay only an actual, completed local backend response. Never replace its
 // status/body or simulate permission decisions. The ledger is an allowlist.
@@ -20,16 +122,15 @@ export function customerResponseControl() {
     ledger,
     hold(spec) {
       assert(!pending, "Only one customer response may be held");
-      let reached, release, finished;
+      let reached, release;
       const ready = new Promise(resolve => { reached = resolve; });
       const wait = new Promise(resolve => { release = resolve; });
-      const done = new Promise(resolve => { finished = resolve; });
-      const held = { ...spec, reached, wait, finished };
+      const held = { ...spec, reached, wait };
       pending = held;
-      return { ready: () => bounded(ready, spec.caseId), done: () => bounded(done, `${spec.caseId} release`),
+      return { ready: () => bounded(ready, spec.caseId),
         release: () => { if (pending === held) pending = undefined; release(); } };
     },
-    async response({ url, method, body, status, bytes }) {
+    async response({ url, method, body, status, bytes, requestId }) {
       const isOrders = url.pathname === "/rest/v1/report_orders" && method === "GET";
       const isReview = url.pathname === "/rest/v1/rpc/read_investigation_review" && method === "POST";
       if (!isOrders && !isReview) return;
@@ -40,7 +141,7 @@ export function customerResponseControl() {
         versionId: args.p_version_id };
       ledger.push(entry);
       const held = pending;
-      if (!held || held.path !== url.pathname || entry.orderId !== held.orderId
+      if (!held || held.requestId !== requestId || held.path !== url.pathname || entry.orderId !== held.orderId
         || (isOrders && entry.actorId !== held.actorId)
         || (isReview && entry.versionId !== held.versionId)) return;
       const actual = JSON.parse(bytes.toString());
@@ -53,11 +154,10 @@ export function customerResponseControl() {
         assert(actual.every(row => row.user_id === held.actorId && row.id === held.orderId));
       }
       pending = undefined;
-      entry.caseId = held.caseId; entry.actorId = held.actorId; entry.held = true;
+      entry.caseId = held.caseId; entry.requestId = requestId; entry.actorId = held.actorId; entry.held = true;
       held.reached();
       await held.wait;
       entry.released = true;
-      held.finished();
     },
   };
 }
@@ -66,6 +166,7 @@ export async function verifyCustomerAccess({ open, appUrl, gatewayUrl, anon, cre
   clients, adminClient, ids, orderA, orderB, approved, frozenHash, password, rpc, must,
   control, artifacts, results }) {
   const evidence = control.ledger;
+  evidence.push(await verifyMissingTerminalSignal());
   const reportSelector = `[data-review-version="${approved.id}"]`;
   const marker = "SYNTHETIC_HUMAN_EDIT";
   const reference = id => `EE-${id.replace(/[^a-z0-9]/gi, "").slice(0, 8).toUpperCase()}`;
@@ -179,53 +280,60 @@ export async function verifyCustomerAccess({ open, appUrl, gatewayUrl, anon, cre
   };
   await page.goto(`${appUrl}/orders?report=${orderA}`); await report("loaded-A-before-switch");
   await switchTo("b"); await unavailable(); await list("b");
-  const heldB = control.hold({ caseId: "delayed-orders-B-A", path: "/rest/v1/report_orders", actorId: ids.b, orderId: orderB });
+  const heldB = await holdBrowserResponse(page, control, { caseId: "delayed-orders-B-A", path: "/rest/v1/report_orders", actorId: ids.b, orderId: orderB });
   try {
     await page.goto(`${appUrl}/orders?report=${orderB}`); await heldB.ready();
     await switchTo("a"); await unavailable();
-    heldB.release(); await heldB.done(); await absent(page);
+    const finishWatching = await watchNoReport(page);
+    heldB.release(); const outcome = await heldB.terminal();
+    await unavailable(); await absent(page);
     assert(!(await page.locator("body").innerText()).includes(reference(orderB)));
+    await finishWatching();
+    evidence.push({ caseId: "delayed-orders-B-A", requestId: outcome.requestId, postSwitchActorId: ids.a, postSwitchState: "foreign-order-unavailable", observationThroughTerminalAndAssertions: true });
     await list("a"); await openCard(); await report("delayed-B-to-A-positive-control");
-  } finally { heldB.release(); }
+  } finally { await heldB.close(); }
 
   for (const endpoint of ["report_orders", "rpc/read_investigation_review"]) {
     for (const roundTrip of [false, true]) {
       const caseId = `delayed-${endpoint.replaceAll("/", "-")}-${roundTrip ? "A-B-A" : "A-B"}`;
-      const held = control.hold({ caseId, path: `/rest/v1/${endpoint}`, actorId: ids.a,
+      const held = await holdBrowserResponse(page, control, { caseId, path: `/rest/v1/${endpoint}`, actorId: ids.a,
         orderId: orderA, versionId: approved.id });
       try {
         await page.goto(`${appUrl}/orders?report=${orderA}`);
         await held.ready(); // Real owner response exists before the account changes.
         await switchTo("b");
         await unavailable();
-        // Observe even transient stale report insertion while the old response settles.
-        await page.evaluate(() => {
-          window.__accessLeaks = [];
-          window.__accessObserver = new MutationObserver(() => {
-            if (document.querySelector("[data-review-version]") || document.body.innerText.includes("SYNTHETIC_HUMAN_EDIT")) window.__accessLeaks.push("foreign-report");
-          });
-          window.__accessObserver.observe(document.body, { subtree: true, childList: true, characterData: true });
-        });
-        held.release(); await held.done();
-        await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
-        await absent(page);
-        assert.deepEqual(await page.evaluate(() => { window.__accessObserver.disconnect(); return window.__accessLeaks; }), []);
+        const finishWatching = await watchNoReport(page);
+        held.release(); const outcome = await held.terminal();
+        await unavailable(); await absent(page);
+        await finishWatching();
+        evidence.push({ caseId, requestId: outcome.requestId, postSwitchActorId: ids.b,
+          postSwitchState: "foreign-report-unavailable", observationThroughTerminalAndAssertions: true });
         await list("b");
         await switchTo("a"); await list("a"); await openCard(); await report(`${caseId}-fresh-A`);
         if (roundTrip) {
           // This second hold spans the whole A -> B -> A cycle, including a
-          // fresh A read. The old response cannot replace that new result.
-          const again = control.hold({ caseId: `${caseId}-full-cycle`, path: `/rest/v1/${endpoint}`,
+          // fresh A read. Require the exact old browser request to be cancelled
+          // before reentry; an identical frozen hash alone cannot prove this.
+          const again = await holdBrowserResponse(page, control, { caseId: `${caseId}-full-cycle`, path: `/rest/v1/${endpoint}`,
             actorId: ids.a, orderId: orderA, versionId: approved.id });
           try {
             await page.reload(); await again.ready();
             await switchTo("b"); await unavailable();
+            const finishWatchingRoundTrip = await watchNoReport(page);
+            const outcome = await again.terminal();
+            assert.equal(outcome.terminal, "cancelled", "Full-cycle old request must be closed before reentry");
+            await unavailable(); await absent(page);
+            await finishWatchingRoundTrip();
+            evidence.push({ caseId: `${caseId}-full-cycle`, requestId: outcome.requestId,
+              postSwitchActorId: ids.b, postSwitchState: "foreign-report-unavailable",
+              observationThroughTerminalAndAssertions: true, cancelledBeforeReentry: true });
             await switchTo("a"); await report(`${caseId}-new-response`);
-            again.release(); await again.done(); await report(`${caseId}-after-old-response`);
-          } finally { again.release(); }
+            again.release(); await report(`${caseId}-after-old-response`);
+          } finally { await again.close(); }
         }
         evidence.push({ caseId, actorId: ids.a, orderId: orderA, versionId: approved.id, passed: true });
-      } finally { held.release(); }
+      } finally { await held.close(); }
     }
   }
   await page.screenshot({ path: resolve(artifacts, "customer-access-account-switch.png"), fullPage: true });
