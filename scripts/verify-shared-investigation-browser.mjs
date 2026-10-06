@@ -726,11 +726,11 @@ try {
   await denied("worker", "read_order_investigation", { p_order_id: orderA });
   await worker.goto(`${appUrl}/admin/fulfillment#order-${orderA}`);
   // Assignment revocation denies this order, not the investigator's dashboard.
-  await worker.getByRole("heading", { name: "The requested order was not found", exact: true }).waitFor();
+  await worker.getByRole("heading", { name: "Could not load this investigation", exact: true }).waitFor();
   assert.equal(await worker.getByRole("region", { name: "Customer investigation workspace" }).count(), 0);
   assert.equal(await worker.locator("[data-investigation-report]").count(), 0);
   await worker.reload();
-  await worker.getByRole("heading", { name: "The requested order was not found", exact: true }).waitFor();
+  await worker.getByRole("heading", { name: "Could not load this investigation", exact: true }).waitFor();
   await worker.goto(`${appUrl}/investigator`);
   await worker.getByRole("heading", { name: "Investigator Dashboard", exact: true }).waitFor();
   await worker.getByText("No investigations assigned yet.", { exact: false }).waitFor();
