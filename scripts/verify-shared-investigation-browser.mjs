@@ -9,6 +9,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { chromium } from "playwright";
 import { createClient } from "@supabase/supabase-js";
 import "./verify-shared-investigation-network.mjs";
+import { customerResponseControl, verifyCustomerAccess } from "./verify-shared-investigation-customer-access.mjs";
 
 const runtime = JSON.parse(await readFile(process.env.EASY_ERF_ISOLATED_RUNTIME, "utf8"));
 const backend = runtime.API_URL;
@@ -29,6 +30,7 @@ const providerRequests = [];
 const processes = [];
 const contexts = [];
 const errors = [];
+const customerControl = customerResponseControl();
 let browser;
 let delayedRead = null;
 function delayNextOrderRead(orderId) {
@@ -57,9 +59,12 @@ const gateway = createServer(async (req, res) => {
       assert(/^\/(auth|rest|storage)\/v1\//.test(url.pathname), "Unexpected backend path blocked");
       target = `${backend}${url.pathname}${url.search}`;
     }
+    const requestId = req.headers["x-ee-test-request-id"];
     const headers = { ...req.headers }; delete headers.host; delete headers.connection; delete headers["content-length"];
+    delete headers["x-ee-test-request-id"];
     const response = await fetch(target, { method: req.method, headers, ...(body.length ? { body } : {}) });
     const bytes = Buffer.from(await response.arrayBuffer());
+    await customerControl.response({ url, method: req.method, body, status: response.status, bytes, requestId });
     if (delayedRead && url.pathname === "/rest/v1/rpc/read_order_investigation" &&
         JSON.parse(body.toString()).p_order_id === delayedRead.orderId) {
       const held = delayedRead; delayedRead = null;
@@ -69,7 +74,7 @@ const gateway = createServer(async (req, res) => {
       // Capture actual persistence/function bodies, never Auth tokens or request headers.
       response: url.pathname.startsWith("/auth/") ? "Auth response withheld" : redact(bytes.toString("utf8")) });
     res.writeHead(response.status, { "content-type": response.headers.get("content-type") ?? "application/json",
-      "access-control-allow-origin": appUrl, "access-control-allow-headers": "authorization, apikey, content-type, x-client-info, prefer, range, x-upsert",
+      "access-control-allow-origin": appUrl, "access-control-allow-headers": "authorization, apikey, content-type, x-client-info, prefer, range, x-upsert, x-ee-test-request-id",
       "access-control-allow-methods": "GET,POST,PATCH,DELETE,PUT,OPTIONS", "access-control-expose-headers": "content-range", "cache-control": "no-store" });
     res.end(bytes);
   } catch (error) { errors.push(redact(error.message)); res.writeHead(502); res.end("Isolated gateway rejected the request"); }
@@ -317,7 +322,7 @@ async function gatherSections(page) {
   await page.getByRole("heading", { name: "Where could a building potentially fit?", exact: true }).waitFor();
   await page.getByText("Review inputs and technical details", { exact: true }).click();
   await page.getByRole("checkbox", { name: /The outline shown matches the erf/ }).check();
-  await page.getByRole("button", { name: /^Boundary 1/ }).click();
+  await page.getByRole("button", { name: /^Boundary 1 · / }).click();
   await page.getByRole("button", { name: /^My own assumption/ }).click();
   for (const [label, value] of [["Street (m)", "5"], ["Side (m)", "3"], ["Rear (m)", "3"], ["Max coverage (%)", "50"], ["Max height (m)", "8"]]) {
     await page.getByLabel(label, { exact: true }).fill(value);
@@ -655,6 +660,8 @@ try {
   results.push("Combined report contains actual stored findings and envelope; version-bound Ask uses controlled provider; customer original-sharing rights and exact-order asset route enforced");
   results.push("Actual approval, existing delivery, synthetic email receipt and duplicate protection; fresh customer combined report; later work cannot rewrite delivered version");
 
+  await verifyCustomerAccess({ open, appUrl, gatewayUrl, anon, createClient, options, clients, adminClient,
+    ids, orderA, orderB, approved, frozenHash, password, rpc, must, reviewRequest, control: customerControl, artifacts, results });
   await verifyCustomerEntry();
 
   // Exercise the real Founder UI and Auth ban with old JWTs, not a hidden UI.
@@ -726,11 +733,11 @@ try {
   await denied("worker", "read_order_investigation", { p_order_id: orderA });
   await worker.goto(`${appUrl}/admin/fulfillment#order-${orderA}`);
   // Assignment revocation denies this order, not the investigator's dashboard.
-  await worker.getByRole("heading", { name: "The requested order was not found", exact: true }).waitFor();
+  await worker.getByRole("heading", { name: "Could not load this investigation", exact: true }).waitFor();
   assert.equal(await worker.getByRole("region", { name: "Customer investigation workspace" }).count(), 0);
   assert.equal(await worker.locator("[data-investigation-report]").count(), 0);
   await worker.reload();
-  await worker.getByRole("heading", { name: "The requested order was not found", exact: true }).waitFor();
+  await worker.getByRole("heading", { name: "Could not load this investigation", exact: true }).waitFor();
   await worker.goto(`${appUrl}/investigator`);
   await worker.getByRole("heading", { name: "Investigator Dashboard", exact: true }).waitFor();
   await worker.getByText("No investigations assigned yet.", { exact: false }).waitFor();
@@ -759,6 +766,7 @@ try {
     results, errors, productionAccess: false, liveProviderCalls: 0 };
   await writeFile(resolve(artifacts, "receipt.json"), JSON.stringify(receipt, null, 2));
   await writeFile(resolve(artifacts, "network.json"), JSON.stringify(requests, null, 2));
+  await writeFile(resolve(artifacts, "customer-access.json"), JSON.stringify(customerControl.ledger, null, 2));
   await writeFile(resolve(artifacts, "provider-requests.json"), redact(JSON.stringify(providerRequests, null, 2)));
   await writeFile(resolve(artifacts, "processes.log"), redact(processes.map((p) => p.log.join("")).join("\n")));
   console.log(JSON.stringify(receipt, null, 2));
