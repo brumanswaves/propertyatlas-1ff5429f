@@ -161,6 +161,7 @@ const selfServiceChecks = [];
 let rejectNextStrategySave = false;
 let simulateOffline = false;
 let holdNextStrategySave = null;
+let holdNextFullRead = null;
 let rejectNextZoningSave = false;
 let holdNextZoningSave = null;
 let zoningAssets = [];
@@ -230,6 +231,11 @@ async function installSyntheticSignedInSupabase(context, name) {
         const parcelMatches = !requestedParcelId || requestedParcelId === PARCEL_ID;
         const found = userMatches && parcelMatches;
         const select = url.searchParams.get("select") || "";
+        if (select.replaceAll(" ", "") === "id,user_id,parcel_id,user_data" && holdNextFullRead) {
+          const held = holdNextFullRead; holdNextFullRead = null;
+          held.started(); await held.release;
+          if (held.offline) return route.abort("internetdisconnected");
+        }
         const objectResponse = isObjectResponse(request) || select.trim() === "id";
 
         if (objectResponse) {
@@ -585,11 +591,19 @@ try {
     "Dashboard metadata must not hydrate full workspace before property selection",
   );
 
+  let releaseFreshRead, signalFreshRead;
+  const freshReadStarted = new Promise((resolve) => { signalFreshRead = resolve; });
+  holdNextFullRead = { started: signalFreshRead, release: new Promise((resolve) => { releaseFreshRead = resolve; }) };
+  const writesBeforeFreshRead = rpcCalls.length;
   await firstVisible(
     reopenPage,
     reopenPage.locator("button").filter({ hasText: /^Continue Investigation$/i }),
     "Continue Investigation button",
   ).then((button) => button.click());
+  await freshReadStarted;
+  await reopenPage.waitForFunction((key) => localStorage.getItem(key) !== null, scopedWorkspaceKey);
+  await reopenPage.waitForTimeout(1200); // Exercise a timer already waiting on hydration.
+  releaseFreshRead();
   await firstVisible(
     reopenPage,
     reopenPage.locator("h4").filter({ hasText: /^Add the address people use to find this erf$/i }),
@@ -619,6 +633,10 @@ try {
     throw new Error(`Fresh browser context did not hydrate durable Guided progress.`);
   }
 
+
+  await reopenPage.waitForTimeout(1100);
+  assert.equal(rpcCalls.length, writesBeforeFreshRead, "Delayed fresh restoration must not replay an automatic entry save");
+  selfServiceChecks.push({ delayedFreshReadRestored: true, noRestorationWrite: true });
 
   for (const label of (process.env.EASY_ERF_SELF_SERVICE_ONLY ? [] : ["Confirm", "Address", "SG", "Title", "Zoning", "Checks", "Market", "Strategy", "Potential", "Report"])) {
     const navigator = reopenPage.getByRole("region", { name: "Guided investigation steps" });
@@ -975,6 +993,60 @@ try {
   assert.ok(mapChecks.every((state) => state.requests >= 2 && state.staleSettled),
     "Both browser contexts must exercise late pre-pan parcel responses");
   await reopenPage.screenshot({ path: resolve(artifacts, "reopened-add-address.png"), fullPage: true });
+  // Exercise the actual restoration effect while its first full read is pending.
+  // These controls use separate fresh browsers and never alter the original journey.
+  for (const control of ["edit", "account-switch", "leave-property", "offline"]) {
+    const context = await browser.newContext({ viewport: { width: 1440, height: 1000 } });
+    await installSyntheticSignedInSupabase(context, `held-read-${control}`);
+    const page = await context.newPage();
+    attachPageDiagnostics(page);
+    await page.goto(`${baseUrl}/dashboard`, { waitUntil: "domcontentloaded" });
+    const continueButton = page.getByRole("button", { name: "Continue Investigation", exact: true }).first();
+    await continueButton.waitFor();
+    let release, started;
+    const pending = new Promise((resolve) => { started = resolve; });
+    holdNextFullRead = { started, release: new Promise((resolve) => { release = resolve; }), offline: control === "offline" };
+    const writesBefore = rpcCalls.length;
+    await continueButton.click();
+    await pending;
+    await page.waitForFunction((key) => localStorage.getItem(key) !== null, scopedWorkspaceKey);
+    if (control === "edit") {
+      await page.evaluate(async ({ parcelId, userId }) => {
+        const { updateErfWorkspaceState } = await import("/src/lib/workbench/erfWorkspaceState.ts");
+        updateErfWorkspaceState(parcelId, { identityStatus: "looks_correct" }, undefined, userId);
+        const { writeStoredBuildEnvelopeInputs } = await import("/src/lib/sitePotential/buildEnvelopeStore.ts");
+        writeStoredBuildEnvelopeInputs(parcelId, { coveragePct: 37 }, userId);
+      }, { parcelId: PARCEL_ID, userId: USER_ID });
+    } else if (control === "account-switch") {
+      await page.evaluate(async ({ access_token, refresh_token }) => {
+        const { supabase } = await import("/src/integrations/supabase/client.ts");
+        const { error } = await supabase.auth.setSession({ access_token, refresh_token });
+        if (error) throw error;
+      }, { access_token: otherToken, refresh_token: "held-read-other-fixture" });
+      await page.getByRole("heading", { name: "Confirm this is the correct erf", exact: true }).waitFor();
+    } else if (control === "leave-property") {
+      await page.goto(`${baseUrl}/dashboard`, { waitUntil: "domcontentloaded" });
+      await page.getByRole("heading", { name: /My Investigations/i }).waitFor();
+    }
+    const draftBefore = await page.evaluate((key) => localStorage.getItem(key), scopedWorkspaceKey);
+    await page.waitForTimeout(1200);
+    release();
+    if (control === "edit" || control === "offline") {
+      await page.getByRole("region", { name: "This property's save status" }).getByRole("alert").waitFor();
+    }
+    await page.waitForTimeout(1200);
+    assert.equal(await page.evaluate((key) => localStorage.getItem(key), scopedWorkspaceKey), draftBefore,
+      `${control}: pending saved response must preserve the original local draft`);
+    assert.equal(rpcCalls.length, writesBefore, `${control}: initial read must not authorize a save`);
+    if (control === "edit") {
+      const inputs = await page.evaluate(async ({ parcelId, userId }) => {
+        const { readStoredBuildEnvelopeInputs } = await import("/src/lib/sitePotential/buildEnvelopeStore.ts");
+        return readStoredBuildEnvelopeInputs(parcelId, userId);
+      }, { parcelId: PARCEL_ID, userId: USER_ID });
+      assert.equal(inputs.coveragePct, 37, "User input made during the read must survive");
+    }
+    selfServiceChecks.push({ pendingInitialRead: control, localDraftRetained: true, noSave: true });
+  }
   acceptancePassed = true;
 
   console.log(

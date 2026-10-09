@@ -83,6 +83,7 @@ async function run(name, args, extra = {}, cwd = root) {
   assert.equal(code, 0, `${name}: see ${log}`);
 }
 let server;
+let guidedServer;
 try {
   await run("focused", [
     "node_modules/vitest/vitest.mjs",
@@ -90,6 +91,9 @@ try {
     "src/lib/search/__tests__/propertySearch.test.ts",
     "src/lib/search/__tests__/erfSearchContext.test.ts",
     "src/components/property/__tests__/dossierUx.test.ts",
+    "src/lib/workbench/__tests__/workspaceEntryHydration.test.ts",
+    "src/lib/workbench/__tests__/investigationSyncBaseline.test.ts",
+    "src/lib/workbench/__tests__/propertyOverviewEntry.test.ts",
   ]);
   await run("types", ["node_modules/typescript/bin/tsc", "--noEmit"]);
   await run("lint", [
@@ -97,6 +101,8 @@ try {
     "src/routes/index.tsx",
     "src/components/map/SearchBar.tsx",
   ]);
+  await run("restoration-lint", ["node_modules/eslint/bin/eslint.js", "--rule", "prettier/prettier: off", "src/components/property/OfficialParcelPanel.tsx", "src/components/workbench/WorkspaceCloudSync.tsx"]);
+  await run("provenance-lint", ["node_modules/eslint/bin/eslint.js", "src/lib/workbench/workspaceEntryHydration.ts", "src/lib/workbench/__tests__/workspaceEntryHydration.test.ts"]);
   await run("build", ["node_modules/vite/bin/vite.js", "build"]);
   // These two existing suites inspect tracked .env text only. Run unchanged assertions
   // in the clean source checkout under the same egress guard, never in the browser export.
@@ -147,6 +153,21 @@ try {
   await run("browser", ["scripts/verify-mobile-search.mjs"], browserEnv);
   await run("commercial", ["scripts/verify-commercial-browser.mjs"], browserEnv);
   if (process.env.EASY_ERF_GUIDED_SYNTHETIC === "1") {
+    // Existing Guided account-switch checks import Vite source modules. Keep this
+    // exact-head dev server isolated; mobile/commercial continue using production.
+    const guidedLog = createWriteStream(join(output, "guided-server.log"));
+    guidedServer = spawn(process.execPath, ["node_modules/vite/bin/vite.js", "--host", "127.0.0.1", "--port", "4198", "--strictPort"], {
+      cwd: root, env: { ...env, NODE_ENV: "development" }, stdio: ["ignore", "pipe", "pipe"],
+    });
+    guidedServer.stdout.pipe(guidedLog); guidedServer.stderr.pipe(guidedLog);
+    let guidedListening = false;
+    for (let attempt = 0; attempt < 60; attempt++) {
+      if (guidedServer.exitCode !== null) throw new Error("Isolated Guided server exited");
+      try { if ((await fetch("http://127.0.0.1:4198/auth")).ok) { guidedListening = true; break; } } catch {}
+      await new Promise((resolve) => setTimeout(resolve, 500));
+    }
+    assert.ok(guidedListening, "Isolated source-module Guided server listening");
+    receipt.guidedRuntime = "Exact-head Vite development server; production build/mobile proof retained";
     for (const script of [
       "verify-auth-screen-local",
       "verify-erf1570-first-read",
@@ -161,6 +182,7 @@ try {
         `scripts/${script}.mjs`,
       ], {
         ...browserEnv,
+        EASY_ERF_BROWSER_BASE_URL: script === "verify-guided-cloud-persistence" ? "http://127.0.0.1:4198" : browserEnv.EASY_ERF_BROWSER_BASE_URL,
         EASY_ERF_BROWSER_ARTIFACTS: join(output, script),
         EASY_ERF_SG_ARTIFACTS: join(output, script),
         EASY_ERF_GUEST_NO_WRITES: ["verify-erf1570-first-read", "verify-erf1570-guided-start"].includes(script) ? "1" : "0",
@@ -183,6 +205,10 @@ try {
   receipt.serverEgressAttempts = 0;
   receipt.result = "local checks passed";
 } finally {
+  if (guidedServer && guidedServer.exitCode === null && guidedServer.signalCode === null) {
+    guidedServer.kill("SIGTERM"); await new Promise((resolve) => guidedServer.once("exit", resolve));
+  }
+  receipt.guidedServerStopped = !guidedServer || guidedServer.exitCode !== null || guidedServer.signalCode !== null;
   if (server) {
     server.kill("SIGTERM");
     await new Promise((resolve) => server.once("exit", resolve));
