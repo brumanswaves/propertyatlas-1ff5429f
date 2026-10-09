@@ -142,6 +142,17 @@ const durableRow = {
   },
 };
 
+// Match PostgREST select projections while preserving the durable canonical row.
+function selectFixtureRow(select) {
+  if (!select.trim() || select.trim() === "*") return durableRow;
+  return Object.fromEntries(select.split(",").map((field) => {
+    const [alias, expression] = field.trim().split(":");
+    const path = (expression ?? alias).split(/->>?/);
+    const value = path.reduce((current, key) => current?.[key], durableRow);
+    return [alias, value ?? null];
+  }));
+}
+
 const rpcCalls = [];
 const unexpectedMutations = [];
 const routeErrors = [];
@@ -226,7 +237,7 @@ async function installSyntheticSignedInSupabase(context, name) {
             status: found ? 200 : 406,
             contentType: "application/json",
             body: found
-              ? JSON.stringify(Object.fromEntries(select.split(",").map((key) => [key, durableRow[key]])))
+              ? JSON.stringify(selectFixtureRow(select))
               : JSON.stringify({
                   code: "PGRST116",
                   details: "The result contains 0 rows",
@@ -240,8 +251,8 @@ async function installSyntheticSignedInSupabase(context, name) {
         await route.fulfill({
           status: 200,
           contentType: "application/json",
-          headers: { "content-range": found ? "0-0/1" : "*/0" },
-          body: JSON.stringify(found ? [durableRow] : []),
+          headers: { "content-range": found ? "0-0/1" : "*/0", "access-control-expose-headers": "content-range" },
+          body: JSON.stringify(found ? [selectFixtureRow(select)] : []),
         });
         return;
       }
@@ -307,6 +318,14 @@ async function installSyntheticSignedInSupabase(context, name) {
           body: JSON.stringify(durableRow.user_data),
         });
         return;
+      }
+
+      if (url.pathname === "/rest/v1/property_notes" && (method === "GET" || method === "HEAD")) {
+        return route.fulfill({
+          status: 200,
+          headers: { "content-range": "*/0", "access-control-expose-headers": "content-range" },
+          json: [],
+        });
       }
 
       if (method === "GET" || method === "HEAD") {
