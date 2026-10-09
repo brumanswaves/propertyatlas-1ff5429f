@@ -518,6 +518,11 @@ export function SearchBar({
 
       {open && (
         <div className="absolute left-0 right-0 top-full z-[90] mt-2 max-h-[min(44dvh,22rem)] overscroll-contain overflow-y-auto rounded-2xl border md:max-h-[min(74vh,34rem)] border-[#0D1B2A]/10 bg-white shadow-[0_24px_70px_-30px_rgba(13,27,42,0.36)]">
+          <div className="flex justify-end border-b border-[#0D1B2A]/10 px-2 py-1 md:hidden">
+            <button type="button" onClick={() => setOpen(false)} aria-label="Close property search" className="inline-flex min-h-9 items-center gap-1 rounded-lg px-3 text-xs font-semibold text-[#0D1B2A]">
+              <X className="h-4 w-4" /> Close search
+            </button>
+          </div>
           {!lane && (
             <div className="grid gap-2 p-2 sm:grid-cols-2 sm:gap-3 sm:p-3">
               <button
