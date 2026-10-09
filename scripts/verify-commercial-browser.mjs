@@ -1,14 +1,27 @@
-import { chromium } from "playwright";
+const { chromium } = await import(process.env.EASY_ERF_PLAYWRIGHT_MODULE || "playwright");
 
 const baseUrl = process.env.EASY_ERF_BROWSER_BASE_URL || "http://127.0.0.1:4173";
+if (new URL(baseUrl).hostname !== "127.0.0.1") throw new Error("Local fixture only");
 const confirmedParcelId = "csg:lpi:c03400140000157000000";
 const confirmedPropertyReference = "Erf 1570 · Sea Vista · Kouga";
 
-const browser = await chromium.launch({ headless: true });
-const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
+const browser = await chromium.launch({
+  headless: true,
+  executablePath: process.env.EASY_ERF_BROWSER_EXECUTABLE,
+});
+const page = await browser.newPage({
+  viewport: { width: 1440, height: 1000 },
+  serviceWorkers: "block",
+});
+// Install before the first load. This test exercises copy and local gates, not providers.
+await page.context().route("**/*", async (route) => {
+  const url = new URL(route.request().url());
+  if (url.origin === new URL(baseUrl).origin) return route.continue();
+  return route.abort();
+});
 
 try {
-  await page.goto(baseUrl, { waitUntil: "networkidle", timeout: 60000 });
+  await page.goto(baseUrl, { waitUntil: "domcontentloaded", timeout: 60000 });
 
   const selfReviewButton = page.getByRole("button", { name: /^Investigate it myself$/i });
   const doneForYouButton = page.getByRole("link", { name: /^Do it for me · R999$/i });
@@ -40,11 +53,14 @@ try {
     timeout: 30000,
   });
 
-  await page.goto(`${baseUrl}/pricing`, { waitUntil: "networkidle", timeout: 60000 });
+  await page.goto(`${baseUrl}/pricing`, { waitUntil: "domcontentloaded", timeout: 60000 });
   await page
     .getByRole("heading", { name: /You choose the property. We do the investigation./i })
     .waitFor({ state: "visible", timeout: 30000 });
 
+  await page
+    .getByText("Find the exact erf or address on the map first.", { exact: true })
+    .waitFor();
   const selectionGateBody = await page.locator("body").innerText();
   for (const requiredText of [
     "Done-for-You Property Investigation",
@@ -69,11 +85,15 @@ try {
     "Find and confirm property on map",
   ]) {
     if (!selectionGateBody.toLowerCase().includes(requiredText.toLowerCase())) {
-      throw new Error(`Done-for-you property/value gate is missing required truth: ${requiredText}`);
+      throw new Error(
+        `Done-for-you property/value gate is missing required truth: ${requiredText}`,
+      );
     }
   }
   if (selectionGateBody.toLowerCase().includes("investigate this property for me · r999")) {
-    throw new Error("Done-for-you payment must not be available before a canonical parcel is confirmed.");
+    throw new Error(
+      "Done-for-you payment must not be available before a canonical parcel is confirmed.",
+    );
   }
   if (
     (await page.getByRole("textbox").count()) &&
@@ -86,12 +106,13 @@ try {
   selectedUrl.searchParams.set("parcelId", confirmedParcelId);
   selectedUrl.searchParams.set("propertyReference", confirmedPropertyReference);
   selectedUrl.searchParams.set("source", "browser-acceptance");
-  await page.goto(selectedUrl.toString(), { waitUntil: "networkidle", timeout: 60000 });
+  await page.goto(selectedUrl.toString(), { waitUntil: "domcontentloaded", timeout: 60000 });
 
   await page
     .getByRole("heading", { name: /You choose the property. We do the investigation./i })
     .waitFor({ state: "visible", timeout: 30000 });
 
+  await page.getByText(confirmedPropertyReference, { exact: true }).waitFor();
   const body = await page.locator("body").innerText();
   for (const requiredText of [
     "Done-for-You Property Investigation",
@@ -119,7 +140,9 @@ try {
     "Stripe handles payment only",
   ]) {
     if (!body.toLowerCase().includes(requiredText.toLowerCase())) {
-      throw new Error(`Done-for-you page is missing required scoped-product truth: ${requiredText}`);
+      throw new Error(
+        `Done-for-you page is missing required scoped-product truth: ${requiredText}`,
+      );
     }
   }
 
@@ -143,7 +166,9 @@ try {
   });
   await checkoutButton.waitFor({ state: "visible", timeout: 30000 });
   if (!(await checkoutButton.isDisabled())) {
-    throw new Error("Payment must remain disabled until the controlled emphasis and scope are complete.");
+    throw new Error(
+      "Payment must remain disabled until the controlled emphasis and scope are complete.",
+    );
   }
 
   await page.getByRole("button", { name: /^Overall Property Check/i }).click();
@@ -157,25 +182,32 @@ try {
   await scopeAcknowledgement.waitFor({ state: "visible", timeout: 30000 });
   await scopeAcknowledgement.check();
   if (await checkoutButton.isDisabled()) {
-    throw new Error("Confirmed parcel, Overall Property Check and scope acknowledgement should satisfy the payment gate.");
+    throw new Error(
+      "Confirmed parcel, Overall Property Check and scope acknowledgement should satisfy the payment gate.",
+    );
   }
 
   await page.getByRole("button", { name: /^Check My Intended Use/i }).click();
   if (!(await checkoutButton.isDisabled())) {
-    throw new Error("Intended-use payment must remain disabled until one supported intended use is selected.");
+    throw new Error(
+      "Intended-use payment must remain disabled until one supported intended use is selected.",
+    );
   }
 
   const secondDwelling = page.getByRole("button", { name: /^Add a second dwelling$/i });
   await secondDwelling.waitFor({ state: "visible", timeout: 30000 });
   await secondDwelling.click();
   if (await checkoutButton.isDisabled()) {
-    throw new Error("Confirmed parcel, supported intended use and acknowledgement should satisfy the payment gate.");
+    throw new Error(
+      "Confirmed parcel, supported intended use and acknowledgement should satisfy the payment gate.",
+    );
   }
 
   const doneForYouNav = page.getByRole("link", { name: /^Done for You$/i }).first();
   await doneForYouNav.waitFor({ state: "visible", timeout: 30000 });
 
-  await page.goto(`${baseUrl}/how-it-works`, { waitUntil: "networkidle", timeout: 60000 });
+  await page.goto(`${baseUrl}/how-it-works`, { waitUntil: "domcontentloaded", timeout: 60000 });
+  await page.getByText("Standard investigation we work through", { exact: true }).waitFor();
   const howItWorksBody = await page.locator("body").innerText();
   for (const requiredText of [
     "Done-for-You Property Investigation · R999",

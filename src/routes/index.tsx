@@ -126,6 +126,7 @@ function AtlasHome() {
 function AccountPropertyMap({ userId }: { userId: string | null }) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
+  const [desktopSearchOpen, setDesktopSearchOpen] = useState(false);
   const [selectedOfficial, setSelectedOfficial] = useState<OfficialFeatureSelection | null>(null);
   useEffect(() => {
     const restore = () => {
@@ -373,7 +374,7 @@ function AccountPropertyMap({ userId }: { userId: string | null }) {
   const showHomeMapStatusCard = false;
 
   return (
-    <div className="relative h-screen w-full overflow-hidden bg-background">
+    <div className="relative h-dvh w-full overflow-hidden bg-background max-md:[&_.mapboxgl-ctrl-bottom-right]:bottom-24! max-md:[&_.mapboxgl-ctrl-bottom-left]:bottom-24!">
       <WorkspaceCloudSync
         userId={userId}
         parcelId={selectedOfficial ? buildSelectedOfficialParcelId(selectedOfficial) : selectedId}
@@ -415,6 +416,7 @@ function AccountPropertyMap({ userId }: { userId: string | null }) {
             onOpenOfficialWorkbench={handleOfficialSearchPick}
             onHighlightOfficialFromSearch={handleOfficialSearchHighlight}
             onLocateAddress={setAddressSearchTarget}
+            onOpenChange={setDesktopSearchOpen}
           />
         }
         mobileCenter={
@@ -430,7 +432,13 @@ function AccountPropertyMap({ userId }: { userId: string | null }) {
       />
 
       {!selected && !selectedOfficial && !showOfficialReopenCard && !searchHighlight && (
-        <div className={cn("pointer-events-auto absolute bottom-[calc(env(safe-area-inset-bottom)+0.75rem)] left-1/2 z-20 w-[min(94vw,40rem)] -translate-x-1/2 rounded-2xl border border-white/20 bg-card/95 p-3 shadow-panel backdrop-blur md:bottom-8 md:rounded-3xl md:p-4", mobileSearchOpen && "hidden md:block")}>
+        <div
+          className={cn(
+            "pointer-events-auto absolute bottom-[calc(env(safe-area-inset-bottom)+0.75rem)] left-1/2 z-20 w-[min(94vw,40rem)] -translate-x-1/2 rounded-2xl border border-white/20 bg-card/95 p-3 shadow-panel backdrop-blur md:bottom-8 md:rounded-3xl md:p-4",
+            mobileSearchOpen && "max-md:hidden",
+            desktopSearchOpen && "md:[@media(max-height:500px)]:hidden",
+          )}
+        >
           <div className="hidden text-center md:block">
             <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
               Choose how you want to investigate
