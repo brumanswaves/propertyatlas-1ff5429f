@@ -434,12 +434,12 @@ function AccountPropertyMap({ userId }: { userId: string | null }) {
       {!selected && !selectedOfficial && !showOfficialReopenCard && !searchHighlight && (
         <div
           className={cn(
-            "pointer-events-auto absolute bottom-[calc(env(safe-area-inset-bottom)+0.75rem)] left-1/2 z-20 w-[min(94vw,40rem)] -translate-x-1/2 rounded-2xl border border-white/20 bg-card/95 p-3 shadow-panel backdrop-blur md:bottom-8 md:rounded-3xl md:p-4",
+            "pointer-events-auto absolute bottom-[calc(env(safe-area-inset-bottom)+0.75rem)] left-1/2 z-20 w-[min(94vw,40rem)] -translate-x-1/2 rounded-2xl border border-white/20 bg-card/95 p-3 shadow-panel backdrop-blur md:bottom-8 md:rounded-3xl md:p-4 md:[@media(max-height:500px)]:bottom-3 md:[@media(max-height:500px)]:p-3",
             mobileSearchOpen && "max-md:hidden",
             desktopSearchOpen && "md:[@media(max-height:500px)]:hidden",
           )}
         >
-          <div className="hidden text-center md:block">
+          <div className="hidden text-center md:[@media(min-height:501px)]:block">
             <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
               Choose how you want to investigate
             </div>
@@ -447,7 +447,7 @@ function AccountPropertyMap({ userId }: { userId: string | null }) {
               Do it yourself, or let Easy Erf do the investigation for you.
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-2 md:mt-4">
+          <div className="grid grid-cols-2 gap-2 md:[@media(min-height:501px)]:mt-4">
             <button
               type="button"
               onClick={() => window.dispatchEvent(new Event("easy-erf:start-self-review"))}
@@ -543,7 +543,7 @@ function AccountPropertyMap({ userId }: { userId: string | null }) {
         officialStatus.csg.state !== "loading" &&
         officialStatus.kouga.state !== "loading" &&
         officialStatus.csg.count === 0 && (
-          <div className="pointer-events-auto absolute left-1/2 top-[13.5rem] z-20 w-[min(92vw,42rem)] -translate-x-1/2 rounded-2xl border border-border bg-card/95 p-4 text-center shadow-panel backdrop-blur">
+          <div className="pointer-events-auto absolute left-1/2 top-[13.5rem] z-20 w-[min(92vw,42rem)] [@media(max-height:500px)]:top-[9.5rem] [@media(max-height:500px)]:max-h-[calc(100dvh-16rem)] [@media(max-height:500px)]:overflow-y-auto -translate-x-1/2 rounded-2xl border border-border bg-card/95 p-4 text-center shadow-panel backdrop-blur">
             <p className="text-sm font-semibold text-foreground">
               Official parcel data is temporarily unavailable. Try again or open source maps.
             </p>

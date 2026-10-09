@@ -531,14 +531,16 @@ export function SearchBar({
               <button
                 type="button"
                 onClick={() => chooseLane("address")}
-                className="flex min-h-16 items-center gap-3 rounded-xl border border-[#FF6A00]/20 bg-[#fff8ec] p-3 text-left transition hover:border-[#FF6A00]/45 hover:bg-[#fff3df] sm:[@media(min-height:501px)]:block sm:rounded-2xl sm:p-4"
+                className="flex min-h-16 items-center gap-3 rounded-xl border border-[#FF6A00]/20 bg-[#fff8ec] p-3 text-left transition hover:border-[#FF6A00]/45 hover:bg-[#fff3df] sm:[@media(min-height:501px)]:block sm:rounded-2xl sm:[@media(min-height:501px)]:p-4"
               >
                 <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#FF6A00]/12 text-[#9A4A09]">
                   <MapPin className="h-4 w-4" />
                 </span>
                 <div className="min-w-0">
-                  <div className="text-sm font-bold text-[#0D1B2A] sm:mt-3">Address Search</div>
-                  <p className="mt-0.5 text-xs leading-4 text-[#0D1B2A]/64 sm:mt-1 sm:leading-5">
+                  <div className="text-sm font-bold text-[#0D1B2A] sm:[@media(min-height:501px)]:mt-3">
+                    Address Search
+                  </div>
+                  <p className="mt-0.5 text-xs leading-4 text-[#0D1B2A]/64 sm:[@media(min-height:501px)]:mt-1 sm:[@media(min-height:501px)]:leading-5">
                     Search by street address or place name.
                   </p>
                 </div>
@@ -546,14 +548,16 @@ export function SearchBar({
               <button
                 type="button"
                 onClick={() => chooseLane("erf")}
-                className="flex min-h-16 items-center gap-3 rounded-xl border border-[#0D1B2A]/10 bg-[#fbf8f1] p-3 text-left transition hover:border-[#0D1B2A]/25 hover:bg-[#f8f3ea] sm:[@media(min-height:501px)]:block sm:rounded-2xl sm:p-4"
+                className="flex min-h-16 items-center gap-3 rounded-xl border border-[#0D1B2A]/10 bg-[#fbf8f1] p-3 text-left transition hover:border-[#0D1B2A]/25 hover:bg-[#f8f3ea] sm:[@media(min-height:501px)]:block sm:rounded-2xl sm:[@media(min-height:501px)]:p-4"
               >
                 <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#0D1B2A]/8 text-[#0D1B2A]">
                   <LocateFixed className="h-4 w-4" />
                 </span>
                 <div className="min-w-0">
-                  <div className="text-sm font-bold text-[#0D1B2A] sm:mt-3">Erf Search</div>
-                  <p className="mt-0.5 text-xs leading-4 text-[#0D1B2A]/64 sm:mt-1 sm:leading-5">
+                  <div className="text-sm font-bold text-[#0D1B2A] sm:[@media(min-height:501px)]:mt-3">
+                    Erf Search
+                  </div>
+                  <p className="mt-0.5 text-xs leading-4 text-[#0D1B2A]/64 sm:[@media(min-height:501px)]:mt-1 sm:[@media(min-height:501px)]:leading-5">
                     Search by Deeds Office, township, erf number, portion, LPI, or parcel key.
                   </p>
                 </div>
