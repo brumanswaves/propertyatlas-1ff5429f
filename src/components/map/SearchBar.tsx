@@ -31,6 +31,7 @@ interface Props {
   onOpenOfficialWorkbench?: (result: PropertySearchResult) => void;
   onHighlightOfficialFromSearch?: (result: PropertySearchResult) => void;
   onLocateAddress?: (target: AddressMapTarget) => void;
+  onOpenChange?: (open: boolean) => void;
 }
 
 export interface AddressMapTarget {
@@ -176,8 +177,12 @@ export function SearchBar({
   onOpenOfficialWorkbench,
   onHighlightOfficialFromSearch,
   onLocateAddress,
+  onOpenChange,
 }: Props) {
   const [open, setOpen] = useState(false);
+  useEffect(() => {
+    onOpenChange?.(open);
+  }, [open, onOpenChange]);
   const [lane, setLane] = useState<SearchLane | null>(null);
   const [addressQuery, setAddressQuery] = useState("");
   const [erfQueryText, setErfQueryText] = useState("");
@@ -512,34 +517,34 @@ export function SearchBar({
       </div>
 
       {open && (
-        <div className="absolute left-0 right-0 top-full z-[90] mt-2 max-h-[min(74vh,34rem)] overflow-y-auto rounded-2xl border border-[#0D1B2A]/10 bg-white shadow-[0_24px_70px_-30px_rgba(13,27,42,0.36)]">
+        <div className="absolute left-0 right-0 top-full z-[90] mt-2 max-h-[min(44dvh,22rem)] overscroll-contain overflow-y-auto rounded-2xl border md:max-h-[min(74vh,34rem)] border-[#0D1B2A]/10 bg-white shadow-[0_24px_70px_-30px_rgba(13,27,42,0.36)]">
           {!lane && (
-            <div className="grid gap-3 p-3 sm:grid-cols-2">
+            <div className="grid gap-2 p-2 sm:grid-cols-2 sm:gap-3 sm:p-3">
               <button
                 type="button"
                 onClick={() => chooseLane("address")}
-                className="rounded-2xl border border-[#FF6A00]/20 bg-[#fff8ec] p-4 text-left transition hover:border-[#FF6A00]/45 hover:bg-[#fff3df]"
+                className="flex min-h-16 items-center gap-3 rounded-xl border border-[#FF6A00]/20 bg-[#fff8ec] p-3 text-left transition hover:border-[#FF6A00]/45 hover:bg-[#fff3df] sm:block sm:rounded-2xl sm:p-4"
               >
-                <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#FF6A00]/12 text-[#9A4A09]">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#FF6A00]/12 text-[#9A4A09]">
                   <MapPin className="h-4 w-4" />
                 </span>
-                <div className="mt-3 text-sm font-bold text-[#0D1B2A]">Address Search</div>
-                <p className="mt-1 text-xs leading-5 text-[#0D1B2A]/64">
+                <div className="min-w-0"><div className="text-sm font-bold text-[#0D1B2A] sm:mt-3">Address Search</div>
+                <p className="mt-0.5 text-xs leading-4 text-[#0D1B2A]/64 sm:mt-1 sm:leading-5">
                   Search by street address or place name.
-                </p>
+                </p></div>
               </button>
               <button
                 type="button"
                 onClick={() => chooseLane("erf")}
-                className="rounded-2xl border border-[#0D1B2A]/10 bg-[#fbf8f1] p-4 text-left transition hover:border-[#0D1B2A]/25 hover:bg-[#f8f3ea]"
+                className="flex min-h-16 items-center gap-3 rounded-xl border border-[#0D1B2A]/10 bg-[#fbf8f1] p-3 text-left transition hover:border-[#0D1B2A]/25 hover:bg-[#f8f3ea] sm:block sm:rounded-2xl sm:p-4"
               >
-                <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#0D1B2A]/8 text-[#0D1B2A]">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#0D1B2A]/8 text-[#0D1B2A]">
                   <LocateFixed className="h-4 w-4" />
                 </span>
-                <div className="mt-3 text-sm font-bold text-[#0D1B2A]">Erf Search</div>
-                <p className="mt-1 text-xs leading-5 text-[#0D1B2A]/64">
+                <div className="min-w-0"><div className="text-sm font-bold text-[#0D1B2A] sm:mt-3">Erf Search</div>
+                <p className="mt-0.5 text-xs leading-4 text-[#0D1B2A]/64 sm:mt-1 sm:leading-5">
                   Search by Deeds Office, township, erf number, portion, LPI, or parcel key.
-                </p>
+                </p></div>
               </button>
             </div>
           )}
