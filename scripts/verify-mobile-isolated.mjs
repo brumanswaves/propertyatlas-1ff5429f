@@ -4,6 +4,7 @@ import { spawn, execFileSync } from "node:child_process";
 import { mkdir, mkdtemp, writeFile, symlink, rm, readFile } from "node:fs/promises";
 import { resolve, join } from "node:path";
 import { tmpdir } from "node:os";
+import { fileURLToPath } from "node:url";
 
 const repository = process.cwd();
 const head = execFileSync("git", ["rev-parse", "HEAD"], { encoding: "utf8" }).trim();
@@ -25,6 +26,17 @@ for (const file of execFileSync("git", ["ls-files"], { encoding: "utf8" }).trim(
     await rm(join(root, file), { force: true });
 }
 await symlink(resolve("node_modules"), join(root, "node_modules"), "dir");
+if (process.env.EASY_ERF_GUIDED_SYNTHETIC === "1") {
+  // Existing scripts import Playwright by package name. Resolve the same pinned tool.
+  const modulePath = process.env.EASY_ERF_PLAYWRIGHT_MODULE;
+  assert.ok(modulePath, "Pinned Playwright module required for Guided checks");
+  const playwrightDirectory = resolve(fileURLToPath(new URL(".", `file://${modulePath}`)));
+  try {
+    await symlink(playwrightDirectory, resolve("node_modules/playwright"), "dir");
+  } catch (error) {
+    if (error.code !== "EEXIST") throw error;
+  }
+}
 const egress = join(output, "server-egress.jsonl");
 await writeFile(egress, "");
 const env = {
@@ -134,6 +146,26 @@ try {
   };
   await run("browser", ["scripts/verify-mobile-search.mjs"], browserEnv);
   await run("commercial", ["scripts/verify-commercial-browser.mjs"], browserEnv);
+  if (process.env.EASY_ERF_GUIDED_SYNTHETIC === "1") {
+    for (const script of [
+      "verify-erf1570-first-read",
+      "verify-erf1570-guided-start",
+      "verify-guided-cloud-persistence",
+      "verify-selected-parcel-boundary",
+      "verify-sg-receipt-preview",
+    ]) {
+      await run(script, [
+        "--import", join(root, "scripts/verify-mobile-network.mjs"),
+        "--import", join(root, "scripts/verify-guided-browser-isolation.mjs"),
+        `scripts/${script}.mjs`,
+      ], {
+        ...browserEnv,
+        EASY_ERF_BROWSER_ARTIFACTS: join(output, script),
+        EASY_ERF_SG_ARTIFACTS: join(output, script),
+      }, repository);
+    }
+  }
+  await run("whitespace", ["-e", "require('node:child_process').execFileSync('git', ['diff', '--check', 'origin/main', 'HEAD'], {stdio:'inherit'})"], {}, repository);
   assert.equal(
     await readFile(egress, "utf8"),
     "",

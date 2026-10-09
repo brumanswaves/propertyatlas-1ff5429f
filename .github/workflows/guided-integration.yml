@@ -5,6 +5,12 @@ on:
     branches:
       - main
   workflow_dispatch:
+    inputs:
+      approved_live_oauth:
+        description: Separately approved live OAuth/browser probe; enter APPROVED_LIVE_OAUTH
+        required: false
+        default: ''
+        type: string
 
 permissions:
   contents: read
@@ -15,6 +21,45 @@ concurrency:
 
 jobs:
   verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Export exact requested source
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REQUESTED_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          [[ "${REQUESTED_HEAD}" =~ ^[a-f0-9]{40}$ ]]
+          git init .
+          git remote add origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git fetch --no-tags --depth=1 origin "${REQUESTED_HEAD}"
+          git checkout --detach FETCH_HEAD
+          test "$(git rev-parse HEAD)" = "${REQUESTED_HEAD}"
+      - name: Install tooling without application credentials
+        run: |
+          npm install --prefix "${RUNNER_TEMP}/mobile-npm" --ignore-scripts --package-lock=false --no-audit --no-fund npm@11.13.0
+          node "${RUNNER_TEMP}/mobile-npm/node_modules/npm/bin/npm-cli.js" ci --ignore-scripts --no-audit --no-fund
+          npm install --prefix "${RUNNER_TEMP}/mobile-browser" --ignore-scripts --package-lock=false --no-audit --no-fund playwright@1.55.0
+          node "${RUNNER_TEMP}/mobile-browser/node_modules/playwright/cli.js" install --with-deps chromium
+      - name: Verify exact source with isolated server and synthetic browser transport
+        env:
+          EASY_ERF_GUIDED_SYNTHETIC: "1"
+          EASY_ERF_EXPECTED_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+          EASY_ERF_PLAYWRIGHT_MODULE: ${{ runner.temp }}/mobile-browser/node_modules/playwright/index.mjs
+        run: |
+          export EASY_ERF_BROWSER_EXECUTABLE="$(node --input-type=module -e 'const {chromium}=await import(process.env.EASY_ERF_PLAYWRIGHT_MODULE); console.log(chromium.executablePath())')"
+          node scripts/verify-mobile-isolated.mjs
+      - name: Preserve local proof receipt
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: guided-isolated-proof-${{ github.event.pull_request.head.sha || github.sha }}
+          path: artifacts/pr205-repair
+          if-no-files-found: warn
+          retention-days: 14
+
+  live-acceptance:
+    if: github.event_name == 'workflow_dispatch' && inputs.approved_live_oauth == 'APPROVED_LIVE_OAUTH'
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
