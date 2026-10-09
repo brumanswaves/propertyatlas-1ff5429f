@@ -125,6 +125,7 @@ function AtlasHome() {
 
 function AccountPropertyMap({ userId }: { userId: string | null }) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const [selectedOfficial, setSelectedOfficial] = useState<OfficialFeatureSelection | null>(null);
   useEffect(() => {
     const restore = () => {
@@ -422,14 +423,15 @@ function AccountPropertyMap({ userId }: { userId: string | null }) {
             onOpenOfficialWorkbench={handleOfficialSearchPick}
             onHighlightOfficialFromSearch={handleOfficialSearchHighlight}
             onLocateAddress={setAddressSearchTarget}
+            onOpenChange={setMobileSearchOpen}
           />
         }
         subtitle={headerSubtitle}
       />
 
       {!selected && !selectedOfficial && !showOfficialReopenCard && !searchHighlight && (
-        <div className="pointer-events-auto absolute bottom-20 left-1/2 z-20 w-[min(94vw,40rem)] -translate-x-1/2 rounded-3xl border border-white/20 bg-card/95 p-4 shadow-panel backdrop-blur md:bottom-8">
-          <div className="text-center">
+        <div className={cn("pointer-events-auto absolute bottom-[calc(env(safe-area-inset-bottom)+0.75rem)] left-1/2 z-20 w-[min(94vw,40rem)] -translate-x-1/2 rounded-2xl border border-white/20 bg-card/95 p-3 shadow-panel backdrop-blur md:bottom-8 md:rounded-3xl md:p-4", mobileSearchOpen && "hidden md:block")}>
+          <div className="hidden text-center md:block">
             <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
               Choose how you want to investigate
             </div>
@@ -437,17 +439,17 @@ function AccountPropertyMap({ userId }: { userId: string | null }) {
               Do it yourself, or let Easy Erf do the investigation for you.
             </div>
           </div>
-          <div className="mt-4 grid gap-2 sm:grid-cols-2">
+          <div className="grid grid-cols-2 gap-2 md:mt-4">
             <button
               type="button"
               onClick={() => window.dispatchEvent(new Event("easy-erf:start-self-review"))}
-              className="inline-flex min-h-11 items-center justify-center rounded-full border border-border bg-background px-5 py-2.5 text-sm font-semibold text-foreground shadow-soft hover:bg-muted"
+              className="inline-flex min-h-11 items-center justify-center rounded-full border border-border bg-background px-2 py-2.5 text-xs font-semibold text-foreground shadow-soft hover:bg-muted sm:px-5 sm:text-sm"
             >
               Investigate it myself
             </button>
             <Link
               to="/pricing"
-              className="inline-flex min-h-11 items-center justify-center rounded-full bg-accent px-5 py-2.5 text-sm font-semibold text-accent-foreground shadow-soft hover:bg-accent/90"
+              className="inline-flex min-h-11 items-center justify-center rounded-full bg-accent px-2 py-2.5 text-xs font-semibold text-accent-foreground shadow-soft hover:bg-accent/90 sm:px-5 sm:text-sm"
             >
               Do it for me · R999
             </Link>
