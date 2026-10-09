@@ -579,6 +579,23 @@ try {
     timeout: 30_000,
   });
 
+  assert.equal(
+    await reopenPage.evaluate((key) => localStorage.getItem(key), scopedWorkspaceKey),
+    null,
+    "Dashboard metadata must not hydrate full workspace before property selection",
+  );
+
+  await firstVisible(
+    reopenPage,
+    reopenPage.locator("button").filter({ hasText: /^Continue Investigation$/i }),
+    "Continue Investigation button",
+  ).then((button) => button.click());
+  await firstVisible(
+    reopenPage,
+    reopenPage.locator("h4").filter({ hasText: /^Add the address people use to find this erf$/i }),
+    "reopened Guided working-address heading",
+  );
+
   const hydrationDeadline = Date.now() + 20_000;
   let hydratedWorkspace = null;
   while (Date.now() < hydrationDeadline) {
@@ -602,16 +619,6 @@ try {
     throw new Error(`Fresh browser context did not hydrate durable Guided progress.`);
   }
 
-  await firstVisible(
-    reopenPage,
-    reopenPage.locator("button").filter({ hasText: /^Continue Investigation$/i }),
-    "Continue Investigation button",
-  ).then((button) => button.click());
-  await firstVisible(
-    reopenPage,
-    reopenPage.locator("h4").filter({ hasText: /^Add the address people use to find this erf$/i }),
-    "reopened Guided working-address heading",
-  );
 
   for (const label of (process.env.EASY_ERF_SELF_SERVICE_ONLY ? [] : ["Confirm", "Address", "SG", "Title", "Zoning", "Checks", "Market", "Strategy", "Potential", "Report"])) {
     const navigator = reopenPage.getByRole("region", { name: "Guided investigation steps" });
