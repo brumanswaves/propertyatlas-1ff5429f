@@ -30,7 +30,8 @@ jobs:
           test "$(git rev-parse HEAD)" = "${REQUESTED_HEAD}"
       - name: Install tooling without application credentials
         run: |
-          npm install --ignore-scripts --package-lock=false --no-audit --no-fund
+          npm install --prefix "${RUNNER_TEMP}/mobile-npm" --ignore-scripts --package-lock=false --no-audit --no-fund npm@11.13.0
+          node "${RUNNER_TEMP}/mobile-npm/node_modules/npm/bin/npm-cli.js" ci --ignore-scripts --no-audit --no-fund
           npm install --prefix "${RUNNER_TEMP}/mobile-browser" --ignore-scripts --package-lock=false --no-audit --no-fund playwright@1.55.0
           node "${RUNNER_TEMP}/mobile-browser/node_modules/playwright/cli.js" install --with-deps chromium
       - name: Verify exact source with isolated server and synthetic browser transport
