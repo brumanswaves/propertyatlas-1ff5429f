@@ -82,6 +82,15 @@ const result = {
   externalPassthrough: 0,
   providerCalls: 0,
 };
+// Match the dashboard's scalar PostgREST contract; retain the durable SG row.
+function selectFixtureRow(row, select) {
+  if (!select.trim() || select.trim() === "*") return row;
+  return Object.fromEntries(select.split(",").map((field) => {
+    const [alias, expression] = field.trim().split(":");
+    const value = (expression ?? alias).split(/->>?/).reduce((current, key) => current?.[key], row);
+    return [alias, value ?? null];
+  }));
+}
 const browser = await chromium.launch({
   headless: true,
   channel: process.env.EASY_ERF_BROWSER_CHANNEL || undefined,
@@ -145,9 +154,11 @@ try {
         if (path.startsWith("/rest/v1/")) {
           if (path.endsWith("/saved_properties") && method === "GET") {
             const select = url.searchParams.get("select") || "*";
-            return json(
-              req.headers().accept?.includes("object+json") || select === "id" ? row : [row],
-            );
+            const selected = selectFixtureRow(row, select);
+            return route.fulfill({
+              headers: { "content-range": "0-0/1", "access-control-expose-headers": "content-range" },
+              json: req.headers().accept?.includes("object+json") || select === "id" ? selected : [selected],
+            });
           }
           if (path.endsWith("/patch_saved_property_user_data_if_unchanged")) {
             const payload = req.postDataJSON();
@@ -169,6 +180,8 @@ try {
             const category = url.searchParams.get("asset_category");
             return json(assets.filter((a) => !category || category.includes(a.asset_category)));
           }
+          if (path.endsWith("/property_notes") && (method === "GET" || method === "HEAD"))
+            return route.fulfill({ headers: { "content-range": "*/0", "access-control-expose-headers": "content-range" }, json: [] });
           if (method === "GET" || method === "HEAD")
             return json(req.headers().accept?.includes("object+json") ? null : []);
         }
@@ -232,7 +245,7 @@ try {
     currentPage = page;
     console.log(`Starting ${screen.width} dashboard`);
     await page.goto(`${base}/dashboard`);
-    await page.getByRole("button", { name: "Start Investigation", exact: true }).click();
+    await page.getByRole("button", { name: "Start / Continue Investigation", exact: true }).click();
     await page.getByRole("button", { name: /Yes, this is the correct erf/ }).click();
     await page
       .getByLabel("Street address or location label", { exact: true })

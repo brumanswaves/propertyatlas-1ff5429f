@@ -456,8 +456,8 @@ try {
   });
   await firstVisible(
     firstPage,
-    firstPage.locator("button").filter({ hasText: /^Start Investigation$/i }),
-    "Start Investigation button",
+    firstPage.locator("button").filter({ hasText: /^Start \/ Continue Investigation$/i }),
+    "Start / Continue Investigation button",
   ).then((button) => button.click());
 
   await firstVisible(
