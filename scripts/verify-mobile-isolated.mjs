@@ -49,13 +49,13 @@ const receipt = {
   limitations:
     "Synthetic local Chromium only; no real providers, private documents, production acceptance or Safari proof",
 };
-async function run(name, args, extra = {}) {
+async function run(name, args, extra = {}, cwd = root) {
   const started = new Date().toISOString();
   const log = join(output, `${name}.log`);
   const { createWriteStream } = await import("node:fs");
   const stream = createWriteStream(log);
   const child = spawn(process.execPath, args, {
-    cwd: root,
+    cwd,
     env: { ...env, ...extra },
     stdio: ["ignore", "pipe", "pipe"],
   });
@@ -86,7 +86,23 @@ try {
     "src/components/map/SearchBar.tsx",
   ]);
   await run("build", ["node_modules/vite/bin/vite.js", "build"]);
-  await run("regression", ["node_modules/vitest/vitest.mjs", "run"]);
+  // These two existing suites inspect tracked .env text only. Run unchanged assertions
+  // in the clean source checkout under the same egress guard, never in the browser export.
+  const configTests = [
+    "src/lib/auth/__tests__/canonicalBackendOwnership.test.ts",
+    "src/lib/auth/__tests__/founderBackendCutoverConfig.test.ts",
+  ];
+  await run(
+    "static-config",
+    ["node_modules/vitest/vitest.mjs", "run", ...configTests],
+    {},
+    repository,
+  );
+  await run("regression", [
+    "node_modules/vitest/vitest.mjs",
+    "run",
+    ...configTests.flatMap((file) => ["--exclude", file]),
+  ]);
   const { createWriteStream } = await import("node:fs");
   const serverLog = createWriteStream(join(output, "server.log"));
   server = spawn(process.execPath, [".output/server/index.mjs"], {

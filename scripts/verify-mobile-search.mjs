@@ -213,15 +213,17 @@ try {
     const beforePan = await settleMarker(page, marker);
     const canvas = page.locator(".mapboxgl-canvas");
     const canvasBox = await canvas.boundingBox();
-    const panStart = { x: width * 0.65, y: height * 0.48 };
-    assert.ok(
-      canvasBox &&
-        (await canvas.evaluate(
-          (element, point) => document.elementFromPoint(point.x, point.y) === element,
-          panStart,
-        )),
-      "Pan starts on uncovered map canvas",
-    );
+    const panStart = await canvas.evaluate((element) => {
+      const { width, height } = element.getBoundingClientRect();
+      for (const yFraction of [0.7, 0.8, 0.6, 0.45]) {
+        for (const xFraction of [0.5, 0.2, 0.8, 0.93]) {
+          const point = { x: width * xFraction, y: height * yFraction };
+          if (document.elementFromPoint(point.x, point.y) === element) return point;
+        }
+      }
+      return null;
+    });
+    assert.ok(canvasBox && panStart, "Pan starts on uncovered map canvas");
     await page.mouse.move(panStart.x, panStart.y);
     await page.mouse.down();
     await page.mouse.move(panStart.x + 50, panStart.y + 25, { steps: 10 });
