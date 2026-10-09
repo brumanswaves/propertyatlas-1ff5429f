@@ -1,7 +1,7 @@
 // Non-deploying exact-commit proof. Exported source excludes dotenv and all inherited credentials.
 import assert from "node:assert/strict";
 import { spawn, execFileSync } from "node:child_process";
-import { mkdir, mkdtemp, writeFile, symlink, rm, readFile } from "node:fs/promises";
+import { mkdir, mkdtemp, writeFile, symlink, rm, readFile, cp } from "node:fs/promises";
 import { resolve, join } from "node:path";
 import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
@@ -148,6 +148,7 @@ try {
   await run("commercial", ["scripts/verify-commercial-browser.mjs"], browserEnv);
   if (process.env.EASY_ERF_GUIDED_SYNTHETIC === "1") {
     for (const script of [
+      "verify-auth-screen-local",
       "verify-erf1570-first-read",
       "verify-erf1570-guided-start",
       "verify-guided-cloud-persistence",
@@ -162,9 +163,17 @@ try {
         ...browserEnv,
         EASY_ERF_BROWSER_ARTIFACTS: join(output, script),
         EASY_ERF_SG_ARTIFACTS: join(output, script),
-      }, repository);
+        EASY_ERF_GUEST_NO_WRITES: ["verify-erf1570-first-read", "verify-erf1570-guided-start"].includes(script) ? "1" : "0",
+        // Scripts' identity receipts refer to the verified source checkout. Runtime
+        // scripts/fixtures still execute from the immutable dotenv-free export.
+        GIT_DIR: execFileSync("git", ["rev-parse", "--absolute-git-dir"], { encoding: "utf8" }).trim(),
+        GIT_WORK_TREE: repository,
+      });
     }
+    await cp(join(root, "artifacts/selected-parcel-boundary"), join(output, "verify-selected-parcel-boundary"), { recursive: true });
   }
+  assert.equal(execFileSync("git", ["rev-parse", "HEAD"], { encoding: "utf8" }).trim(), head);
+  assert.equal(execFileSync("git", ["status", "--porcelain", "--untracked-files=no"], { encoding: "utf8" }), "", "Source identity unchanged during verification");
   await run("whitespace", ["-e", "require('node:child_process').execFileSync('git', ['diff', '--check', 'origin/main', 'HEAD'], {stdio:'inherit'})"], {}, repository);
   assert.equal(
     await readFile(egress, "utf8"),

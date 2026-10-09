@@ -16,9 +16,21 @@ const fixture = { type: "FeatureCollection", features: [{
 const launch = chromium.launch.bind(chromium);
 chromium.launch = async (options = {}) => {
   const browser = await launch({ ...options, channel: undefined, executablePath: process.env.EASY_ERF_BROWSER_EXECUTABLE });
+  const writes = [];
+  const close = browser.close.bind(browser);
+  browser.close = async () => {
+    await close();
+    assert.deepEqual(writes, [], "Guest journey must not attempt persistence writes to the synthetic backend");
+  };
   const newContext = browser.newContext.bind(browser);
   browser.newContext = async (options = {}) => {
     const context = await newContext({ ...options, serviceWorkers: "block" });
+    if (process.env.EASY_ERF_GUEST_NO_WRITES === "1") context.on("request", (request) => {
+      const url = new URL(request.url());
+      if (["POST", "PUT", "PATCH", "DELETE"].includes(request.method()) &&
+          ["/rest/v1/", "/storage/v1/", "/functions/v1/"].some((prefix) => url.pathname.startsWith(prefix)) &&
+          !url.pathname.endsWith("/functions/v1/arcgis-public-proxy")) writes.push(`${request.method()} ${url.pathname}`);
+    });
     // Installed before pages exist. Script-specific synthetic routes override this fallback.
     await context.route("**/*", async (route) => {
       const request = route.request();
