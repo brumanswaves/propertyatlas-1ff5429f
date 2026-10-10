@@ -162,6 +162,7 @@ let rejectNextStrategySave = false;
 let simulateOffline = false;
 let holdNextStrategySave = null;
 let holdNextFullRead = null;
+const offlineReadContexts = new Set();
 let rejectNextZoningSave = false;
 let holdNextZoningSave = null;
 let zoningAssets = [];
@@ -217,7 +218,7 @@ async function installSyntheticSignedInSupabase(context, name) {
   });
 
   await context.route("**/rest/v1/**", async (route) => {
-    if (simulateOffline) return route.abort("internetdisconnected");
+    if (simulateOffline || offlineReadContexts.has(name)) return route.abort("internetdisconnected");
     const request = route.request();
     const url = new URL(request.url());
     const method = request.method().toUpperCase();
@@ -234,7 +235,10 @@ async function installSyntheticSignedInSupabase(context, name) {
         if (select.replaceAll(" ", "") === "id,user_id,parcel_id,user_data" && holdNextFullRead) {
           const held = holdNextFullRead; holdNextFullRead = null;
           held.started(); await held.release;
-          if (held.offline) return route.abort("internetdisconnected");
+          if (held.offline) {
+            offlineReadContexts.add(name); // Include SDK read retries in this synthetic outage.
+            return route.abort("internetdisconnected");
+          }
         }
         const objectResponse = isObjectResponse(request) || select.trim() === "id";
 
