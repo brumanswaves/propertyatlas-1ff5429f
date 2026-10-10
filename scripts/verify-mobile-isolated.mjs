@@ -18,6 +18,7 @@ assert.equal(
 const output = resolve(process.env.EASY_ERF_BROWSER_ARTIFACTS || "artifacts/pr205-repair");
 await mkdir(output, { recursive: true });
 const root = await mkdtemp(join(tmpdir(), "easyerf-mobile-"));
+const browserTmp = await mkdtemp(join(tmpdir(), "erf-browser-"));
 execFileSync("git", ["archive", "--format=tar", "-o", join(root, "source.tar"), head]);
 execFileSync("tar", ["-xf", join(root, "source.tar"), "-C", root]);
 await rm(join(root, "source.tar"));
@@ -144,7 +145,7 @@ try {
   assert.ok(listening, "Local server listening");
   const browserEnv = {
     // Trace HTML must stay outside the Vite source tree to avoid HMR reloads.
-    TMPDIR: output,
+    TMPDIR: browserTmp,
     NODE_OPTIONS: "",
     EASY_ERF_BROWSER_BASE_URL: "http://127.0.0.1:4197",
     EASY_ERF_BROWSER_ARTIFACTS: join(output, "browser"),
@@ -216,6 +217,8 @@ try {
     await new Promise((resolve) => server.once("exit", resolve));
   }
   receipt.serverStopped = !server || server.exitCode !== null || server.signalCode !== null;
+  await rm(browserTmp, { recursive: true, force: true });
+  receipt.browserTemporaryDirectoryRemoved = true;
   await writeFile(join(output, "commands.json"), JSON.stringify(receipt, null, 2));
 }
 console.log(`Exact-head local proof: ${head}; evidence: ${output}`);
