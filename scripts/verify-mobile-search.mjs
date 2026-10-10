@@ -31,14 +31,23 @@ async function hitArea(locator, label, minimum = 44) {
 async function checkActions(page) {
   const self = page.getByRole("button", { name: "Investigate it myself", exact: true });
   const paid = page.getByRole("link", { name: "Do it for me · R999", exact: true });
-  const selfBounds = await hitArea(self, "Self investigation");
+  let selfBounds = await hitArea(self, "Self investigation");
   await hitArea(paid, "Paid investigation");
   assert.equal(await paid.getAttribute("href"), "/pricing");
   const banner = page
     .getByText("Official parcel data is temporarily unavailable. Try again or open source maps.")
     .locator("..");
-  await banner.waitFor();
-  const bannerBounds = await banner.boundingBox();
+  // A resize refreshes map data and may replace this conditional banner between
+  // visibility and geometry reads. Reacquire within the original wait budget.
+  const deadline = Date.now() + 30000;
+  let bannerBounds;
+  do {
+    await banner.waitFor({ state: "visible", timeout: Math.max(1, deadline - Date.now()) });
+    selfBounds = await hitArea(self, "Self investigation");
+    await hitArea(paid, "Paid investigation");
+    bannerBounds = await banner.boundingBox({ timeout: Math.max(1, deadline - Date.now()) });
+  } while (!bannerBounds && Date.now() < deadline);
+  assert.ok(bannerBounds, "Unavailable-data banner has visible geometry");
   const overlap =
     Math.min(bannerBounds.x + bannerBounds.width, selfBounds.x + selfBounds.width) >
       Math.max(bannerBounds.x, selfBounds.x) &&

@@ -224,7 +224,8 @@ try {
     await page.getByRole("region", { name: "Customer investigation workspace", exact: true }).waitFor();
     assert.equal(new URL(page.url()).hash, `#order-${A}`);
     await page.goto(`${base}/investigator#order-${B}`);
-    await page.getByRole("heading", { name: "The requested order was not found", exact: true }).waitFor();
+    await page.getByRole("heading", { name: "Could not load this investigation", exact: true }).waitFor();
+    await page.getByRole("button", { name: "Retry this investigation", exact: true }).waitFor();
     assert.equal(await page.getByRole("region", { name: "Customer investigation workspace" }).count(), 0);
     await page.goto(`${base}/admin/users`);
     await page.getByRole("heading", { name: "Founder Operations access required", exact: true }).waitFor();
