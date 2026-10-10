@@ -471,6 +471,13 @@ try {
     firstPage.locator("h4").filter({ hasText: /^Confirm this is the correct erf$/i }),
     "Guided property confirmation heading",
   );
+  // A saved-but-unstarted row has no projection or inputs. Explicit entry itself
+  // must still persist its legitimate start, before any identity confirmation.
+  const startedCall = await waitForRpc((call) => call.parcelId === PARCEL_ID &&
+    Boolean(call.patch?.easyErfInvestigation?.investigation?.startedAt), firstPage);
+  assert.equal(startedCall.patch.easyErfInvestigation.identityStatus, "none");
+  assert.equal(startedCall.patch.easyErfInvestigation.investigation.currentStepId, null);
+  selfServiceChecks.push({ savedUnstartedExplicitEntryPersisted: true, identityNotConfirmed: true });
   await firstVisible(
     firstPage,
     firstPage.locator("button").filter({ hasText: /Yes, this is the correct erf/i }),

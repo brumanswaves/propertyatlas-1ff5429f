@@ -278,7 +278,8 @@ export function WorkspaceCloudSync({
         buildEnvelopeInputs: readStoredBuildEnvelopeInputs(parcelId, userId),
       };
       const remote = { easyErfInvestigation: projection, buildEnvelopeInputs: cloudInputs };
-      const automaticEntry = entryRead.unchangedAutomaticEntry();
+      // A legitimate first start has no saved investigation to restore.
+      const automaticEntry = Boolean(projection) && entryRead.unchangedAutomaticEntry();
       const decision = investigationSyncDecision(
         local,
         remote,
