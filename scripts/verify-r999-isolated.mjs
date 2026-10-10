@@ -74,7 +74,7 @@ const receipt = {
     ? { reusedHead: baseReceipt.head, receipt: baseReceiptPath, identicalFrontendInputs: true }
     : { exactHead: head, reused: false },
   limitations:
-    "Synthetic SDK/Auth/database/payment boundaries; reused identical production frontend. No live acceptance, Deno SDK integration, SQL/RLS, actual payments or protected documents.",
+    "Synthetic SDK/Auth/database/payment boundaries; exact-head frontend build or verified identical-input reuse (see build field). No live acceptance, Deno SDK integration, SQL/RLS, actual payments or protected documents.",
 };
 async function run(name, args) {
   const stream = createWriteStream(join(output, `${name}.log`));
@@ -109,6 +109,7 @@ try {
     "--rule",
     "prettier/prettier: off",
     "src/routes/orders.tsx",
+    "src/routes/pricing.tsx",
     "supabase/functions/easy-erf-r999-checkout/index.ts",
     "src/lib/payments/__tests__/humanReviewFunnelUxGuardrails.test.ts",
     "src/lib/payments/__tests__/easyErfFulfillmentUiGuardrails.test.ts",

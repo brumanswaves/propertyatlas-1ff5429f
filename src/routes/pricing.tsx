@@ -190,7 +190,14 @@ function PricingPage() {
         (checkoutMode !== "test" && checkoutMode !== "live") ||
         typeof data?.url !== "string"
       ) {
-        throw new Error(data?.error ?? error?.message ?? "Secure checkout is unavailable.");
+        // FunctionsHttpError keeps the server's useful explanation in its response.
+        // Do not replace it with the SDK's generic non-2xx status message.
+        let checkoutMessage = typeof data?.error === "string" ? data.error : null;
+        if (!checkoutMessage && error?.context instanceof Response) {
+          const failure = await error.context.json().catch(() => null);
+          if (typeof failure?.error === "string") checkoutMessage = failure.error;
+        }
+        throw new Error(checkoutMessage ?? "Secure checkout is unavailable. Please try again.");
       }
 
       const url = new URL(data.url);
