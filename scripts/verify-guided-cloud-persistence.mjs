@@ -142,6 +142,17 @@ const durableRow = {
   },
 };
 
+// Match PostgREST select projections while preserving the durable canonical row.
+function selectFixtureRow(select) {
+  if (!select.trim() || select.trim() === "*") return durableRow;
+  return Object.fromEntries(select.split(",").map((field) => {
+    const [alias, expression] = field.trim().split(":");
+    const path = (expression ?? alias).split(/->>?/);
+    const value = path.reduce((current, key) => current?.[key], durableRow);
+    return [alias, value ?? null];
+  }));
+}
+
 const rpcCalls = [];
 const unexpectedMutations = [];
 const routeErrors = [];
@@ -150,6 +161,8 @@ const selfServiceChecks = [];
 let rejectNextStrategySave = false;
 let simulateOffline = false;
 let holdNextStrategySave = null;
+let holdNextFullRead = null;
+const offlineReadContexts = new Set();
 let rejectNextZoningSave = false;
 let holdNextZoningSave = null;
 let zoningAssets = [];
@@ -205,7 +218,7 @@ async function installSyntheticSignedInSupabase(context, name) {
   });
 
   await context.route("**/rest/v1/**", async (route) => {
-    if (simulateOffline) return route.abort("internetdisconnected");
+    if (simulateOffline || offlineReadContexts.has(name)) return route.abort("internetdisconnected");
     const request = route.request();
     const url = new URL(request.url());
     const method = request.method().toUpperCase();
@@ -219,6 +232,14 @@ async function installSyntheticSignedInSupabase(context, name) {
         const parcelMatches = !requestedParcelId || requestedParcelId === PARCEL_ID;
         const found = userMatches && parcelMatches;
         const select = url.searchParams.get("select") || "";
+        if (select.replaceAll(" ", "") === "id,user_id,parcel_id,user_data" && holdNextFullRead) {
+          const held = holdNextFullRead; holdNextFullRead = null;
+          held.started(); await held.release;
+          if (held.offline) {
+            offlineReadContexts.add(name); // Include SDK read retries in this synthetic outage.
+            return route.abort("internetdisconnected");
+          }
+        }
         const objectResponse = isObjectResponse(request) || select.trim() === "id";
 
         if (objectResponse) {
@@ -226,7 +247,7 @@ async function installSyntheticSignedInSupabase(context, name) {
             status: found ? 200 : 406,
             contentType: "application/json",
             body: found
-              ? JSON.stringify(Object.fromEntries(select.split(",").map((key) => [key, durableRow[key]])))
+              ? JSON.stringify(selectFixtureRow(select))
               : JSON.stringify({
                   code: "PGRST116",
                   details: "The result contains 0 rows",
@@ -240,8 +261,8 @@ async function installSyntheticSignedInSupabase(context, name) {
         await route.fulfill({
           status: 200,
           contentType: "application/json",
-          headers: { "content-range": found ? "0-0/1" : "*/0" },
-          body: JSON.stringify(found ? [durableRow] : []),
+          headers: { "content-range": found ? "0-0/1" : "*/0", "access-control-expose-headers": "content-range" },
+          body: JSON.stringify(found ? [selectFixtureRow(select)] : []),
         });
         return;
       }
@@ -307,6 +328,14 @@ async function installSyntheticSignedInSupabase(context, name) {
           body: JSON.stringify(durableRow.user_data),
         });
         return;
+      }
+
+      if (url.pathname === "/rest/v1/property_notes" && (method === "GET" || method === "HEAD")) {
+        return route.fulfill({
+          status: 200,
+          headers: { "content-range": "*/0", "access-control-expose-headers": "content-range" },
+          json: [],
+        });
       }
 
       if (method === "GET" || method === "HEAD") {
@@ -437,8 +466,8 @@ try {
   });
   await firstVisible(
     firstPage,
-    firstPage.locator("button").filter({ hasText: /^Start Investigation$/i }),
-    "Start Investigation button",
+    firstPage.locator("button").filter({ hasText: /^Start \/ Continue Investigation$/i }),
+    "Start / Continue Investigation button",
   ).then((button) => button.click());
 
   await firstVisible(
@@ -446,6 +475,13 @@ try {
     firstPage.locator("h4").filter({ hasText: /^Confirm this is the correct erf$/i }),
     "Guided property confirmation heading",
   );
+  // A saved-but-unstarted row has no projection or inputs. Explicit entry itself
+  // must still persist its legitimate start, before any identity confirmation.
+  const startedCall = await waitForRpc((call) => call.parcelId === PARCEL_ID &&
+    Boolean(call.patch?.easyErfInvestigation?.investigation?.startedAt), firstPage);
+  assert.equal(startedCall.patch.easyErfInvestigation.identityStatus, "none");
+  assert.equal(startedCall.patch.easyErfInvestigation.investigation.currentStepId, null);
+  selfServiceChecks.push({ savedUnstartedExplicitEntryPersisted: true, identityNotConfirmed: true });
   await firstVisible(
     firstPage,
     firstPage.locator("button").filter({ hasText: /Yes, this is the correct erf/i }),
@@ -560,6 +596,31 @@ try {
     timeout: 30_000,
   });
 
+  assert.equal(
+    await reopenPage.evaluate((key) => localStorage.getItem(key), scopedWorkspaceKey),
+    null,
+    "Dashboard metadata must not hydrate full workspace before property selection",
+  );
+
+  let releaseFreshRead, signalFreshRead;
+  const freshReadStarted = new Promise((resolve) => { signalFreshRead = resolve; });
+  holdNextFullRead = { started: signalFreshRead, release: new Promise((resolve) => { releaseFreshRead = resolve; }) };
+  const writesBeforeFreshRead = rpcCalls.length;
+  await firstVisible(
+    reopenPage,
+    reopenPage.locator("button").filter({ hasText: /^Continue Investigation$/i }),
+    "Continue Investigation button",
+  ).then((button) => button.click());
+  await freshReadStarted;
+  await reopenPage.waitForFunction((key) => localStorage.getItem(key) !== null, scopedWorkspaceKey);
+  await reopenPage.waitForTimeout(1200); // Exercise a timer already waiting on hydration.
+  releaseFreshRead();
+  await firstVisible(
+    reopenPage,
+    reopenPage.locator("h4").filter({ hasText: /^Add the address people use to find this erf$/i }),
+    "reopened Guided working-address heading",
+  );
+
   const hydrationDeadline = Date.now() + 20_000;
   let hydratedWorkspace = null;
   while (Date.now() < hydrationDeadline) {
@@ -583,16 +644,10 @@ try {
     throw new Error(`Fresh browser context did not hydrate durable Guided progress.`);
   }
 
-  await firstVisible(
-    reopenPage,
-    reopenPage.locator("button").filter({ hasText: /^Continue Investigation$/i }),
-    "Continue Investigation button",
-  ).then((button) => button.click());
-  await firstVisible(
-    reopenPage,
-    reopenPage.locator("h4").filter({ hasText: /^Add the address people use to find this erf$/i }),
-    "reopened Guided working-address heading",
-  );
+
+  await reopenPage.waitForTimeout(1100);
+  assert.equal(rpcCalls.length, writesBeforeFreshRead, "Delayed fresh restoration must not replay an automatic entry save");
+  selfServiceChecks.push({ delayedFreshReadRestored: true, noRestorationWrite: true });
 
   for (const label of (process.env.EASY_ERF_SELF_SERVICE_ONLY ? [] : ["Confirm", "Address", "SG", "Title", "Zoning", "Checks", "Market", "Strategy", "Potential", "Report"])) {
     const navigator = reopenPage.getByRole("region", { name: "Guided investigation steps" });
@@ -826,7 +881,7 @@ try {
     if (width === 1440) {
       await reopenPage.getByText("Review inputs and technical details", { exact: true }).click();
       await reopenPage.getByRole("checkbox", { name: /The outline shown matches the erf/ }).check();
-      await reopenPage.getByRole("button", { name: /^Boundary 1(?: ·|$)/ }).click();
+      await reopenPage.getByLabel("Select street-facing boundaries", { exact: true }).getByRole("button", { name: /^Boundary 1(?: ·|$)/ }).click();
       await reopenPage.getByRole("button", { name: "Accept this Site Potential", exact: true }).click();
       await reopenPage.screenshot({ path: resolve(artifacts, `self-service-envelope-accepted-${width}.png`) });
       await reopenPage.getByRole("button", { name: "Save this envelope and continue", exact: true }).click();
@@ -925,8 +980,16 @@ try {
     const { error } = await supabase.auth.setSession({ access_token, refresh_token });
     if (error) throw new Error("Synthetic account switch failed");
   }, { access_token: otherToken, refresh_token: "other-fixture-refresh" });
-  await reopenPage.getByRole("heading", { name: "Confirm this is the correct erf", exact: true }).waitFor();
+  // AccountPropertyMap deliberately remounts unselected for another account.
+  await reopenPage.getByRole("button", { name: "Back to full map", exact: true }).waitFor({ state: "hidden" });
+  assert.equal(await reopenPage.getByRole("heading", { name: "Erf 1570", exact: true }).count(), 0);
   assert.equal(await reopenPage.getByRole("button", { name: "Download preserved drafts", exact: true }).count(), 0);
+  const otherScope = await reopenPage.evaluate(async ({ parcelId, userId }) => {
+    const { browserScopedParcelKey } = await import("/src/lib/workbench/erfWorkspaceState.ts");
+    return ["workspace", "investigation-conflict-backups"].map((kind) =>
+      localStorage.getItem(browserScopedParcelKey(kind, parcelId, userId)));
+  }, { parcelId: PARCEL_ID, userId: otherUser.id });
+  assert.deepEqual(otherScope, [null, null], "New account must not inherit a workspace or preserved drafts");
   await reopenPage.evaluate(async ({ access_token, refresh_token }) => {
     const { supabase } = await import("/src/integrations/supabase/client.ts");
     const { error } = await supabase.auth.setSession({ access_token, refresh_token });
@@ -949,6 +1012,90 @@ try {
   assert.ok(mapChecks.every((state) => state.requests >= 2 && state.staleSettled),
     "Both browser contexts must exercise late pre-pan parcel responses");
   await reopenPage.screenshot({ path: resolve(artifacts, "reopened-add-address.png"), fullPage: true });
+  // Exercise the actual restoration effect while its first full read is pending.
+  // These controls use separate fresh browsers and never alter the original journey.
+  for (const control of ["edit", "account-switch", "parcel-switch", "leave-property", "offline"]) {
+    const context = await browser.newContext({ viewport: { width: 1440, height: 1000 } });
+    await installSyntheticSignedInSupabase(context, `held-read-${control}`);
+    const page = await context.newPage();
+    attachPageDiagnostics(page);
+    await page.goto(`${baseUrl}/dashboard`, { waitUntil: "domcontentloaded" });
+    const continueButton = page.getByRole("button", { name: "Continue Investigation", exact: true }).first();
+    await continueButton.waitFor();
+    let release, started;
+    const pending = new Promise((resolve) => { started = resolve; });
+    holdNextFullRead = { started, release: new Promise((resolve) => { release = resolve; }), offline: control === "offline" };
+    const writesBefore = rpcCalls.length;
+    await continueButton.click();
+    await pending;
+    await page.waitForFunction((key) => localStorage.getItem(key) !== null, scopedWorkspaceKey);
+    if (control === "edit") {
+      await page.evaluate(async ({ parcelId, userId }) => {
+        const { updateErfWorkspaceState } = await import("/src/lib/workbench/erfWorkspaceState.ts");
+        updateErfWorkspaceState(parcelId, { identityStatus: "looks_correct" }, undefined, userId);
+        const { writeStoredBuildEnvelopeInputs } = await import("/src/lib/sitePotential/buildEnvelopeStore.ts");
+        writeStoredBuildEnvelopeInputs(parcelId, { maxCoveragePercent: 37 }, userId);
+      }, { parcelId: PARCEL_ID, userId: USER_ID });
+    } else if (control === "account-switch") {
+      await page.evaluate(async ({ access_token, refresh_token }) => {
+        const { supabase } = await import("/src/integrations/supabase/client.ts");
+        const { error } = await supabase.auth.setSession({ access_token, refresh_token });
+        if (error) throw error;
+      }, { access_token: otherToken, refresh_token: "held-read-other-fixture" });
+      await page.getByRole("button", { name: "Back to full map", exact: true }).waitFor({ state: "hidden" });
+      assert.equal(await page.getByRole("heading", { name: "Erf 1570", exact: true }).count(), 0);
+    } else if (control === "parcel-switch") {
+      await page.getByRole("button", { name: "Back to full map", exact: true }).first().click();
+      await page.getByRole("button", { name: /Search address, erf number, suburb, LPI, or parcel key/i }).click();
+      await page.getByRole("button", { name: /^Erf Search/ }).click();
+      await page.getByPlaceholder("LPI or parcel key", { exact: true }).fill(secondParcel.lpi);
+      await page.getByRole("button", { name: "Search official parcel identity", exact: true }).click();
+      await page.getByRole("button", { name: new RegExp(`^Open Erf ${secondParcel.erf}`) }).click();
+      // An explicit Guided URL retains its entry tab for a newly chosen parcel.
+      await page.getByRole("heading", { name: `Erf ${secondParcel.erf}`, exact: true }).first().waitFor();
+      assert.equal(await page.evaluate(() => history.state.easyErfJourney.parcelId), secondParcel.id);
+    } else if (control === "leave-property") {
+      await page.goto(`${baseUrl}/dashboard`, { waitUntil: "domcontentloaded" });
+      await page.getByRole("heading", { name: /My Investigations/i }).waitFor();
+    }
+    await page.waitForTimeout(1200); // Allow the new scope's legitimate reads/notices to settle.
+    const draftBefore = await page.evaluate((key) => localStorage.getItem(key), scopedWorkspaceKey);
+    const scopedStores = () => page.evaluate(() => Object.keys(localStorage)
+      .filter((key) => key.startsWith("easyerf.user."))
+      .sort().map((key) => [key, localStorage.getItem(key)]));
+    const switched = control === "account-switch" || control === "parcel-switch";
+    const storesBefore = switched ? await scopedStores() : null;
+    const noticeText = () => page.getByRole("region", { name: "This property's save status" }).allTextContents();
+    const noticeBefore = switched ? await noticeText() : null;
+    release();
+    if (control === "edit" || control === "offline") {
+      await page.getByRole("region", { name: "This property's save status" }).getByRole("alert").waitFor();
+    }
+    await page.waitForTimeout(1200);
+    assert.equal(await page.evaluate((key) => localStorage.getItem(key), scopedWorkspaceKey), draftBefore,
+      `${control}: pending saved response must preserve the original local draft`);
+    assert.equal(rpcCalls.length, writesBefore, `${control}: initial read must not authorize a save`);
+    if (switched) {
+      assert.deepEqual(await scopedStores(), storesBefore, `${control}: old read must not change either scope's stores/baselines`);
+      assert.deepEqual(await noticeText(), noticeBefore, `${control}: old read must not change the active scope's notice`);
+    }
+    if (control === "parcel-switch") {
+      assert.equal(await page.evaluate(() => history.state.easyErfJourney.parcelId), secondParcel.id);
+    }
+    if (control === "edit") {
+      const inputs = await page.evaluate(async ({ parcelId, userId }) => {
+        const { readStoredBuildEnvelopeInputs } = await import("/src/lib/sitePotential/buildEnvelopeStore.ts");
+        return readStoredBuildEnvelopeInputs(parcelId, userId);
+      }, { parcelId: PARCEL_ID, userId: USER_ID });
+      assert.equal(inputs.maxCoveragePercent, 37, "User input made during the read must survive");
+    }
+    await page.screenshot({ path: resolve(artifacts, `held-read-${control}.png`), fullPage: true });
+    selfServiceChecks.push({ pendingInitialRead: control, localDraftRetained: true, noSave: true,
+      scopeStoresAndNoticeRetained: switched ? true : "not switched" });
+  }
+  assert.deepEqual(routeErrors, [], "Pending-read controls must have no fixture route errors");
+  assert.deepEqual(unexpectedMutations, [], "Pending-read controls must have no unexpected mutations");
+  assert.deepEqual(pageErrors, [], "Pending-read controls must have no browser errors");
   acceptancePassed = true;
 
   console.log(

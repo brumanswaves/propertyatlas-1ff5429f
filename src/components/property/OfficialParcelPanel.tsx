@@ -1,4 +1,5 @@
 import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { recordAutomaticWorkspaceEntry } from "@/lib/workbench/workspaceEntryHydration";
 import {
   AREA_UNAVAILABLE_LABEL,
   canonicalAreaM2,
@@ -1825,7 +1826,8 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
       now,
     });
     const nextWorkspace = entry.persistencePatch
-      ? updateErfWorkspaceState(parcelId, entry.persistencePatch, undefined, userId)
+      ? recordAutomaticWorkspaceEntry(window.localStorage, parcelId, userId,
+          () => updateErfWorkspaceState(parcelId, entry.persistencePatch!, undefined, userId))
       : entry.displayWorkspace;
     setWorkspaceState(nextWorkspace);
     setIdentityStatus(workspaceStatusToIdentity(nextWorkspace.identityStatus));

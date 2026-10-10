@@ -94,7 +94,7 @@ try {
     await page.getByRole("button", { name: "Site Potential", exact: true }).first().click();
     await page.getByText("Review inputs and technical details", { exact: true }).click();
     await page.getByRole("checkbox", { name: /The outline shown matches the erf/ }).waitFor();
-    await page.getByRole("button", { name: /^Boundary 1(?: ·|$)/ }).waitFor();
+    await page.getByLabel("Select street-facing boundaries", { exact: true }).getByRole("button", { name: /^Boundary 1(?: ·|$)/ }).waitFor();
     assert.equal(await page.getByText(/No parcel boundary geometry/i).count(), 0);
     await page.screenshot({ path: resolve(output, "hydrated-site-potential-" + width + ".png") });
 

@@ -14,6 +14,7 @@ import {
 } from "@/lib/workbench/savedPropertyUserData";
 import {
   investigationSyncDecision,
+  sameInvestigationContent,
   preserveInvestigationConflict,
   readInvestigationSyncBaseline,
   writeInvestigationSyncBaseline,
@@ -29,6 +30,7 @@ import { readSitePotentialProject } from "@/lib/sitePotential/sitePotentialServi
 import { buildCanonicalSitePotentialSnapshot } from "@/lib/sitePotential/sitePotentialSnapshotSync";
 import { PLANNING_ZONE_UPDATED_EVENT } from "@/lib/planning/storedPlanningZone";
 import { setInvestigationSaveNotice } from "./InvestigationSaveNotice";
+import { beginWorkspaceEntryRead } from "@/lib/workbench/workspaceEntryHydration";
 import {
   BUILD_ENVELOPE_INPUTS_UPDATED_EVENT,
   parseStoredBuildEnvelopeInputs,
@@ -77,6 +79,7 @@ export function WorkspaceCloudSync({
       return;
     if (parcelId.endsWith(":unknown") || parcelId.startsWith("official:point:")) return;
     const request = new AbortController();
+    const entryRead = beginWorkspaceEntryRead(window.localStorage, parcelId, userId);
     const cancelledError = () =>
       new Error(
         "The selected investigation changed before save confirmation. Your draft is retained; an already dispatched save may still finish.",
@@ -89,6 +92,7 @@ export function WorkspaceCloudSync({
     let recheck: ReturnType<typeof setTimeout> | undefined;
     let attempts = 0;
     let restoring = false;
+    let automaticEntryRestored = false;
     let conflicted = false;
     let loadingSaved = false;
     let loadedUserData: Record<string, unknown> | undefined;
@@ -274,11 +278,13 @@ export function WorkspaceCloudSync({
         buildEnvelopeInputs: readStoredBuildEnvelopeInputs(parcelId, userId),
       };
       const remote = { easyErfInvestigation: projection, buildEnvelopeInputs: cloudInputs };
+      // A legitimate first start has no saved investigation to restore.
+      const automaticEntry = Boolean(projection) && entryRead.unchangedAutomaticEntry();
       const decision = investigationSyncDecision(
         local,
         remote,
         readInvestigationSyncBaseline(window.localStorage, parcelId, userId),
-        hasBrowser,
+        hasBrowser && !automaticEntry,
       );
       if (
         (projection || (cloudInputs && Object.keys(cloudInputs).length > 0)) &&
@@ -294,29 +300,40 @@ export function WorkspaceCloudSync({
         return;
       }
       if (decision === "hydrate") {
-        restore(() => {
-          if (cloudInputs) writeStoredBuildEnvelopeInputs(parcelId, cloudInputs, userId);
-          if (projection) {
-            workspace = mergeSavedInvestigationProjectionIntoWorkspace(
-              parcelId,
-              workspace,
-              projection,
-            );
-            writeErfWorkspaceState(parcelId, workspace, window.localStorage, userId);
-            window.dispatchEvent(
-              new CustomEvent(PLANNING_ZONE_UPDATED_EVENT, {
-                detail: { parcelId, userId, zoneCode: workspace.planning.zoneCode },
-              }),
-            );
-          }
-        });
+        // No await between this final provenance check and synchronous restoration.
+        if (automaticEntry && !entryRead.unchangedAutomaticEntry())
+          throw new Error("Your browser draft changed while the saved investigation loaded.");
+        if (automaticEntry) clearTimeout(timer);
+        // Re-entering an already acknowledged identical investigation is a read.
+        // Preserve its local timestamps; dirty/unsaved drafts still receive acknowledgement.
+        if (!hasBrowser || automaticEntry || !workspace.saved || workspace.dirty ||
+            !sameInvestigationContent(local, remote)) {
+          restore(() => {
+            if (cloudInputs) writeStoredBuildEnvelopeInputs(parcelId, cloudInputs, userId);
+            if (projection) {
+              workspace = mergeSavedInvestigationProjectionIntoWorkspace(
+                parcelId,
+                workspace,
+                projection,
+              );
+              writeErfWorkspaceState(parcelId, workspace, window.localStorage, userId);
+              window.dispatchEvent(
+                new CustomEvent(PLANNING_ZONE_UPDATED_EVENT, {
+                  detail: { parcelId, userId, zoneCode: workspace.planning.zoneCode },
+                }),
+              );
+            }
+          });
+        }
         writeInvestigationSyncBaseline(window.localStorage, parcelId, userId, remote);
+        automaticEntryRestored = automaticEntry;
       }
+      entryRead.finish();
       const reconciled = await reconcile();
       assertCurrent();
       scheduleRecheck(reconciled);
     };
-    const hydration = hydrate().catch((failure) => {
+    const hydration = hydrate().finally(() => entryRead.finish()).catch((failure) => {
       loadFailure = failure;
       notice(failure, true);
     });
@@ -381,9 +398,13 @@ export function WorkspaceCloudSync({
         restoring
       )
         return;
+      const automaticWrite = entryRead.automaticWriteInProgress();
       clearTimeout(timer);
       timer = setTimeout(() => {
-        void hydration.then(queueSync).catch(() => {});
+        void hydration.then(() => {
+          if (automaticWrite && automaticEntryRestored) return;
+          return queueSync();
+        }).catch(() => {});
       }, CLOUD_SYNC_DEBOUNCE_MS);
     };
     const onFlush = (event: Event) => {
@@ -414,6 +435,7 @@ export function WorkspaceCloudSync({
       // A dispatched request may already have committed. Cancellation only
       // prevents further work and stale local acknowledgement/baseline writes.
       request.abort();
+      entryRead.finish();
       clearTimeout(timer);
       clearTimeout(recheck);
       pendingFlushes.forEach((detail) => detail.reject(cancelledError()));
