@@ -995,7 +995,7 @@ try {
   await reopenPage.screenshot({ path: resolve(artifacts, "reopened-add-address.png"), fullPage: true });
   // Exercise the actual restoration effect while its first full read is pending.
   // These controls use separate fresh browsers and never alter the original journey.
-  for (const control of ["edit", "account-switch", "leave-property", "offline"]) {
+  for (const control of ["edit", "account-switch", "parcel-switch", "leave-property", "offline"]) {
     const context = await browser.newContext({ viewport: { width: 1440, height: 1000 } });
     await installSyntheticSignedInSupabase(context, `held-read-${control}`);
     const page = await context.newPage();
@@ -1015,7 +1015,7 @@ try {
         const { updateErfWorkspaceState } = await import("/src/lib/workbench/erfWorkspaceState.ts");
         updateErfWorkspaceState(parcelId, { identityStatus: "looks_correct" }, undefined, userId);
         const { writeStoredBuildEnvelopeInputs } = await import("/src/lib/sitePotential/buildEnvelopeStore.ts");
-        writeStoredBuildEnvelopeInputs(parcelId, { coveragePct: 37 }, userId);
+        writeStoredBuildEnvelopeInputs(parcelId, { maxCoveragePercent: 37 }, userId);
       }, { parcelId: PARCEL_ID, userId: USER_ID });
     } else if (control === "account-switch") {
       await page.evaluate(async ({ access_token, refresh_token }) => {
@@ -1024,12 +1024,28 @@ try {
         if (error) throw error;
       }, { access_token: otherToken, refresh_token: "held-read-other-fixture" });
       await page.getByRole("heading", { name: "Confirm this is the correct erf", exact: true }).waitFor();
+    } else if (control === "parcel-switch") {
+      await page.getByRole("button", { name: "Back to full map", exact: true }).first().click();
+      await page.getByRole("button", { name: /Search address, erf number, suburb, LPI, or parcel key/i }).click();
+      await page.getByRole("button", { name: /^Erf Search/ }).click();
+      await page.getByPlaceholder("LPI or parcel key", { exact: true }).fill(secondParcel.lpi);
+      await page.getByRole("button", { name: "Search official parcel identity", exact: true }).click();
+      await page.getByRole("button", { name: new RegExp(`^Open Erf ${secondParcel.erf}`) }).click();
+      await page.getByText("Property first read", { exact: true }).waitFor();
+      assert.equal(await page.evaluate(() => history.state.easyErfJourney.parcelId), secondParcel.id);
     } else if (control === "leave-property") {
       await page.goto(`${baseUrl}/dashboard`, { waitUntil: "domcontentloaded" });
       await page.getByRole("heading", { name: /My Investigations/i }).waitFor();
     }
+    await page.waitForTimeout(1200); // Allow the new scope's legitimate reads/notices to settle.
     const draftBefore = await page.evaluate((key) => localStorage.getItem(key), scopedWorkspaceKey);
-    await page.waitForTimeout(1200);
+    const scopedStores = () => page.evaluate(() => Object.keys(localStorage)
+      .filter((key) => key.startsWith("easyerf.user."))
+      .sort().map((key) => [key, localStorage.getItem(key)]));
+    const switched = control === "account-switch" || control === "parcel-switch";
+    const storesBefore = switched ? await scopedStores() : null;
+    const noticeText = () => page.getByRole("region", { name: "This property's save status" }).allTextContents();
+    const noticeBefore = switched ? await noticeText() : null;
     release();
     if (control === "edit" || control === "offline") {
       await page.getByRole("region", { name: "This property's save status" }).getByRole("alert").waitFor();
@@ -1038,15 +1054,27 @@ try {
     assert.equal(await page.evaluate((key) => localStorage.getItem(key), scopedWorkspaceKey), draftBefore,
       `${control}: pending saved response must preserve the original local draft`);
     assert.equal(rpcCalls.length, writesBefore, `${control}: initial read must not authorize a save`);
+    if (switched) {
+      assert.deepEqual(await scopedStores(), storesBefore, `${control}: old read must not change either scope's stores/baselines`);
+      assert.deepEqual(await noticeText(), noticeBefore, `${control}: old read must not change the active scope's notice`);
+    }
+    if (control === "parcel-switch") {
+      assert.equal(await page.evaluate(() => history.state.easyErfJourney.parcelId), secondParcel.id);
+    }
     if (control === "edit") {
       const inputs = await page.evaluate(async ({ parcelId, userId }) => {
         const { readStoredBuildEnvelopeInputs } = await import("/src/lib/sitePotential/buildEnvelopeStore.ts");
         return readStoredBuildEnvelopeInputs(parcelId, userId);
       }, { parcelId: PARCEL_ID, userId: USER_ID });
-      assert.equal(inputs.coveragePct, 37, "User input made during the read must survive");
+      assert.equal(inputs.maxCoveragePercent, 37, "User input made during the read must survive");
     }
-    selfServiceChecks.push({ pendingInitialRead: control, localDraftRetained: true, noSave: true });
+    await page.screenshot({ path: resolve(artifacts, `held-read-${control}.png`), fullPage: true });
+    selfServiceChecks.push({ pendingInitialRead: control, localDraftRetained: true, noSave: true,
+      scopeStoresAndNoticeRetained: switched ? true : "not switched" });
   }
+  assert.deepEqual(routeErrors, [], "Pending-read controls must have no fixture route errors");
+  assert.deepEqual(unexpectedMutations, [], "Pending-read controls must have no unexpected mutations");
+  assert.deepEqual(pageErrors, [], "Pending-read controls must have no browser errors");
   acceptancePassed = true;
 
   console.log(

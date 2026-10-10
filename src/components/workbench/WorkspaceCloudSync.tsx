@@ -14,6 +14,7 @@ import {
 } from "@/lib/workbench/savedPropertyUserData";
 import {
   investigationSyncDecision,
+  sameInvestigationContent,
   preserveInvestigationConflict,
   readInvestigationSyncBaseline,
   writeInvestigationSyncBaseline,
@@ -302,22 +303,27 @@ export function WorkspaceCloudSync({
         if (automaticEntry && !entryRead.unchangedAutomaticEntry())
           throw new Error("Your browser draft changed while the saved investigation loaded.");
         if (automaticEntry) clearTimeout(timer);
-        restore(() => {
-          if (cloudInputs) writeStoredBuildEnvelopeInputs(parcelId, cloudInputs, userId);
-          if (projection) {
-            workspace = mergeSavedInvestigationProjectionIntoWorkspace(
-              parcelId,
-              workspace,
-              projection,
-            );
-            writeErfWorkspaceState(parcelId, workspace, window.localStorage, userId);
-            window.dispatchEvent(
-              new CustomEvent(PLANNING_ZONE_UPDATED_EVENT, {
-                detail: { parcelId, userId, zoneCode: workspace.planning.zoneCode },
-              }),
-            );
-          }
-        });
+        // Re-entering an already acknowledged identical investigation is a read.
+        // Preserve its local timestamps; dirty/unsaved drafts still receive acknowledgement.
+        if (!hasBrowser || automaticEntry || !workspace.saved || workspace.dirty ||
+            !sameInvestigationContent(local, remote)) {
+          restore(() => {
+            if (cloudInputs) writeStoredBuildEnvelopeInputs(parcelId, cloudInputs, userId);
+            if (projection) {
+              workspace = mergeSavedInvestigationProjectionIntoWorkspace(
+                parcelId,
+                workspace,
+                projection,
+              );
+              writeErfWorkspaceState(parcelId, workspace, window.localStorage, userId);
+              window.dispatchEvent(
+                new CustomEvent(PLANNING_ZONE_UPDATED_EVENT, {
+                  detail: { parcelId, userId, zoneCode: workspace.planning.zoneCode },
+                }),
+              );
+            }
+          });
+        }
         writeInvestigationSyncBaseline(window.localStorage, parcelId, userId, remote);
         automaticEntryRestored = automaticEntry;
       }
