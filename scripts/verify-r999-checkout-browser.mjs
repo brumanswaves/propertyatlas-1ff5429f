@@ -80,7 +80,7 @@ await context.route("**/*", async (route) => {
         "22222222-2222-4222-8222-222222222222",
       );
       return route.fulfill({
-        contentType: "text/html",
+        contentType: "text/html; charset=utf-8",
         body: "<h1>Synthetic payment boundary — no payment performed</h1>",
       });
     }
@@ -94,6 +94,8 @@ await context.route("**/*", async (route) => {
       ["GET", "HEAD"].includes(request.method())
     )
       return route.continue();
+    if (url.hostname === "fonts.googleapis.com" || url.hostname === "fonts.gstatic.com")
+      return route.abort();
     assert.fail(
       `Unexpected provider/action request: ${request.method()} ${url.origin}${url.pathname}`,
     );

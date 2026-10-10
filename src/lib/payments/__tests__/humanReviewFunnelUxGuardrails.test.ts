@@ -51,15 +51,17 @@ describe("Done-for-You customer funnel", () => {
     expect(howItWorks).not.toContain("development concepts");
   });
 
-  it("makes the Stripe return state explain that Easy Erf has taken over the investigation", () => {
+  it("explains the investigation lifecycle without treating a return URL as payment confirmation", () => {
     expect(orders).toContain('params.get("payment") === "received"');
-    expect(orders).toContain("Easy Erf has taken over the property investigation.");
-    expect(orders).toContain("Payment and parcel attached");
+    expect(orders).toContain("Check your payment and investigation status.");
+    expect(orders).toContain("Returning from checkout alone does not confirm a new payment.");
+    expect(orders).not.toContain("Payment returned successfully.");
+    expect(orders).not.toContain("Done. This paid investigation is tied to your account");
     expect(orders).toContain("Easy Erf works through the investigation");
     expect(orders).toContain("Human reviewer checks the file");
     expect(orders).toContain("Report appears here");
     expect(orders).toContain("about 3 business days");
-    expect(orders).toContain("You do not need to do anything now");
+    expect(orders).toContain("The investigation starts after payment is confirmed.");
   });
 
   it("keeps the included property-data-report promise provider-neutral and rights-aware", () => {

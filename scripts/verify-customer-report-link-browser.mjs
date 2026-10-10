@@ -40,6 +40,7 @@ const pageErrors = [];
 const settlements = [];
 let activeUser = user;
 let failRead = false;
+let noRows = false;
 let delayed = null;
 const requestScope = new WeakMap();
 const browser = await chromium.launch({ headless: true, channel: process.env.EASY_ERF_BROWSER_CHANNEL || undefined });
@@ -69,7 +70,7 @@ await context.route("**/*", async (route) => {
       requestScope.set(request, scope);
       requests.push(scope);
       if (failRead) return json({ message: "Synthetic unavailable read" }, 503);
-      const row = rows.find((entry) => entry.id === selected && entry.user_id === activeUser.id);
+      const row = noRows ? null : rows.find((entry) => entry.id === selected && entry.user_id === activeUser.id);
       const body = row ? [Object.fromEntries(columns.map((key) => [key, structuredClone(row[key] ?? null)]))] : [];
       if (delayed?.id === selected) {
         const pending = delayed;
@@ -161,6 +162,18 @@ try {
     }
     row.status = "ready";
     row.status_enum = "ready";
+  });
+  await check("payment return URL with no order cannot claim payment succeeded", async () => {
+    noRows = true;
+    await page.goto(`${baseUrl}/orders?report=${A}&payment=received`);
+    await unavailable();
+    await page.getByText("No recorded order is available yet.", { exact: false }).waitFor();
+    const body = await page.locator("body").innerText();
+    assert.ok(body.includes("Returning from checkout alone does not confirm a new payment."));
+    assert.ok(!body.includes("Payment returned successfully."));
+    assert.ok(!body.includes("Easy Erf has taken over the property investigation."));
+    assert.equal(await report().count(), 0);
+    noRows = false;
   });
   await check("invalid, empty and absent selected records never fall back to other reports", async () => {
     for (const id of ["partial", "", "77777777-7777-4777-8777-777777777777"]) {

@@ -18,7 +18,7 @@ const baseReceiptPath = resolve(process.env.EASY_ERF_BASE_BUILD_RECEIPT);
 const baseReceipt = JSON.parse(await readFile(baseReceiptPath, "utf8"));
 assert.equal(baseReceipt.result, "local checks passed");
 assert.ok(baseReceipt.commands.some((entry) => entry.name === "build" && entry.code === 0));
-assert.equal(
+const frontendUnchanged =
   git(
     "diff",
     "--name-only",
@@ -31,10 +31,7 @@ assert.equal(
     "package.json",
     "package-lock.json",
     "tsconfig.json",
-  ),
-  "",
-  "Reused frontend build must have identical tracked inputs",
-);
+  ) === "";
 const output = resolve(process.env.EASY_ERF_BROWSER_ARTIFACTS || "artifacts/r999-isolated");
 await mkdir(output, { recursive: true });
 const root = await mkdtemp(join(tmpdir(), "easyerf-r999-"));
@@ -49,6 +46,7 @@ await symlink(resolve("node_modules"), join(root, "node_modules"), "dir");
 const egress = join(output, "server-egress.jsonl");
 await writeFile(egress, "");
 const env = {
+  NITRO_PRESET: "node-server",
   PATH: process.env.PATH,
   HOME: root,
   TMPDIR: browserTmp,
@@ -72,7 +70,9 @@ const receipt = {
   head,
   tree: git("rev-parse", "HEAD^{tree}"),
   commands: [],
-  reusedBuild: { head: baseReceipt.head, receipt: baseReceiptPath, identicalFrontendInputs: true },
+  build: frontendUnchanged
+    ? { reusedHead: baseReceipt.head, receipt: baseReceiptPath, identicalFrontendInputs: true }
+    : { exactHead: head, reused: false },
   limitations:
     "Synthetic SDK/Auth/database/payment boundaries; reused identical production frontend. No live acceptance, Deno SDK integration, SQL/RLS, actual payments or protected documents.",
 };
@@ -104,9 +104,20 @@ try {
     "src/lib/humanReview/__tests__",
   ]);
   await run("types", ["node_modules/typescript/bin/tsc", "--noEmit"]);
+  await run("changed-source-lint", [
+    "node_modules/eslint/bin/eslint.js",
+    "--rule",
+    "prettier/prettier: off",
+    "src/routes/orders.tsx",
+    "supabase/functions/easy-erf-r999-checkout/index.ts",
+    "src/lib/payments/__tests__/humanReviewFunnelUxGuardrails.test.ts",
+    "src/lib/payments/__tests__/easyErfFulfillmentUiGuardrails.test.ts",
+  ]);
+  if (!frontendUnchanged) await run("build", ["node_modules/vite/bin/vite.js", "build"]);
+  const serverRoot = frontendUnchanged ? baseReceipt.root : root;
   const stream = createWriteStream(join(output, "server.log"));
-  server = spawn(process.execPath, [join(baseReceipt.root, ".output/server/index.mjs")], {
-    cwd: baseReceipt.root,
+  server = spawn(process.execPath, [join(serverRoot, ".output/server/index.mjs")], {
+    cwd: serverRoot,
     env: { ...env, HOST: "127.0.0.1", PORT: "4199" },
     stdio: ["ignore", "pipe", "pipe"],
   });

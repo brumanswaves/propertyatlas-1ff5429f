@@ -195,7 +195,7 @@ describe("Easy Erf customer fulfillment status", () => {
     expect(customerRoute).toContain("Payment received");
     expect(customerRoute).toContain("Investigation underway");
     expect(customerRoute).toContain("Report ready");
-    expect(customerRoute).toContain("Easy Erf has taken over the property investigation.");
+    expect(customerRoute).toContain("Check your payment and investigation status.");
     expect(customerRoute).toContain('.from("erf-files")');
     expect(customerRoute).toContain("createSignedUrl(order.pdf_storage_path, 300, { download: true })");
     expect(customerRoute).toContain("Download PDF");
