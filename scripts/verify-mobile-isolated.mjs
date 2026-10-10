@@ -143,6 +143,8 @@ try {
   }
   assert.ok(listening, "Local server listening");
   const browserEnv = {
+    // Trace HTML must stay outside the Vite source tree to avoid HMR reloads.
+    TMPDIR: output,
     NODE_OPTIONS: "",
     EASY_ERF_BROWSER_BASE_URL: "http://127.0.0.1:4197",
     EASY_ERF_BROWSER_ARTIFACTS: join(output, "browser"),
