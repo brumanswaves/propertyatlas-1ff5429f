@@ -83,6 +83,7 @@ type PaymentLinkProbe = {
 };
 
 type LineItemProbe = {
+  quantity?: number | null;
   price?:
     | string
     | {
@@ -173,6 +174,7 @@ export function inspectEasyErfPaymentLink(
     checkoutUrl?.protocol === "https:" &&
     checkoutUrl.hostname === "buy.stripe.com" &&
     lineItems.length === 1 &&
+    lineItems[0]?.quantity === 1 &&
     Boolean(price) &&
     price?.unit_amount === EASY_ERF_R999_AMOUNT_TOTAL &&
     price?.currency?.toLowerCase() === EASY_ERF_R999_CURRENCY &&

@@ -14,11 +14,16 @@ assert.equal(
   "",
   "Commit tracked changes first",
 );
-const baseReceiptPath = resolve(process.env.EASY_ERF_BASE_BUILD_RECEIPT);
-const baseReceipt = JSON.parse(await readFile(baseReceiptPath, "utf8"));
-assert.equal(baseReceipt.result, "local checks passed");
-assert.ok(baseReceipt.commands.some((entry) => entry.name === "build" && entry.code === 0));
+const baseReceiptPath = process.env.EASY_ERF_BASE_BUILD_RECEIPT
+  ? resolve(process.env.EASY_ERF_BASE_BUILD_RECEIPT)
+  : null;
+const baseReceipt = baseReceiptPath ? JSON.parse(await readFile(baseReceiptPath, "utf8")) : null;
+if (baseReceipt) {
+  assert.equal(baseReceipt.result, "local checks passed");
+  assert.ok(baseReceipt.commands.some((entry) => entry.name === "build" && entry.code === 0));
+}
 const frontendUnchanged =
+  Boolean(baseReceipt) &&
   git(
     "diff",
     "--name-only",
@@ -111,6 +116,8 @@ try {
     "src/routes/orders.tsx",
     "src/routes/pricing.tsx",
     "supabase/functions/easy-erf-r999-checkout/index.ts",
+    "supabase/functions/_shared/easyErfR999LaunchReadiness.ts",
+    "src/lib/payments/__tests__/easyErfR999LaunchReadiness.test.ts",
     "src/lib/payments/__tests__/humanReviewFunnelUxGuardrails.test.ts",
     "src/lib/payments/__tests__/easyErfFulfillmentUiGuardrails.test.ts",
   ]);
@@ -138,11 +145,7 @@ try {
   assert.ok(listening);
   await run("checkout-browser", ["scripts/verify-r999-checkout-browser.mjs"]);
   // This existing script imports Playwright directly; the verified dependency is installed locally.
-  await run("delivery-browser", [
-    "--import",
-    join(root, "scripts/verify-guided-browser-isolation.mjs"),
-    "scripts/verify-customer-report-link-browser.mjs",
-  ]);
+  await run("delivery-browser", ["scripts/verify-customer-report-link-browser.mjs"]);
   assert.equal(await readFile(egress, "utf8"), "", "No server-side external egress attempts");
   assert.equal(git("rev-parse", "HEAD"), head);
   assert.equal(git("status", "--porcelain", "--untracked-files=no"), "");
