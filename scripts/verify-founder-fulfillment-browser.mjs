@@ -514,7 +514,8 @@ try {
     assert.equal(await workbench().count(), 0);
     detailFailure = A;
     await page.locator("article").filter({ hasText: A }).getByRole("button", { name: /^(Start investigation|Continue investigation|Recover investigation|View delivered report|Open investigation)$/ }).click();
-    await page.getByRole("heading", { name: "The requested order was not found", exact: true }).waitFor();
+    await page.getByRole("heading", { name: "Could not load this investigation", exact: true }).waitFor();
+    await page.getByRole("button", { name: "Retry this investigation", exact: true }).waitFor();
     assert.equal(await workbench().count(), 0);
     assert.equal(await page.locator("main input, main textarea, main select").count(), 0);
     await page.getByRole("button", { name: "Return to queue", exact: true }).click();

@@ -81,6 +81,7 @@ async function run(name, args, extra = {}, cwd = root) {
   await new Promise((resolve) => stream.end(resolve));
   receipt.commands.push({ name, args, started, ended: new Date().toISOString(), code, log });
   await writeFile(join(output, "commands.json"), JSON.stringify(receipt, null, 2));
+  if (code !== 0 && name === "browser") console.error(await readFile(log, "utf8"));
   assert.equal(code, 0, `${name}: see ${log}`);
 }
 let server;
