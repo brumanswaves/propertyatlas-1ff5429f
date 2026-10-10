@@ -704,8 +704,12 @@ try {
     await page.getByRole("heading", { name: "No accessible investigation found", exact: true }).waitFor();
     assert.equal(await page.getByRole("button", { name: "Retry this investigation", exact: true }).count(), 0);
     assert.equal(await workbench().count(), 0);
+    const readsBeforeInvalid = { details: detailReads.length, summaries: summaryReads.length };
     await page.goto(`${baseUrl}/admin/fulfillment#order-384be2fe`);
-    await page.getByRole("heading", { name: "Investigator Dashboard" }).waitFor();
+    await page.getByRole("alert").filter({ hasText: "This investigation link is invalid. No orders were loaded." }).waitFor();
+    await page.getByRole("button", { name: "Back to queue", exact: true }).waitFor();
+    assert.equal(detailReads.length, readsBeforeInvalid.details);
+    assert.equal(summaryReads.length, readsBeforeInvalid.summaries);
     assert.equal(await workbench().count(), 0);
   });
   await check("incomplete saved content blocks both delivery controls", async () => {
