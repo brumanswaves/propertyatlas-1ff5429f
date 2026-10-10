@@ -701,7 +701,8 @@ try {
     await open(LEGACY);
     assert.ok((await workbench().innerText()).includes("legacy-format order"));
     await page.goto(`${baseUrl}/admin/fulfillment#order-22222222-2222-4222-8222-222222222222`);
-    await page.getByRole("heading", { name: "The requested order was not found" }).waitFor();
+    await page.getByRole("heading", { name: "No accessible investigation found", exact: true }).waitFor();
+    assert.equal(await page.getByRole("button", { name: "Retry this investigation", exact: true }).count(), 0);
     assert.equal(await workbench().count(), 0);
     await page.goto(`${baseUrl}/admin/fulfillment#order-384be2fe`);
     await page.getByRole("heading", { name: "Investigator Dashboard" }).waitFor();
