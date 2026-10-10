@@ -877,7 +877,7 @@ try {
     if (width === 1440) {
       await reopenPage.getByText("Review inputs and technical details", { exact: true }).click();
       await reopenPage.getByRole("checkbox", { name: /The outline shown matches the erf/ }).check();
-      await reopenPage.getByRole("button", { name: /^Boundary 1(?: ·|$)/ }).click();
+      await reopenPage.getByLabel("Select street-facing boundaries", { exact: true }).getByRole("button", { name: /^Boundary 1(?: ·|$)/ }).click();
       await reopenPage.getByRole("button", { name: "Accept this Site Potential", exact: true }).click();
       await reopenPage.screenshot({ path: resolve(artifacts, `self-service-envelope-accepted-${width}.png`) });
       await reopenPage.getByRole("button", { name: "Save this envelope and continue", exact: true }).click();
