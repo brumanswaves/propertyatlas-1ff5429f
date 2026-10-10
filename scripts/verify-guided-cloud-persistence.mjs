@@ -976,8 +976,16 @@ try {
     const { error } = await supabase.auth.setSession({ access_token, refresh_token });
     if (error) throw new Error("Synthetic account switch failed");
   }, { access_token: otherToken, refresh_token: "other-fixture-refresh" });
-  await reopenPage.getByRole("heading", { name: "Confirm this is the correct erf", exact: true }).waitFor();
+  // AccountPropertyMap deliberately remounts unselected for another account.
+  await reopenPage.getByRole("button", { name: "Back to full map", exact: true }).waitFor({ state: "hidden" });
+  assert.equal(await reopenPage.getByRole("heading", { name: "Erf 1570", exact: true }).count(), 0);
   assert.equal(await reopenPage.getByRole("button", { name: "Download preserved drafts", exact: true }).count(), 0);
+  const otherScope = await reopenPage.evaluate(async ({ parcelId, userId }) => {
+    const { browserScopedParcelKey } = await import("/src/lib/workbench/erfWorkspaceState.ts");
+    return ["workspace", "investigation-conflict-backups"].map((kind) =>
+      localStorage.getItem(browserScopedParcelKey(kind, parcelId, userId)));
+  }, { parcelId: PARCEL_ID, userId: otherUser.id });
+  assert.deepEqual(otherScope, [null, null], "New account must not inherit a workspace or preserved drafts");
   await reopenPage.evaluate(async ({ access_token, refresh_token }) => {
     const { supabase } = await import("/src/integrations/supabase/client.ts");
     const { error } = await supabase.auth.setSession({ access_token, refresh_token });
@@ -1030,7 +1038,8 @@ try {
         const { error } = await supabase.auth.setSession({ access_token, refresh_token });
         if (error) throw error;
       }, { access_token: otherToken, refresh_token: "held-read-other-fixture" });
-      await page.getByRole("heading", { name: "Confirm this is the correct erf", exact: true }).waitFor();
+      await page.getByRole("button", { name: "Back to full map", exact: true }).waitFor({ state: "hidden" });
+      assert.equal(await page.getByRole("heading", { name: "Erf 1570", exact: true }).count(), 0);
     } else if (control === "parcel-switch") {
       await page.getByRole("button", { name: "Back to full map", exact: true }).first().click();
       await page.getByRole("button", { name: /Search address, erf number, suburb, LPI, or parcel key/i }).click();
