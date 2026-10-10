@@ -1047,7 +1047,8 @@ try {
       await page.getByPlaceholder("LPI or parcel key", { exact: true }).fill(secondParcel.lpi);
       await page.getByRole("button", { name: "Search official parcel identity", exact: true }).click();
       await page.getByRole("button", { name: new RegExp(`^Open Erf ${secondParcel.erf}`) }).click();
-      await page.getByText("Property first read", { exact: true }).waitFor();
+      // An explicit Guided URL retains its entry tab for a newly chosen parcel.
+      await page.getByRole("heading", { name: `Erf ${secondParcel.erf}`, exact: true }).first().waitFor();
       assert.equal(await page.evaluate(() => history.state.easyErfJourney.parcelId), secondParcel.id);
     } else if (control === "leave-property") {
       await page.goto(`${baseUrl}/dashboard`, { waitUntil: "domcontentloaded" });
