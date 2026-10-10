@@ -145,6 +145,22 @@ try {
     await page.setViewportSize({ width: 390, height: 844 });
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
     await page.screenshot({ path: resolve(artifacts, "selected-mobile.png"), fullPage: true });
+    await page.setViewportSize({ width: 844, height: 390 });
+    assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+    await page.screenshot({ path: resolve(artifacts, "selected-landscape.png"), fullPage: true });
+  });
+  await check("pending, paid, fulfilling and failed orders never expose a finished report", async () => {
+    const row = rows.find((entry) => entry.id === A);
+    for (const status of ["pending", "paid", "fulfilling", "failed"]) {
+      row.status = status;
+      row.status_enum = status;
+      await page.goto(`${baseUrl}/orders?report=${A}`);
+      await unavailable();
+      assert.equal(await report().count(), 0);
+      assert.ok(!(await page.locator("body").innerText()).includes(`PRIVATE_REPORT_${A}`));
+    }
+    row.status = "ready";
+    row.status_enum = "ready";
   });
   await check("invalid, empty and absent selected records never fall back to other reports", async () => {
     for (const id of ["partial", "", "77777777-7777-4777-8777-777777777777"]) {

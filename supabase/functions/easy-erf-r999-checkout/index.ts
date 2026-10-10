@@ -114,7 +114,8 @@ Deno.serve(async (request: Request) => {
       if (!link.active || link.livemode !== expectedLivemode || typeof link.url !== "string") continue;
 
       const lineItems = await stripe.paymentLinks.listLineItems(paymentLinkId, { limit: 10 });
-      if (lineItems.data.length !== 1) continue;
+      // A R999 unit price alone does not establish a R999 checkout total.
+      if (lineItems.has_more || lineItems.data.length !== 1 || lineItems.data[0].quantity !== 1) continue;
       const price = lineItems.data[0].price;
       if (
         !price ||
