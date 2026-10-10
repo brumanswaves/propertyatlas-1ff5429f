@@ -247,13 +247,13 @@ function PaymentReceivedPanel({ order, loading }: { order: ReportOrder | null; l
       <div className="grid lg:grid-cols-[minmax(0,1.1fr)_minmax(19rem,0.9fr)]">
         <div className="bg-[#0D1B2A] p-6 text-white sm:p-8">
           <div className="inline-flex items-center gap-2 rounded-full border border-emerald-300/20 bg-emerald-400/10 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-emerald-200">
-            <CheckCircle2 className="h-3.5 w-3.5" /> Payment received
+            <CheckCircle2 className="h-3.5 w-3.5" /> Payment status
           </div>
           <h2 className="mt-4 text-3xl font-semibold tracking-tight">
-            Easy Erf has taken over the property investigation.
+            Check your payment and investigation status.
           </h2>
           <p className="mt-3 max-w-2xl text-sm leading-7 text-white/70">
-            Your R999 payment, confirmed parcel and emphasis are attached to this account. You do not need to repeat the property search, rebuild the investigation or answer the same questions again.
+            Your recorded orders below show the payment and investigation status for this account. Returning from checkout alone does not confirm a new payment.
           </p>
           <div className="mt-5 rounded-2xl border border-white/10 bg-white/[0.06] p-4">
             {loading ? (
@@ -261,17 +261,17 @@ function PaymentReceivedPanel({ order, loading }: { order: ReportOrder | null; l
             ) : order ? (
               <>
                 <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/45">
-                  Investigation we received
+                  Most recent recorded investigation
                 </div>
                 <div className="mt-1 text-sm font-semibold text-white">{propertyReference}</div>
                 <div className="mt-1 text-xs text-white/58">
                   {focus ?? DONE_FOR_YOU_INVESTIGATION_NAME} · R
-                  {(order.price_cents / 100).toFixed(0)} paid
+                  {(order.price_cents / 100).toFixed(0)} · {customerReportStatus(order)}
                 </div>
               </>
             ) : (
               <div className="text-sm text-white/65">
-                Payment returned successfully. If the order does not appear below shortly, refresh My Reports once before contacting support.
+                No recorded order is available yet. Refresh My Reports once to check for payment confirmation before contacting support.
               </div>
             )}
           </div>
@@ -285,8 +285,8 @@ function PaymentReceivedPanel({ order, loading }: { order: ReportOrder | null; l
             {[
               [
                 "1",
-                "Payment and parcel attached",
-                "Done. This paid investigation is tied to your account and exact property.",
+                "Confirm payment and parcel",
+                "A recorded paid order ties the investigation to your account and exact property.",
               ],
               [
                 "2",
@@ -323,7 +323,7 @@ function PaymentReceivedPanel({ order, loading }: { order: ReportOrder | null; l
               <Clock3 className="h-4 w-4 text-[#FF6A00]" /> Current early-access target: about 3 business days
             </div>
             <p className="mt-2 text-xs leading-5 text-[#64748B]">
-              You do not need to do anything now. If a critical piece of evidence cannot be obtained or verified, the final report will make that explicit rather than silently guessing.
+              The investigation starts after payment is confirmed. If a critical piece of evidence cannot be obtained or verified, the final report will make that explicit rather than silently guessing.
             </p>
           </div>
         </div>

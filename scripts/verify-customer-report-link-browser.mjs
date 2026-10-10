@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
-import { chromium } from "playwright";
+const { chromium } = await import(process.env.EASY_ERF_PLAYWRIGHT_MODULE || "playwright");
 
 // Only the selected-report email path is under test, not the owner's general
 // report list. No production order, credential or provider is used.
@@ -18,7 +18,7 @@ const B = "44444444-4444-4444-8444-444444444444";
 const LEGACY = "55555555-5555-4555-8555-555555555555";
 const OWNER = "11111111-1111-4111-8111-111111111111";
 const OTHER = "66666666-6666-4666-8666-666666666666";
-const authKeys = ["sb-fixture-auth-token", "sb-easyerf-auth-token", "sb-xiqpfhsdlvwrwhclonsg-auth-token"];
+const authKeys = ["sb-127-auth-token", "sb-fixture-auth-token", "sb-easyerf-auth-token", "sb-xiqpfhsdlvwrwhclonsg-auth-token"];
 const user = { id: OWNER, email: "fixture-owner@example.invalid", aud: "authenticated", role: "authenticated", app_metadata: {}, user_metadata: {}, created_at: "2026-01-01T00:00:00Z" };
 const encode = (value) => Buffer.from(JSON.stringify(value)).toString("base64url");
 function sessionFor(account) {
@@ -40,9 +40,10 @@ const pageErrors = [];
 const settlements = [];
 let activeUser = user;
 let failRead = false;
+let noRows = false;
 let delayed = null;
 const requestScope = new WeakMap();
-const browser = await chromium.launch({ headless: true, channel: process.env.EASY_ERF_BROWSER_CHANNEL || undefined });
+const browser = await chromium.launch({ headless: true, executablePath: process.env.EASY_ERF_BROWSER_EXECUTABLE, channel: process.env.EASY_ERF_BROWSER_CHANNEL || undefined });
 const context = await browser.newContext({ viewport: { width: 1440, height: 1000 }, serviceWorkers: "block" });
 await context.tracing.start({ screenshots: true, snapshots: true, sources: true });
 await context.addInitScript(({ session, keys }) => {
@@ -69,7 +70,7 @@ await context.route("**/*", async (route) => {
       requestScope.set(request, scope);
       requests.push(scope);
       if (failRead) return json({ message: "Synthetic unavailable read" }, 503);
-      const row = rows.find((entry) => entry.id === selected && entry.user_id === activeUser.id);
+      const row = noRows ? null : rows.find((entry) => entry.id === selected && entry.user_id === activeUser.id);
       const body = row ? [Object.fromEntries(columns.map((key) => [key, structuredClone(row[key] ?? null)]))] : [];
       if (delayed?.id === selected) {
         const pending = delayed;
@@ -145,6 +146,34 @@ try {
     await page.setViewportSize({ width: 390, height: 844 });
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
     await page.screenshot({ path: resolve(artifacts, "selected-mobile.png"), fullPage: true });
+    await page.setViewportSize({ width: 844, height: 390 });
+    assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+    await page.screenshot({ path: resolve(artifacts, "selected-landscape.png"), fullPage: true });
+  });
+  await check("pending, paid, fulfilling and failed orders never expose a finished report", async () => {
+    const row = rows.find((entry) => entry.id === A);
+    for (const status of ["pending", "paid", "fulfilling", "failed"]) {
+      row.status = status;
+      row.status_enum = status;
+      await page.goto(`${baseUrl}/orders?report=${A}`);
+      await unavailable();
+      assert.equal(await report().count(), 0);
+      assert.ok(!(await page.locator("body").innerText()).includes(`PRIVATE_REPORT_${A}`));
+    }
+    row.status = "ready";
+    row.status_enum = "ready";
+  });
+  await check("payment return URL with no order cannot claim payment succeeded", async () => {
+    noRows = true;
+    await page.goto(`${baseUrl}/orders?report=${A}&payment=received`);
+    await unavailable();
+    await page.getByText("No recorded order is available yet.", { exact: false }).waitFor();
+    const body = await page.locator("body").innerText();
+    assert.ok(body.includes("Returning from checkout alone does not confirm a new payment."));
+    assert.ok(!body.includes("Payment returned successfully."));
+    assert.ok(!body.includes("Easy Erf has taken over the property investigation."));
+    assert.equal(await report().count(), 0);
+    noRows = false;
   });
   await check("invalid, empty and absent selected records never fall back to other reports", async () => {
     for (const id of ["partial", "", "77777777-7777-4777-8777-777777777777"]) {

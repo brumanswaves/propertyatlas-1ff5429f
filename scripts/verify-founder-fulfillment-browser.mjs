@@ -514,7 +514,8 @@ try {
     assert.equal(await workbench().count(), 0);
     detailFailure = A;
     await page.locator("article").filter({ hasText: A }).getByRole("button", { name: /^(Start investigation|Continue investigation|Recover investigation|View delivered report|Open investigation)$/ }).click();
-    await page.getByRole("heading", { name: "The requested order was not found", exact: true }).waitFor();
+    await page.getByRole("heading", { name: "Could not load this investigation", exact: true }).waitFor();
+    await page.getByRole("button", { name: "Retry this investigation", exact: true }).waitFor();
     assert.equal(await workbench().count(), 0);
     assert.equal(await page.locator("main input, main textarea, main select").count(), 0);
     await page.getByRole("button", { name: "Return to queue", exact: true }).click();
@@ -700,10 +701,15 @@ try {
     await open(LEGACY);
     assert.ok((await workbench().innerText()).includes("legacy-format order"));
     await page.goto(`${baseUrl}/admin/fulfillment#order-22222222-2222-4222-8222-222222222222`);
-    await page.getByRole("heading", { name: "The requested order was not found" }).waitFor();
+    await page.getByRole("heading", { name: "No accessible investigation found", exact: true }).waitFor();
+    assert.equal(await page.getByRole("button", { name: "Retry this investigation", exact: true }).count(), 0);
     assert.equal(await workbench().count(), 0);
+    const readsBeforeInvalid = { details: detailReads.length, summaries: summaryReads.length };
     await page.goto(`${baseUrl}/admin/fulfillment#order-384be2fe`);
-    await page.getByRole("heading", { name: "Investigator Dashboard" }).waitFor();
+    await page.getByRole("alert").filter({ hasText: "This investigation link is invalid. No orders were loaded." }).waitFor();
+    await page.getByRole("button", { name: "Back to queue", exact: true }).waitFor();
+    assert.equal(detailReads.length, readsBeforeInvalid.details);
+    assert.equal(summaryReads.length, readsBeforeInvalid.summaries);
     assert.equal(await workbench().count(), 0);
   });
   await check("incomplete saved content blocks both delivery controls", async () => {
