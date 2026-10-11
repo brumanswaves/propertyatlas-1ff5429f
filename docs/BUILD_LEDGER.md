@@ -2,6 +2,17 @@
 
 Ledger refreshed: 2026-08-28.
 
+## Source-only R999 readiness quantity repair — 2026-10-11
+
+- VERIFIED base: fetched canonical `main` at `a385b7ab99480a42209be513c2abddb764d9ae15` (PR #206). Candidate branch: `codex/readiness-line-item-quantity`; final revision is recorded in the review handoff.
+- EXECUTED by Codex through local shell tools: forward `item.quantity` in `easy-erf-founder-launch-readiness/index.ts`. The readiness helper and checkout's independent quantity validation are unchanged.
+- VERIFIED regression runs the actual endpoint in the existing VM harness with isolated Supabase/Stripe doubles. Quantity 1 passes the payment-link check; 0, 2, -1, 1.5, null and undefined fail. The new valid-one case failed before the repair (27 passed, 1 failed). After repair all 136 payment tests across 13 files pass. TypeScript `--noEmit`, changed-source ESLint, whitespace and ordinary non-deploying production build pass. Deno 2.9.6 type checks pass for readiness, checkout and webhook (binary SHA-256 matches the repository workflow).
+- VERIFIED governance: `AGENTS.md`, `BUILD_GOVERNANCE.md`, current state and relevant Master Plan read. `PROJECT_BRIEF.md` and repository `.agents/skills` are absent; no substitute governance was invented.
+- Review: one production line added; no price, amount, mode, redirect, authorization or runtime checkout validation relaxed. Tests exercise the endpoint mapping rather than only the helper. Independent review remains pending.
+- EXECUTED draft PR #207 through the connected GitHub tool after shell GitHub GraphQL/REST lookup returned `Forbidden`: https://github.com/brumanswaves/propertyatlas-1ff5429f/pull/207. Implementation revision `9f62cbbe2287e64fb67ab8fb85de3e1f5a853be0`; this ledger-only follow-up records the resolved tool limitation. No merge or deploy authorized.
+- No Stripe API calls, real checkout/readiness requests, customer writes, property document reads, provider/model calls, payments, production or credential changes. Both excluded assets and derivatives remain untouched. Additional discretionary service spend $0; platform task credit cost UNKNOWN. Existing USD2 allowance unused by this task.
+- Live readiness, signature binding and real R999 acceptance remain UNKNOWN. Parent owns independent review and deployment coordination; owner performs a real R999 test only after parent confirms readiness. This receipt proves offline source behavior only.
+
 ## Original product promise
 
 Make one real South African property investigation work extremely well end to end. Easy Erf should help a user identify a property, organize trustworthy evidence, understand planning and development potential, test strategy and financial assumptions, identify unknowns and risks, and leave with one clear next action.

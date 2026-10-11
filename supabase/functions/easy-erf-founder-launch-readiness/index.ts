@@ -172,6 +172,7 @@ Deno.serve(async (request: Request) => {
             lineItems.data.map((item) => {
               const price = item.price;
               return {
+                quantity: item.quantity,
                 price:
                   typeof price === "string"
                     ? price
