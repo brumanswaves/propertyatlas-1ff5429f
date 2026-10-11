@@ -22,7 +22,14 @@ const goodAccount = {
   external_accounts: { data: ["PRIVATE_BANK_SENTINEL"] },
 };
 function harness(
-  options: { admin?: boolean; authenticated?: boolean; mode?: string; armed?: boolean } = {},
+  options: {
+    admin?: boolean;
+    authenticated?: boolean;
+    mode?: string;
+    armed?: boolean;
+    paymentQuantity?: number | null;
+    paymentLink?: boolean;
+  } = {},
 ) {
   let handler!: (request: Request) => Promise<Response>;
   const account = vi.fn().mockResolvedValue(goodAccount);
@@ -31,7 +38,25 @@ function harness(
     return {
       accounts: { retrieve: account },
       webhookEndpoints: { list: vi.fn().mockResolvedValue({ data: [] }) },
-      paymentLinks: { retrieve: vi.fn(), listLineItems: vi.fn() },
+      paymentLinks: {
+        retrieve: vi.fn().mockResolvedValue({
+          active: true,
+          livemode: options.mode === "live",
+          url: "https://buy.stripe.com/fixture",
+          after_completion: {
+            type: "redirect",
+            redirect: { url: readiness.EASY_ERF_R999_RETURN_URL },
+          },
+        }),
+        listLineItems: vi.fn().mockResolvedValue({
+          data: [
+            {
+              quantity: options.paymentQuantity,
+              price: { unit_amount: 99_900, currency: "zar", type: "one_time" },
+            },
+          ],
+        }),
+      },
     };
   });
   const env: Record<string, string> = {
@@ -40,6 +65,7 @@ function harness(
     STRIPE_SECRET_KEY: `sk_${options.mode ?? "test"}_PRIVATE_KEY_SENTINEL`,
     STRIPE_WEBHOOK_SECRET: "PRIVATE_WEBHOOK_SENTINEL",
     EASY_ERF_R999_CHECKOUT_MODE: options.mode ?? "test",
+    EASY_ERF_R999_PAYMENT_LINK_IDS: options.paymentLink ? "plink_Fixture" : "",
     EASY_ERF_R999_LIVE_ENABLED: String(options.armed ?? false),
   };
   runInNewContext(code, {
@@ -203,4 +229,24 @@ describe("actual preflight handler with isolated service doubles", () => {
     expect(result.readyForControlledSignatureTest).toBe(false);
     expect(result.signatureSecretMatch).toBe("not_verified");
   });
+});
+
+describe("actual preflight line-item mapping", () => {
+  it.each([1, 0, 2, -1, 1.5, null, undefined])(
+    "accepts only quantity one through the endpoint: %s",
+    async (quantity) => {
+      const h = harness({ mode: "live", paymentLink: true, paymentQuantity: quantity });
+      const response = await h.request();
+      expect(response.status).toBe(200);
+      const result = await response.json();
+      expect(
+        result.checks.find((x: { id: string }) => x.id === "accepted-payment-link").status,
+      ).toBe(quantity === 1 ? "pass" : "fail");
+      expect(result.checks.find((x: { id: string }) => x.id === "payment-return-url").status).toBe(
+        "pass",
+      );
+      expect(result.liveCheckoutGateOpen).toBe(false);
+      expect(result.signatureSecretMatch).toBe("not_verified");
+    },
+  );
 });
