@@ -1,5 +1,5 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowRight,
   ArrowUpRight,
@@ -53,6 +53,8 @@ const SIGN_IN_REQUIRED_MESSAGE =
   "Sign in before checkout so your done-for-you investigation and completed report stay attached to your Easy Erf account.";
 
 function PricingPage() {
+  const router = useRouter();
+  const checkoutLifetime = useRef({ active: false, generation: 0, pending: false });
   const [focus, setFocus] = useState<HumanReviewFocus | null>(null);
   const [intendedUse, setIntendedUse] = useState<HumanReviewIntendedUse | null>(null);
   const [context, setContext] = useState("");
@@ -71,6 +73,34 @@ function PricingPage() {
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
 
+  const invalidateCheckout = useCallback(() => {
+    const lifetime = checkoutLifetime.current;
+    lifetime.generation += 1;
+    lifetime.pending = false;
+    if (lifetime.active) {
+      setCheckoutLoading(false);
+      setCheckoutError(null);
+    }
+  }, []);
+
+  useEffect(() => {
+    const lifetime = checkoutLifetime.current;
+    lifetime.active = true;
+    const unsubscribeNavigation = router.subscribe("onBeforeNavigate", () => {
+      invalidateCheckout();
+      lifetime.active = false;
+    });
+    const unsubscribeResolved = router.subscribe("onResolved", () => {
+      lifetime.active = router.state.location.pathname === "/pricing";
+    });
+    return () => {
+      lifetime.active = false;
+      invalidateCheckout();
+      unsubscribeNavigation();
+      unsubscribeResolved();
+    };
+  }, [router, invalidateCheckout]);
+
   useEffect(() => {
     if (typeof window === "undefined") return;
     const params = new URLSearchParams(window.location.search);
@@ -88,6 +118,7 @@ function PricingPage() {
     function applyUser(user: { id: string; email?: string } | null) {
       if (!active) return;
       const nextOwner = user?.id ?? null;
+      if (authOwner.current !== nextOwner) invalidateCheckout();
       if (authOwner.current !== undefined && authOwner.current !== null && authOwner.current !== nextOwner) {
         setFocus(null); setIntendedUse(null); setContext(""); setScopeAcknowledged(false);
       }
@@ -109,7 +140,7 @@ function PricingPage() {
       active = false;
       data.subscription.unsubscribe();
     };
-  }, []);
+  }, [invalidateCheckout]);
 
   useEffect(() => {
     if (!authReady || !signedInUserId || !parcelId || !handoffDraftId) return;
@@ -159,16 +190,31 @@ function PricingPage() {
   );
 
   async function startHumanReviewCheckout() {
-    if (!focus || !parcelId || !canCheckout) return;
+    if (!focus || !parcelId || !canCheckout || !checkoutLifetime.current.active || checkoutLifetime.current.pending) return;
+    const initiatingOwner = authOwner.current;
+    if (!authReady || !initiatingOwner || signedInUserId !== initiatingOwner) {
+      setCheckoutError(SIGN_IN_REQUIRED_MESSAGE);
+      return;
+    }
+    const generation = ++checkoutLifetime.current.generation;
+    checkoutLifetime.current.pending = true;
+    const isCurrent = () => checkoutLifetime.current.active &&
+      checkoutLifetime.current.generation === generation &&
+      authOwner.current === initiatingOwner;
     setCheckoutLoading(true);
     setCheckoutError(null);
 
     try {
       const { data: userData, error: userError } = await supabase.auth.getUser();
+      if (!isCurrent()) return;
       if (userError || !userData.user) {
         setSignedInEmail(null);
         setCheckoutError(SIGN_IN_REQUIRED_MESSAGE);
         return;
+      }
+
+      if (userData.user.id !== initiatingOwner) {
+        throw new Error("Your account changed. Check your investigation answers before trying again.");
       }
 
       setSignedInEmail(userData.user.email ?? null);
@@ -183,6 +229,7 @@ function PricingPage() {
           scopeAcknowledged,
         },
       });
+      if (!isCurrent()) return;
       const checkoutMode = data?.mode;
       if (
         error ||
@@ -195,6 +242,7 @@ function PricingPage() {
         let checkoutMessage = typeof data?.error === "string" ? data.error : null;
         if (!checkoutMessage && error?.context instanceof Response) {
           const failure = await error.context.json().catch(() => null);
+          if (!isCurrent()) return;
           if (typeof failure?.error === "string") checkoutMessage = failure.error;
         }
         throw new Error(checkoutMessage ?? "Secure checkout is unavailable. Please try again.");
@@ -206,9 +254,12 @@ function PricingPage() {
       }
       window.location.assign(url.toString());
     } catch (error) {
-      setCheckoutError(error instanceof Error ? error.message : "Secure checkout is unavailable.");
+      if (isCurrent()) setCheckoutError(error instanceof Error ? error.message : "Secure checkout is unavailable.");
     } finally {
-      setCheckoutLoading(false);
+      if (isCurrent()) {
+        checkoutLifetime.current.pending = false;
+        setCheckoutLoading(false);
+      }
     }
   }
 
