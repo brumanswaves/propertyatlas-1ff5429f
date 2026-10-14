@@ -1,6 +1,11 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { inspectEasyErfPaymentLink } from "../../../supabase/functions/_shared/easyErfR999LaunchReadiness";
+import {
+  fixedPaymentLinkFixture,
+  fixedLineItemFixture,
+} from "../payments/__tests__/fixedPaymentLinkFixture";
 
 function routeSource(name: string) {
   return readFileSync(join(process.cwd(), "src", "routes", name), "utf8");
@@ -104,12 +109,40 @@ describe("public Easy Erf product truth guardrails", () => {
     expect(checkout).toContain("EASY_ERF_R999_CHECKOUT_MODE");
     expect(checkout).toContain("EASY_ERF_R999_LIVE_ENABLED");
     expect(checkout).toContain("link.livemode !== expectedLivemode");
-    expect(checkout).toContain("price.unit_amount !== 99900");
-    expect(checkout).toContain('price.currency.toLowerCase() !== "zar"');
+    expect(checkout).toMatch(
+      /if \(!inspectEasyErfPaymentLink\([\s\S]*?\)\.contractValid\) continue;/,
+    );
+    expect(checkout).toContain("lineItems.has_more === false");
     expect(checkout).toContain('verifiedUrl.searchParams.set("client_reference_id", requestRow.id)');
     expect(checkout).toContain("mode: checkoutMode");
     expect(checkout).not.toMatch(/sk_(test|live)_|whsec_|plink_[A-Za-z0-9]{8,}/);
     expect(scope).not.toMatch(/guaranteed|approved building plan included/i);
+  });
+
+  it("requires the real fixed-total validator to reject invalid R999 checkout amounts", () => {
+    const link = fixedPaymentLinkFixture(false);
+    const item = fixedLineItemFixture();
+    const valid = (
+      changes: Partial<typeof item> = {},
+      priceChanges: Partial<typeof item.price> = {},
+      complete = true,
+    ) =>
+      inspectEasyErfPaymentLink(
+        link,
+        [{ ...item, ...changes, price: { ...item.price, ...priceChanges } }],
+        false,
+        complete,
+      ).contractValid;
+
+    expect(valid()).toBe(true);
+    expect(valid({}, { unit_amount: 100_000 })).toBe(false);
+    expect(valid({}, { currency: "usd" })).toBe(false);
+    for (const amount of [99_800, 100_000]) {
+      expect(valid({ amount_subtotal: amount })).toBe(false);
+      expect(valid({ amount_total: amount })).toBe(false);
+    }
+    expect(valid({ amount_total: undefined })).toBe(false);
+    expect(valid({}, {}, false)).toBe(false);
   });
 
   it("keeps active Site Potential deterministic", () => {
