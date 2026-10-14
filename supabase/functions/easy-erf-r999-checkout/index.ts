@@ -2,6 +2,7 @@ import { createClient } from "npm:@supabase/supabase-js@2.108.0";
 import Stripe from "npm:stripe@22.6.0";
 
 import { validateHumanReviewCheckoutRequest } from "../_shared/easyErfHumanReviewContract.ts";
+import { inspectEasyErfPaymentLink } from "../_shared/easyErfR999LaunchReadiness.ts";
 import { parseAcceptedPaymentLinkIds } from "../_shared/easyErfStripePaymentContract.ts";
 
 declare const Deno: {
@@ -110,20 +111,16 @@ Deno.serve(async (request: Request) => {
 
   for (const paymentLinkId of acceptedIds) {
     try {
-      const link = await stripe.paymentLinks.retrieve(paymentLinkId);
+      const link = await stripe.paymentLinks.retrieve(paymentLinkId, { expand: ["optional_items"] });
       if (!link.active || link.livemode !== expectedLivemode || typeof link.url !== "string") continue;
 
-      const lineItems = await stripe.paymentLinks.listLineItems(paymentLinkId, { limit: 10 });
-      // A R999 unit price alone does not establish a R999 checkout total.
-      if (lineItems.has_more || lineItems.data.length !== 1 || lineItems.data[0].quantity !== 1) continue;
-      const price = lineItems.data[0].price;
-      if (
-        !price ||
-        typeof price === "string" ||
-        price.unit_amount !== 99900 ||
-        price.currency.toLowerCase() !== "zar" ||
-        price.type !== "one_time"
-      ) continue;
+      const lineItems = await stripe.paymentLinks.listLineItems(paymentLinkId, {
+        limit: 10,
+        expand: ["data.price.currency_options"],
+      });
+      if (!inspectEasyErfPaymentLink(
+        link, lineItems.data, expectedLivemode, lineItems.has_more === false,
+      ).contractValid) continue;
 
       const candidate = new URL(link.url);
       if (candidate.protocol !== "https:" || candidate.hostname !== "buy.stripe.com") continue;

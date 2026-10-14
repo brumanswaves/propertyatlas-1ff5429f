@@ -1,5 +1,12 @@
 # WHAT I NEED FROM YOU NOW
 
+## October 14, 2026 source-only repair boundary
+
+Current baseline is main `7a6b902853ee7a0a108a68ecf975867a66c5b474`; exact-main Guided run `38301435376` passed with live acceptance skipped. The old dispatch-denial blocker is superseded. See [current release contract](CURRENT_RELEASE_CONTRACT.md) for the fixed-total repair, deployed-code observations and first-customer gates.
+
+The September packets below remain historical proposals/receipts. Do not use their PR numbers, flags, budgets or one-shot actions as current execution authority. The resumed engineering owner may complete the narrow local total-price repair and its tests/documentation. No checkout activation, real order/payment, publish/deploy, secret change, production database write or provider/model call is authorized by this first tranche. Brandon's human pilot-report review remains separate, and additional discretionary spend is $0.
+
+
 ## Current combined proposal: PR #172, 2026-09-09
 
 No release action is authorized by this document. Finish exact-head acceptance and separate independent review first. The final PR receipt must pin the approved head/tree, workflow and artifact evidence, remaining gates and this packet. This section SUPERSEDES the historical #168 packet below; do not replay any of its actions.

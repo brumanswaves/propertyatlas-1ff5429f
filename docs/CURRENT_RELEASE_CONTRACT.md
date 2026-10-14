@@ -1,6 +1,27 @@
 # Easy Erf Current Release Contract
 
-## Current contract: 2026-09-09 shared investigation
+## Current bounded contract: October 14, 2026
+
+This checkpoint supersedes obsolete September revision/PR claims and the old dispatch blocker only. It preserves product, privacy, rights, budget, human-review and genuine-acceptance gates. Prior approvals and one-shot actions are not replay authority.
+
+**Canonical source:** main `7a6b902853ee7a0a108a68ecf975867a66c5b474`, tree `25f35dd8d85fff2422e074a3ae54e74c39a46819`; merged #205/#208. Exact-main Guided run `38301435376` passed October 12; live acceptance skipped. The existing #208 engineering owner owns the narrow local total-price repair. Maximum scope is shared payment-link validation, checkout/founder preflight callers, focused synthetic tests and these release records. No activation, payment, deployment, publication, remote merge or production data write is included.
+
+**Customer promise:** the existing once-off R999 Done-for-You Property Investigation, one confirmed parcel and customer account, canonical investigation, source-supported human-reviewed report, secure exact-report reopening. No competing product plan or evidence model.
+
+**Observed versus deployed:** production source reads found checkout v27 and founder readiness v23 with the old unit-price/quantity contract. The unpublished candidate strengthens both through one validator. Audit-reported LIVE link remains inactive; final runtime arming/email flags, served frontend revision, fees, account-level currency conversion and complete live acceptance are not established by this source task. No protected pilot report/asset inspection is authorized.
+
+### Required next acceptance gates and actors
+
+1. **Engineering owner and reviewer:** inspect the exact local candidate/patch and focused negative cases; verify the same validator receives all Stripe fields and pagination state in both callers. Both link retrievals must request `expand: ["optional_items"]`; Stripe omits this includable field by default. Require transport-aware tests that omit it unless requested and preserve the legitimate fixed R999 control. Missing optional-item/currency/total observations must block, not be interpreted as empty. Require applicable exact-candidate checks and review before proposing integration. No unrelated rebuild or repeat of already accepted customer-access tests.
+2. **Brandon and release operator:** approve a precise source/backend/frontend release packet separately. Pin final source/tree, checkout and founder-readiness functions plus their shared helper, actual deployment linkage and rollback. There is no new schema migration in this repair. Preserve all existing arming, delivery and customer-data guards; no publication occurs under local repair authority.
+3. **Release operator, read-only first:** verify correct LIVE account/key mode/accepted link and webhook, signature-match receipt, exact return URL, arming/email state, complete fixed-total observations, account-level Adaptive Pricing disabled and fee/net-proceeds exposure. Unknown settings remain blockers. Freeze price/link configuration during any approved pilot; reread after release and before arming. Snapshot validation cannot prevent later Dashboard changes; webhook retains the final exact-99900-ZAR gate. Failed paid events need an authorized operator disposition, never silently granted fulfillment or automatic unapproved refund/retry.
+4. **Brandon or authorized human reviewer:** inspect the protected pilot report for substantive sourced findings, useful decisions and explicit uncertainty; preserve draft/history. The assistant does not read protected bodies/assets. Existing evidence acquisition, redistribution and AI processing rights plus bounded model capacity remain separate gates if those services are used; no additional discretionary spend is authorized.
+5. **Brandon and release operator:** approve a finite first-customer packet with named purchaser/parcel, exactly one R999 charge, fees/net proceeds, activation/disarm boundary and permitted fulfillment/notification actions. No earlier test allowance renews itself and no charge is authorized here.
+6. **Named customer, investigator and operator:** verify one genuine correct-account/parcel payment-to-order-to-human-reviewed-report journey, authorized notification, secure reopening, no duplicate order/payment/email and reconciled net proceeds. Finish with flags/receipts and non-target preservation evidence. Local tests/CI do not prove this outcome.
+
+**Remaining state:** genuine first-customer acceptance is unverified. Existing source checks are complete evidence only for their pinned revisions. Human report review, release publication, runtime proof and a specifically approved live pilot remain distinct. Next local evidence is recorded in the candidate receipt; exact runtime actions belong to the release operator after explicit authorization. No credential changes or workflow-dispatch retry is needed for the already passed merged-main run.
+
+## Historical contract: 2026-09-09 shared investigation
 
 This section SUPERSEDES the historical #168 contract below. That release, metadata reader and owner TEST sequence were consumed; do not execute them again. PR #170/5598714672 records the consumed actions. No production action is authorized by this source task.
 

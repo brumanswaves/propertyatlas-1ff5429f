@@ -1,5 +1,17 @@
 # Easy Erf Current State
 
+## Current checkpoint: October 14, 2026 total-price repair
+
+- VERIFIED GitHub main is `7a6b902853ee7a0a108a68ecf975867a66c5b474`, tree `25f35dd8d85fff2422e074a3ae54e74c39a46819`. PR #208 is merged; mobile PR #205 merged as `b35cbd56e882445f922bf1cc854d9ee0c11e5cdb` and is an ancestor. Source inclusion does not prove deployed frontend behavior.
+- VERIFIED [Guided integration run 38301435376](https://github.com/brumanswaves/propertyatlas-1ff5429f/actions/runs/38301435376) passed on that exact main on October 12. Live acceptance was skipped. The earlier workflow-dispatch denial is historical, not a current CI blocker. Do not retry dispatch or change credentials.
+- Existing PR #208 engineering owner resumed under Brandon's October 14 repair authority. This tranche is a local, unpublished total-price guard plus release evidence reconciliation. Current main is not changed by this candidate.
+- Read-only production code inspection in canonical Supabase `xiqpfhsdlvwrwhclonsg` found checkout version 27 and founder readiness version 23 ACTIVE. Both use the older base-price/quantity validation. Runtime flags, secret values, current served frontend revision and live acceptance remain UNKNOWN here; no protected report body/asset was read.
+- REPORTED audit snapshot at October 14 00:22:52 UTC: the LIVE R999 link was inactive, one quantity-one once-off 99900 ZAR item, promotions/automatic tax disabled and no shipping options. This task has not repeated that Stripe audit or activated the link. Fees and omitted optional-item fields remain unknown; an inactive link does not establish runtime arming state.
+- Local repair makes checkout and founder preflight share the fixed-total contract. It requires observed subtotal/total 99900 ZAR with zero tax/discount, disabled promotions/automatic tax/adjustable amounts, no shipping/upsells/managed payments, per-unit fixed pricing and expanded ZAR-only currency options. Both link retrievals explicitly request `expand: ["optional_items"]`; line-item retrievals request expanded price currency options. Transport-aware tests omit includable optional items when not requested. Unknown required observations and truncated lists block approval. Webhook exact-total enforcement is unchanged. The guard is not deployed and cannot freeze a mutable Payment Link or establish account-level Adaptive Pricing settings.
+- Release and first-customer gates are in [CURRENT_RELEASE_CONTRACT.md](CURRENT_RELEASE_CONTRACT.md). Human review of the protected pilot report remains Brandon's separate gate. Existing one-shot test/payment/email/model allowances do not renew. Additional discretionary spend $0; actual model/reasoning selection UNKNOWN and unchanged.
+
+The September sections below retain historical evidence and cannot authorize release. The Master Plan remains product truth.
+
 ## Shared Site Potential source repair, 2026-09-25
 
 Issue #193 on `codex/193-shared-site-geometry`, based on main `c4e20d3e55b8ac81c48dc798c155219f8c42ae6d`, recovers exact public parcel geometry as read-only candidate context and persists it only with explicit guarded Site Potential save and identity-bound readback. Failed recovery is explicit, legacy status cannot establish acceptance, and the Property checks dropdown label is discoverable. Full local suite (1,786 tests), TypeScript, semantic changed-source lint, normal non-deploying build and 12 isolated browser cases passed. Follow-up 2026-09-28: formatting-only commit edd91bdcd17f57036ab1e14661b41ce261b958d1 clears original formatting-enabled lint; TypeScript, whitespace, 92 source-guard tests and the ordinary configured non-deploying build pass. All 11 changed TypeScript files have equivalent normalized runtime emit. Original full-suite/browser evidence is retained with that binding; see the final-validation receipt and PR #194 complete packet. This is source proof only; no new production inspection or release. [Evidence, screenshots and limitations](reviews/shared-site-geometry/README.md).
@@ -44,7 +56,7 @@ The isolated `codex/founder-investigator-dashboards` candidate starts at canonic
 
 This file is the concise operational snapshot for the Easy Erf control room. The product source of truth remains `docs/EASY_ERF_MASTER_PLAN.md`; GitHub `main` remains the code source of truth.
 
-## Current release position
+## Historical September release position
 
 The current position below supersedes the historical 2026-09-07 list retained afterward:
 

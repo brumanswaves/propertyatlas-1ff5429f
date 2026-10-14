@@ -76,6 +76,11 @@ type PaymentLinkProbe = {
   active?: boolean;
   livemode?: boolean;
   url?: string | null;
+  allow_promotion_codes?: boolean;
+  automatic_tax?: { enabled?: boolean } | null;
+  shipping_options?: readonly unknown[] | null;
+  optional_items?: readonly unknown[] | null;
+  managed_payments?: { enabled?: boolean } | null;
   after_completion?: {
     type?: string | null;
     redirect?: { url?: string | null } | null;
@@ -84,12 +89,24 @@ type PaymentLinkProbe = {
 
 type LineItemProbe = {
   quantity?: number | null;
+  adjustable_quantity?: { enabled?: boolean } | null;
+  amount_subtotal?: number;
+  amount_total?: number;
+  amount_tax?: number;
+  amount_discount?: number;
+  currency?: string;
+  taxes?: readonly unknown[];
+  discounts?: readonly unknown[];
   price?:
     | string
     | {
         unit_amount?: number | null;
         currency?: string | null;
         type?: string | null;
+        billing_scheme?: string;
+        custom_unit_amount?: unknown;
+        transform_quantity?: unknown;
+        currency_options?: Record<string, { unit_amount?: number | null; custom_unit_amount?: unknown }>;
       }
     | null;
 };
@@ -163,12 +180,38 @@ export function inspectEasyErfPaymentLink(
   link: PaymentLinkProbe,
   lineItems: readonly LineItemProbe[],
   expectedLivemode: boolean,
+  lineItemsComplete = true,
 ): EasyErfPaymentLinkInspection {
   const checkoutUrl = normalizeUrl(link.url);
   const price =
     lineItems.length === 1 && typeof lineItems[0]?.price !== "string" ? lineItems[0]?.price : null;
 
-  const contractValid =
+  const item = lineItems[0];
+  // Fixed-price proof must include the settings and computed totals, not just
+  // the unit price. Missing required observations fail closed. Optional arrays
+  // on LineItem may be absent when empty; PaymentLink optional_items must be
+  // explicitly empty/null because an omitted field cannot prove no upsells.
+  const fixedTotal =
+    link.allow_promotion_codes === false &&
+    link.automatic_tax?.enabled === false &&
+    Array.isArray(link.shipping_options) && link.shipping_options.length === 0 &&
+    (link.optional_items === null || (Array.isArray(link.optional_items) && link.optional_items.length === 0)) &&
+    (link.managed_payments === null || link.managed_payments?.enabled === false) &&
+    (item?.adjustable_quantity === null || item?.adjustable_quantity?.enabled === false) &&
+    item?.amount_subtotal === EASY_ERF_R999_AMOUNT_TOTAL &&
+    item?.amount_total === EASY_ERF_R999_AMOUNT_TOTAL &&
+    item?.amount_tax === 0 && item?.amount_discount === 0 &&
+    item?.currency?.toLowerCase() === EASY_ERF_R999_CURRENCY &&
+    (item?.taxes === undefined || (Array.isArray(item.taxes) && item.taxes.length === 0)) &&
+    (item?.discounts === undefined || (Array.isArray(item.discounts) && item.discounts.length === 0)) &&
+    price?.billing_scheme === "per_unit" &&
+    price?.custom_unit_amount === null && price?.transform_quantity === null &&
+    Boolean(price?.currency_options && !Array.isArray(price.currency_options) &&
+      Object.entries(price.currency_options).every(([currency, option]) =>
+        currency === EASY_ERF_R999_CURRENCY && option?.unit_amount === EASY_ERF_R999_AMOUNT_TOTAL &&
+        option?.custom_unit_amount === null));
+
+  const contractValid = lineItemsComplete && fixedTotal &&
     link.active === true &&
     link.livemode === expectedLivemode &&
     checkoutUrl?.protocol === "https:" &&
@@ -318,10 +361,10 @@ export function buildEasyErfR999LaunchReadiness(input: {
         ? "pass"
         : "fail",
       paymentLink?.contractValid
-        ? `${environment.acceptedPaymentLinkCount} accepted Payment Link ID${environment.acceptedPaymentLinkCount === 1 ? " is" : "s are"} configured; a link matches one-time R999 ZAR checkout in the expected mode.`
+        ? `${environment.acceptedPaymentLinkCount} accepted Payment Link ID${environment.acceptedPaymentLinkCount === 1 ? " is" : "s are"} configured; a link matches a fixed one-time R999 ZAR total without tax, discounts, shipping, upsells or adjustable amounts in the expected mode.`
         : environment.acceptedPaymentLinkCount === 0
           ? "No accepted R999 Payment Link ID is configured."
-          : "The configured Payment Link could not be verified as active, correctly priced, one-time, and in the expected mode.",
+          : "The configured Payment Link could not be verified as active with a fixed R999 ZAR total, no total-changing options, and the expected mode. Missing observations also block checkout.",
     ),
     check(
       "payment-return-url",

@@ -11,6 +11,8 @@ import {
   type EasyErfLaunchEnvironment,
 } from "../../../../supabase/functions/_shared/easyErfR999LaunchReadiness";
 
+import { fixedPaymentLinkFixture, fixedLineItemFixture } from "./fixedPaymentLinkFixture";
+
 function source(path: string) {
   return readFileSync(resolve(process.cwd(), path), "utf8").replace(/\r\n/g, "\n");
 }
@@ -22,6 +24,7 @@ const configSource = source("supabase/config.toml");
 
 const validPaymentLink = inspectEasyErfPaymentLink(
   {
+    ...fixedPaymentLinkFixture(),
     active: true,
     livemode: true,
     url: "https://buy.stripe.com/example",
@@ -32,8 +35,10 @@ const validPaymentLink = inspectEasyErfPaymentLink(
   },
   [
     {
+      ...fixedLineItemFixture(),
       quantity: 1,
       price: {
+        ...fixedLineItemFixture().price,
         unit_amount: 99_900,
         currency: "zar",
         type: "one_time",
@@ -94,7 +99,8 @@ describe("Easy Erf R999 launch readiness model", () => {
     expect(
       inspectEasyErfPaymentLink(
         {
-          active: true,
+          ...fixedPaymentLinkFixture(),
+    active: true,
           livemode: true,
           url: "https://buy.stripe.com/example",
           after_completion: {
@@ -102,18 +108,18 @@ describe("Easy Erf R999 launch readiness model", () => {
             redirect: { url: "https://easyerf.co.za/orders?payment=received" },
           },
         },
-        [{ quantity: 1, price: { unit_amount: 100_000, currency: "zar", type: "one_time" } }],
+        [{ ...fixedLineItemFixture(), quantity: 1, price: { ...fixedLineItemFixture().price, unit_amount: 100_000, currency: "zar", type: "one_time" } }],
         true,
       ),
     ).toEqual({ contractValid: false, returnUrlValid: true });
   });
 
   it("rejects multiple or unknown quantities even with the R999 unit price", () => {
-    const link = { active: true, livemode: true, url: "https://buy.stripe.com/example" };
+    const link = { ...fixedPaymentLinkFixture(), active: true, livemode: true, url: "https://buy.stripe.com/example" };
     for (const quantity of [2, 0, null, undefined]) {
-      expect(inspectEasyErfPaymentLink(link, [{ quantity, price: { unit_amount: 99_900, currency: "zar", type: "one_time" } }], true).contractValid).toBe(false);
+      expect(inspectEasyErfPaymentLink(link, [{ ...fixedLineItemFixture(), quantity, price: { ...fixedLineItemFixture().price, unit_amount: 99_900, currency: "zar", type: "one_time" } }], true).contractValid).toBe(false);
     }
-    expect(inspectEasyErfPaymentLink(link, [{ quantity: 1, price: { unit_amount: 99_900, currency: "zar", type: "one_time" } }], true).contractValid).toBe(true);
+    expect(inspectEasyErfPaymentLink(link, [{ ...fixedLineItemFixture(), quantity: 1, price: { ...fixedLineItemFixture().price, unit_amount: 99_900, currency: "zar", type: "one_time" } }], true).contractValid).toBe(true);
   });
 
   it("requires the exact enabled webhook and both settlement events", () => {
@@ -210,7 +216,8 @@ describe("Easy Erf R999 launch readiness model", () => {
       }),
       paymentLink: inspectEasyErfPaymentLink(
         {
-          active: true,
+          ...fixedPaymentLinkFixture(),
+    active: true,
           livemode: false,
           url: "https://buy.stripe.com/example",
           after_completion: {
@@ -218,7 +225,7 @@ describe("Easy Erf R999 launch readiness model", () => {
             redirect: { url: "https://easyerf.co.za/orders?payment=received" },
           },
         },
-        [{ quantity: 1, price: { unit_amount: 99_900, currency: "zar", type: "one_time" } }],
+        [{ ...fixedLineItemFixture(), quantity: 1, price: { ...fixedLineItemFixture().price, unit_amount: 99_900, currency: "zar", type: "one_time" } }],
         false,
       ),
       webhook: inspectEasyErfWebhookEndpoints(

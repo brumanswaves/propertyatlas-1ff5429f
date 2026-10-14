@@ -5,6 +5,8 @@ import { describe, expect, it, vi } from "vitest";
 import * as readiness from "../../../../supabase/functions/_shared/easyErfR999LaunchReadiness";
 import * as contract from "../../../../supabase/functions/_shared/easyErfStripePaymentContract";
 
+import { fixedPaymentLinkFixture, fixedLineItemFixture } from "./fixedPaymentLinkFixture";
+
 const code = ts.transpileModule(
   readFileSync("supabase/functions/easy-erf-founder-launch-readiness/index.ts", "utf8"),
   {
@@ -29,6 +31,9 @@ function harness(
     armed?: boolean;
     paymentQuantity?: number | null;
     paymentLink?: boolean;
+    linkChanges?: Record<string, unknown>;
+    itemChanges?: Record<string, unknown>;
+    moreItems?: boolean;
   } = {},
 ) {
   let handler!: (request: Request) => Promise<Response>;
@@ -39,20 +44,29 @@ function harness(
       accounts: { retrieve: account },
       webhookEndpoints: { list: vi.fn().mockResolvedValue({ data: [] }) },
       paymentLinks: {
-        retrieve: vi.fn().mockResolvedValue({
+        retrieve: vi.fn().mockImplementation(async (_id: string, params?: { expand?: string[] }) => {
+          const link: Record<string, unknown> = {
+          ...fixedPaymentLinkFixture(options.mode === "live"),
           active: true,
           livemode: options.mode === "live",
           url: "https://buy.stripe.com/fixture",
+          ...options.linkChanges,
           after_completion: {
             type: "redirect",
             redirect: { url: readiness.EASY_ERF_R999_RETURN_URL },
           },
+          };
+          if (!params?.expand?.includes("optional_items")) delete link.optional_items;
+          return link;
         }),
         listLineItems: vi.fn().mockResolvedValue({
+          has_more: options.moreItems ?? false,
           data: [
             {
+              ...fixedLineItemFixture(),
+              ...options.itemChanges,
               quantity: options.paymentQuantity,
-              price: { unit_amount: 99_900, currency: "zar", type: "one_time" },
+              price: fixedLineItemFixture().price,
             },
           ],
         }),
@@ -249,4 +263,49 @@ describe("actual preflight line-item mapping", () => {
       expect(result.signatureSecretMatch).toBe("not_verified");
     },
   );
+});
+
+
+describe("actual founder preflight total guards", () => {
+  it.each([
+    ["promotions", { allow_promotion_codes: true }],
+    ["tax", { automatic_tax: { enabled: true } }],
+    ["shipping", { shipping_options: [{}] }],
+    ["upsells", { optional_items: [{}] }],
+    ["unobservable upsells", { optional_items: undefined }],
+  ])("cannot report a safe total with %s", async (_name, linkChanges) => {
+    const h = harness({ mode: "live", paymentLink: true, paymentQuantity: 1, linkChanges });
+    const result = await (await h.request()).json();
+    expect(result.checks.find((x: { id: string }) => x.id === "accepted-payment-link").status).toBe("fail");
+  });
+  it.each([
+    ["adjustable quantity", { adjustable_quantity: { enabled: true } }],
+    ["computed total", { amount_total: 100_000 }],
+    ["discount", { amount_discount: 100 }],
+  ])("preserves %s observations through the actual endpoint", async (_name, itemChanges) => {
+    const h = harness({ mode: "live", paymentLink: true, paymentQuantity: 1, itemChanges });
+    const result = await (await h.request()).json();
+    expect(result.checks.find((x: { id: string }) => x.id === "accepted-payment-link").status).toBe("fail");
+  });
+  it("rejects truncated lists and requests expanded price currencies", async () => {
+    const h = harness({ mode: "live", paymentLink: true, paymentQuantity: 1, moreItems: true });
+    const result = await (await h.request()).json();
+    expect(result.checks.find((x: { id: string }) => x.id === "accepted-payment-link").status).toBe("fail");
+    const transport = h.stripe.mock.results[0].value.paymentLinks;
+    expect(transport.retrieve).toHaveBeenCalledWith("plink_Fixture", { expand: ["optional_items"] });
+    const calls = transport.listLineItems;
+    expect(calls).toHaveBeenCalledWith("plink_Fixture", { limit: 10, expand: ["data.price.currency_options"] });
+  });
+});
+
+describe("optional-item transport expansion", () => {
+  it("omits optional_items without expansion and retains a legitimate fixed R999 control", async () => {
+    const h = harness({ mode: "live", paymentLink: true, paymentQuantity: 1 });
+    const result = await (await h.request()).json();
+    expect(result.checks.find((x: { id: string }) => x.id === "accepted-payment-link").status).toBe("pass");
+    const retrieve = h.stripe.mock.results[0].value.paymentLinks.retrieve;
+    expect(retrieve).toHaveBeenCalledWith("plink_Fixture", { expand: ["optional_items"] });
+    expect(await retrieve("plink_Fixture")).not.toHaveProperty("optional_items");
+    expect(await retrieve("plink_Fixture", { expand: ["optional_items"] })).toHaveProperty("optional_items", null);
+  });
 });
