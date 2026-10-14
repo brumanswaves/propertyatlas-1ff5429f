@@ -177,8 +177,9 @@ describe("Easy Erf payment operations surfaces", () => {
     expect(checkout).toContain('configured === "live"');
     expect(checkout).toContain('checkoutMode === "live" && !liveCheckoutIsArmed()');
     expect(checkout).toContain("link.livemode !== expectedLivemode");
-    expect(checkout).toContain("price.unit_amount !== 99900");
-    expect(checkout).toContain('price.currency.toLowerCase() !== "zar"');
+    expect(checkout).toContain("inspectEasyErfPaymentLink(");
+    expect(checkout).toContain("lineItems.has_more === false");
+    expect(checkout).toContain('expand: ["data.price.currency_options"]');
     expect(checkout).toContain("mode: checkoutMode");
     expect(checkout).not.toMatch(/sk_(test|live)_|plink_[A-Za-z0-9]{8,}/);
     expect(config).toMatch(/\[functions\.easy-erf-r999-checkout\][\s\S]*verify_jwt = false/);

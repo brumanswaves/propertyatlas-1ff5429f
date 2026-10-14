@@ -37,6 +37,7 @@ function reset() {
     calls: [],
     inserts: [],
     rpcs: [],
+    linkOverrides: {}, itemOverrides: {}, priceOverrides: {},
     quantity: 1,
     hasMore: false,
     amount: 99900,
@@ -56,22 +57,37 @@ class SyntheticStripe {
     return {};
   }
   paymentLinks = {
-    retrieve: async (id) => {
+    retrieve: async (id, params) => {
       state.calls.push(["retrieve", id]);
-      return {
+      const link = {
         active: state.active,
         livemode: state.mode,
         url: "https://buy.stripe.com/synthetic",
+        allow_promotion_codes: false, automatic_tax: { enabled: false },
+        shipping_options: [], optional_items: null, managed_payments: null,
+        ...state.linkOverrides,
       };
+      // Stripe omits includable optional_items unless explicitly expanded.
+      if (!params?.expand?.includes("optional_items")) delete link.optional_items;
+      return link;
     },
-    listLineItems: async (id) => {
+    listLineItems: async (id, params) => {
+      assert.deepEqual(Array.from(params.expand), ["data.price.currency_options"]);
       state.calls.push(["lineItems", id]);
       return {
         has_more: state.hasMore,
         data: [
           {
-            quantity: state.quantity,
-            price: { unit_amount: state.amount, currency: state.currency, type: "one_time" },
+            quantity: state.quantity, adjustable_quantity: null,
+            amount_subtotal: 99900, amount_total: 99900,
+            amount_tax: 0, amount_discount: 0, currency: "zar",
+            ...state.itemOverrides,
+            price: {
+              unit_amount: state.amount, currency: state.currency, type: "one_time",
+              billing_scheme: "per_unit", custom_unit_amount: null, transform_quantity: null,
+              currency_options: { zar: { unit_amount: 99900, custom_unit_amount: null } },
+              ...state.priceOverrides,
+            },
           },
         ],
       };
@@ -182,7 +198,7 @@ function load(path) {
       require: (name) => {
         if (name.startsWith("npm:@supabase/")) return { createClient: () => admin };
         if (name.startsWith("npm:stripe@")) return { __esModule: true, default: SyntheticStripe };
-        assert.ok(name.startsWith("../_shared/"), `Unexpected dependency ${name}`);
+        assert.ok(name.startsWith("../_shared/") || name === "./easyErfStripePaymentContract.ts", `Unexpected dependency ${name}`);
         return load(resolve(dirname(filename), name));
       },
     },
@@ -285,6 +301,31 @@ for (const [name, change] of [
     assert.equal((await checkout()).status, 503);
     assert.equal(state.inserts.length, 0);
   });
+for (const [name, target, overrides] of [
+  ["promotions", "linkOverrides", { allow_promotion_codes: true }],
+  ["automatic tax", "linkOverrides", { automatic_tax: { enabled: true } }],
+  ["shipping", "linkOverrides", { shipping_options: [{}] }],
+  ["upsells", "linkOverrides", { optional_items: [{}] }],
+  ["unknown upsells", "linkOverrides", { optional_items: undefined }],
+  ["managed payments", "linkOverrides", { managed_payments: { enabled: true } }],
+  ["adjustable quantity", "itemOverrides", { adjustable_quantity: { enabled: true } }],
+  ["discount", "itemOverrides", { amount_discount: 100 }],
+  ["tax", "itemOverrides", { amount_tax: 100 }],
+  ["wrong computed total", "itemOverrides", { amount_total: 100000 }],
+  ["unknown computed total", "itemOverrides", { amount_total: undefined }],
+  ["tax rates", "itemOverrides", { taxes: [{}] }],
+  ["discount records", "itemOverrides", { discounts: [{}] }],
+  ["custom amount", "priceOverrides", { custom_unit_amount: {} }],
+  ["quantity transform", "priceOverrides", { transform_quantity: {} }],
+  ["unexpanded currencies", "priceOverrides", { currency_options: undefined }],
+  ["alternate currency", "priceOverrides", { currency_options: { usd: { unit_amount: 99900 } } }],
+]) await check(`checkout rejects ${name} before any brief insert or URL`, async () => {
+  state[target] = overrides;
+  const result = await checkout();
+  assert.equal(result.status, 503);
+  assert.equal(result.body.url, undefined);
+  assert.equal(state.inserts.length, 0);
+});
 await check("unarmed/invalid mode cannot contact synthetic Stripe or write", async () => {
   for (const mode of ["live", "invalid"]) {
     settings.EASY_ERF_R999_CHECKOUT_MODE = mode;
@@ -366,7 +407,7 @@ await check("unpaid/unrelated events never record or grant delivery", async () =
   assert.equal(state.rpcs.length, 0);
 });
 await check("wrong total/currency fails closed before order recording", async () => {
-  for (const override of [{ amount_total: 199800 }, { currency: "usd" }])
+  for (const override of [{ amount_total: 199800 }, { amount_total: 99800 }, { currency: "usd" }])
     assert.equal((await webhook(override)).status, 400);
   assert.equal(state.rpcs.length, 0);
 });

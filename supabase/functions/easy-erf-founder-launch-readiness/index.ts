@@ -154,38 +154,13 @@ Deno.serve(async (request: Request) => {
 
       for (const paymentLinkId of acceptedPaymentLinkIds) {
         try {
-          const link = await stripe.paymentLinks.retrieve(paymentLinkId);
-          const lineItems = await stripe.paymentLinks.listLineItems(paymentLinkId, { limit: 10 });
+          const link = await stripe.paymentLinks.retrieve(paymentLinkId, { expand: ["optional_items"] });
+          const lineItems = await stripe.paymentLinks.listLineItems(paymentLinkId, {
+            limit: 10,
+            expand: ["data.price.currency_options"],
+          });
           const inspection = inspectEasyErfPaymentLink(
-            {
-              active: link.active,
-              livemode: link.livemode,
-              url: link.url,
-              after_completion:
-                link.after_completion.type === "redirect"
-                  ? {
-                      type: "redirect",
-                      redirect: { url: link.after_completion.redirect?.url ?? null },
-                    }
-                  : { type: link.after_completion.type },
-            },
-            lineItems.data.map((item) => {
-              const price = item.price;
-              return {
-                quantity: item.quantity,
-                price:
-                  typeof price === "string"
-                    ? price
-                    : price
-                      ? {
-                          unit_amount: price.unit_amount,
-                          currency: price.currency,
-                          type: price.type,
-                        }
-                      : null,
-              };
-            }),
-            expectedLivemode,
+            link, lineItems.data, expectedLivemode, lineItems.has_more === false,
           );
 
           const currentScore =

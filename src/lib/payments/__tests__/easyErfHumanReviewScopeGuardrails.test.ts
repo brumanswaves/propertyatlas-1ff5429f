@@ -177,7 +177,9 @@ describe("Easy Erf controlled R999 payment handoff", () => {
     expect(checkout).toContain("scope_acknowledged_at: new Date().toISOString()");
     expect(checkout).toContain('verifiedUrl.searchParams.set("client_reference_id", requestRow.id)');
     expect(checkout).toContain("link.livemode");
-    expect(checkout).toContain("price.unit_amount !== 99900");
+    expect(checkout).toContain("inspectEasyErfPaymentLink(");
+    expect(checkout).toContain('expand: ["data.price.currency_options"]');
+    expect(checkout).toContain("lineItems.has_more === false");
     expect(checkout).not.toContain("checkout.sessions.create");
     expect(checkout).not.toContain("paymentIntents.create");
   });
