@@ -1,6 +1,6 @@
 # MANDATORY MASTER BUILD GOVERNANCE
 
-Before any project work, read `BUILD_GOVERNANCE.md` in full. Its rules are permanent, binding, and override every conflicting instruction below, including autonomy, spending, tool-choice, convenience, speed, and "keep building" instructions.
+Before any project work, read `BUILD_GOVERNANCE.md` in full. Platform requirements take precedence. Within those requirements, follow the owner's current explicit directions and still-valid recorded approvals, checking their scope, revision conditions, budget, expiry and whether a one-shot was consumed. The owner's current shared baseline supersedes older duplicated reporting, model-default and execution instructions only. Preserve all current project/platform restrictions and product-specific calculation, security, payment, acceptance, spending and release safeguards. This precedence does not expand an existing approval or authorize an otherwise prohibited action.
 
 If `BUILD_GOVERNANCE.md` cannot be read, stop and report `BLOCKED`. Do not continue from memory.
 
